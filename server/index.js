@@ -1,16 +1,18 @@
 ﻿const express = require("express");
 const { Pool } = require("pg");
+require("dotenv").config();
 
 const app = express();
 app.use(express.json());
 
 const pool = new Pool({
-  host: "localhost",
-  port: 5432,
-  user: "os",
-  password: "os123",
-  database: "os_saas",
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
+
 
 app.get("/health", async (req, res) => {
   try {
@@ -82,4 +84,5 @@ app.delete("/clientes/:id", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("API on http://localhost:3000"));
+const port = Number(process.env.PORT || 3000);
+app.listen(port, () => console.log(`API on http://localhost:${port}`));
