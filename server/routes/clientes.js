@@ -2,40 +2,89 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
+const { authRequired, loadUser } = require("../middlewares/auth");
+router.use(authRequired, loadUser);
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function limparTexto(value) {
+  return String(value || "").trim();
+}
 
+function limparTelefone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizarEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function validarCliente({ nome, email, telefone }) {
+  const nomeLimpo = limparTexto(nome);
+  const emailLimpo = normalizarEmail(email);
+  const telefoneLimpo = limparTelefone(telefone);
+
+  if (!nomeLimpo) {
+    return { error: "nome é obrigatório" };
+  }
+
+  if (!telefoneLimpo) {
+    return { error: "telefone é obrigatório" };
+  }
+
+  if (telefoneLimpo.length < 10) {
+    return { error: "telefone inválido" };
+  }
+
+  if (emailLimpo && !EMAIL_REGEX.test(emailLimpo)) {
+    return { error: "email inválido" };
+  }
+
+  return {
+    nomeLimpo,
+    emailLimpo: emailLimpo || null,
+    telefoneLimpo,
+  };
+}
+
+// GET (por empresa)
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM clientes ORDER BY id ASC");
+    const result = await pool.query(
+      "SELECT * FROM clientes WHERE company_id = $1 ORDER BY id ASC",
+      [req.user.company_id]
+    );
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ CREATE (email obrigatório)
+// CREATE (por empresa)
 router.post("/", async (req, res) => {
-  const { nome, email, telefone } = req.body;
+  const validacao = validarCliente(req.body);
 
-  const nomeLimpo = String(nome || "").trim();
-  const emailLimpo = String(email || "").trim();
-  const telefoneLimpo = String(telefone || "").replace(/\D/g, "");
-
-  // validação
-  if (!nomeLimpo) return res.status(400).json({ error: "nome é obrigatório" });
-  if (!emailLimpo) return res.status(400).json({ error: "email é obrigatório" });
-  if (!emailLimpo.includes("@")) return res.status(400).json({ error: "email inválido" });
-
-  // telefone é opcional, mas se vier tem que ter pelo menos 10 dígitos
-  if (telefone && telefoneLimpo.length > 0 && telefoneLimpo.length < 10) {
-    return res.status(400).json({ error: "telefone inválido" });
+  if (validacao.error) {
+    return res.status(400).json({ error: validacao.error });
   }
+
+  const { nomeLimpo, emailLimpo, telefoneLimpo } = validacao;
 
   try {
     const result = await pool.query(
-      "INSERT INTO clientes (nome, email, telefone) VALUES ($1, $2, $3) RETURNING *",
-      [nomeLimpo, emailLimpo, telefoneLimpo || null]
+      `
+      INSERT INTO clientes (nome, email, telefone, user_id, company_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        nomeLimpo,
+        emailLimpo,
+        telefoneLimpo,
+        req.user.id,
+        req.user.company_id,
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -44,54 +93,76 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ✅ UPDATE (email obrigatório)
+// UPDATE (só se for da empresa)
 router.put("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const { nome, email, telefone } = req.body;
 
-  const nomeLimpo = String(nome || "").trim();
-  const emailLimpo = String(email || "").trim();
-  const telefoneLimpo = String(telefone || "").replace(/\D/g, "");
-
-  if (!Number.isFinite(id)) return res.status(400).json({ error: "id inválido" });
-  if (!nomeLimpo) return res.status(400).json({ error: "nome é obrigatório" });
-  if (!emailLimpo) return res.status(400).json({ error: "email é obrigatório" });
-  if (!emailLimpo.includes("@")) return res.status(400).json({ error: "email inválido" });
-
-  if (telefone && telefoneLimpo.length > 0 && telefoneLimpo.length < 10) {
-    return res.status(400).json({ error: "telefone :(  inválido" });
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "id inválido" });
   }
+
+  const validacao = validarCliente(req.body);
+
+  if (validacao.error) {
+    return res.status(400).json({ error: validacao.error });
+  }
+
+  const { nomeLimpo, emailLimpo, telefoneLimpo } = validacao;
 
   try {
     const result = await pool.query(
-      `UPDATE clientes
-       SET nome = $1, email = $2, telefone = $3
-       WHERE id = $4
-       RETURNING *`,
-      [nomeLimpo, emailLimpo, telefoneLimpo || null, id]
+      `
+      UPDATE clientes
+      SET nome = $1, email = $2, telefone = $3
+      WHERE id = $4 AND company_id = $5
+      RETURNING *
+      `,
+      [nomeLimpo, emailLimpo, telefoneLimpo, id, req.user.company_id]
     );
 
-    if (result.rowCount === 0) return res.status(404).json({ error: "Cliente não encontrado" });
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: "Cliente não encontrado (ou não pertence à sua empresa)",
+      });
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ DELETE
+// DELETE (só se for da empresa)
 router.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return res.status(400).json({ error: "id inválido" });
+
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: "id inválido" });
+  }
 
   try {
-    const result = await pool.query("DELETE FROM clientes WHERE id = $1 RETURNING *", [id]);
+    const result = await pool.query(
+      "DELETE FROM clientes WHERE id = $1 AND company_id = $2 RETURNING *",
+      [id, req.user.company_id]
+    );
 
-    if (result.rowCount === 0) return res.status(404).json({ error: "Cliente não encontrado" });
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: "Cliente não encontrado (ou não pertence à sua empresa)",
+      });
+    }
+
     res.json({ deleted: result.rows[0] });
   } catch (err) {
+    if (err.code === "23503") {
+      return res.status(409).json({
+        error:
+          "Não é possível excluir este cliente porque ele possui ordens de serviço vinculadas.",
+      });
+    }
+
     res.status(500).json({ error: err.message });
   }
 });
-
 
 module.exports = router;
