@@ -37,7 +37,11 @@ app.use("/os", osRoutes);
 app.use("/dashboard", dashboardRoutes);
 
 // 3) health
-app.get("/health", async (req, res) => {
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", app: "running" });
+});
+
+app.get("/health/db", async (req, res) => {
   try {
     const r = await pool.query("SELECT NOW() as now;");
     res.json({ status: "ok", db: r.rows[0].now });
