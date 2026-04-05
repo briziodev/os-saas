@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiFetch, clearToken } from "../api";
 
-const API = "http://localhost:3000";
 const MAX_RESULTADOS = 5;
 
 export default function OSNew() {
@@ -33,28 +33,6 @@ export default function OSNew() {
     email: "",
   });
 
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
-    return data;
-  }
-
   async function loadClientes() {
     try {
       setLoading(true);
@@ -62,6 +40,11 @@ export default function OSNew() {
       const data = await apiFetch("/clientes");
       setClientes(Array.isArray(data) ? data : []);
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     } finally {
       setLoading(false);
@@ -70,7 +53,6 @@ export default function OSNew() {
 
   useEffect(() => {
     loadClientes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -178,6 +160,11 @@ export default function OSNew() {
       setShowNovoCliente(false);
       setMsg("Cliente cadastrado com sucesso.");
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     } finally {
       setSavingCliente(false);
@@ -238,6 +225,11 @@ export default function OSNew() {
 
       nav("/os");
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     } finally {
       setSavingOS(false);

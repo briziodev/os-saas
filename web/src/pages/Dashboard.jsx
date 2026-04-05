@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
-const API = "http://localhost:3000";
+import { apiFetch, clearToken } from "../api";
 
 const STATUS_LABEL = {
   triagem: "Triagem",
@@ -36,38 +35,19 @@ export default function Dashboard() {
   }, []);
 
   async function loadDashboard() {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setError("Sessão não encontrada. Faça login novamente.");
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`${API}/dashboard`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const body = await res.json().catch(() => ({}));
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
+      const body = await apiFetch("/dashboard");
+      setData(body);
+    } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
         window.location.href = "/login";
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(body.error || `Erro ${res.status}`);
-      }
-
-      setData(body);
-    } catch (e) {
       setError(e.message || "Erro ao carregar dashboard.");
     } finally {
       setLoading(false);
@@ -75,7 +55,7 @@ export default function Dashboard() {
   }
 
   function logout() {
-    localStorage.removeItem("token");
+    clearToken();
     window.location.href = "/login";
   }
 
@@ -295,10 +275,7 @@ function statusBadgeClass(status) {
   if (status === "encerrado" || status === "finalizado") return "badge--success";
   if (status === "cancelado") return "badge--danger";
 
-  if (
-    status === "aguardando_aprovacao" ||
-    status === "orcamento_enviado"
-  ) {
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
     return "badge--warning";
   }
 
@@ -323,10 +300,7 @@ function statusToneClass(status) {
     return "table-like-row--danger";
   }
 
-  if (
-    status === "aguardando_aprovacao" ||
-    status === "orcamento_enviado"
-  ) {
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
     return "table-like-row--warning";
   }
 

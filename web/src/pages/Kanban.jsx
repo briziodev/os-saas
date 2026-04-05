@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiFetch, clearToken } from "../api";
 
-const API = "http://localhost:3000";
 const INITIAL_VISIBLE_PER_COLUMN = 4;
 
 const COLUMNS = [
@@ -31,7 +31,9 @@ function statusLabel(status) {
 function statusBadgeClass(status) {
   if (status === "encerrado" || status === "finalizado") return "badge--success";
   if (status === "cancelado") return "badge--danger";
-  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") return "badge--warning";
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
+    return "badge--warning";
+  }
 
   if (
     status === "aprovado" ||
@@ -68,31 +70,6 @@ export default function Kanban() {
   const [msgType, setMsgType] = useState("success");
   const [expandedColumns, setExpandedColumns] = useState({});
 
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    if (!res.ok) {
-      throw new Error(data.error || `Erro ${res.status}`);
-    }
-
-    return data;
-  }
-
   async function loadOS({ silent = false } = {}) {
     if (!silent) {
       setLoading(true);
@@ -103,13 +80,20 @@ export default function Kanban() {
 
     try {
       const data = await apiFetch("/os");
-      setOsList(sortOSList(data));
+      const lista = Array.isArray(data) ? data : [];
+      setOsList(sortOSList(lista));
 
       if (silent) {
         setMsgType("success");
         setMsg("Quadro atualizado com sucesso.");
       }
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
+
       setMsgType("error");
       setMsg(e.message || "Erro ao carregar quadro.");
     } finally {
@@ -120,7 +104,6 @@ export default function Kanban() {
 
   useEffect(() => {
     loadOS();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function moverStatus(id, novoStatus) {
@@ -149,6 +132,12 @@ export default function Kanban() {
       setMsgType("success");
       setMsg(`OS #${id} movida para ${statusLabel(novoStatus)}.`);
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
+
       setMsgType("error");
       setMsg(e.message || "Erro ao atualizar status.");
     }
@@ -246,7 +235,11 @@ export default function Kanban() {
 
         {msg ? (
           <div className="section">
-            <div className={`card alert ${msgType === "error" ? "alert--error" : "alert--success"}`}>
+            <div
+              className={`card alert ${
+                msgType === "error" ? "alert--error" : "alert--success"
+              }`}
+            >
               {msg}
             </div>
           </div>
@@ -301,7 +294,9 @@ export default function Kanban() {
                                   </Link>
                                 </div>
 
-                                <span className={`badge badge--status ${statusBadgeClass(os.status)}`}>
+                                <span
+                                  className={`badge badge--status ${statusBadgeClass(os.status)}`}
+                                >
                                   {statusLabel(os.status)}
                                 </span>
                               </div>
@@ -311,7 +306,9 @@ export default function Kanban() {
                               <div className="kanban-os-body">
                                 <div className="kanban-field">
                                   <div className="kanban-field-label">Cliente</div>
-                                  <div className="kanban-field-value">{os.cliente_nome || "-"}</div>
+                                  <div className="kanban-field-value">
+                                    {os.cliente_nome || "-"}
+                                  </div>
                                 </div>
 
                                 <div className="kanban-os-meta">
@@ -323,7 +320,9 @@ export default function Kanban() {
 
                               <div className="kanban-os-actions">
                                 <div className="kanban-select-wrap">
-                                  <label className="label kanban-select-label">Mover para etapa</label>
+                                  <label className="label kanban-select-label">
+                                    Mover para etapa
+                                  </label>
                                   <select
                                     value={os.status}
                                     onChange={(e) => moverStatus(os.id, e.target.value)}
@@ -347,9 +346,7 @@ export default function Kanban() {
                               className="btn btn--ghost kanban-column-toggle"
                               onClick={() => toggleColumn(col.key)}
                             >
-                              {isExpanded
-                                ? "Mostrar menos"
-                                : `Ver mais ${hiddenCount} OS`}
+                              {isExpanded ? "Mostrar menos" : `Ver mais ${hiddenCount} OS`}
                             </button>
                           </div>
                         ) : null}

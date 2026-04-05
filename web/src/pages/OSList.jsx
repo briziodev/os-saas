@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-const API = "http://localhost:3000";
+import { apiFetch, clearToken } from "../api";
 
 const STATUS = [
   "triagem",
@@ -39,31 +38,7 @@ export default function OSList() {
 
   useEffect(() => {
     loadOS();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
-
-    return data;
-  }
 
   async function loadOS() {
     setLoading(true);
@@ -81,6 +56,11 @@ export default function OSList() {
 
       setOsList(ordenada);
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     } finally {
       setLoading(false);
@@ -99,6 +79,11 @@ export default function OSList() {
       await loadOS();
       setMsg(`OS #${id} atualizada para ${statusLabel(novoStatus)}.`);
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     }
   }
@@ -110,6 +95,11 @@ export default function OSList() {
       const data = await apiFetch(`/os/${id}/whatsapp-link`);
       window.open(data.whatsapp_url, "_blank");
     } catch (e) {
+      if (e.message === "Sessão expirada. Faça login novamente.") {
+        clearToken();
+        window.location.href = "/login";
+        return;
+      }
       setMsg(e.message);
     }
   }
@@ -122,7 +112,7 @@ export default function OSList() {
   }
 
   function logout() {
-    localStorage.removeItem("token");
+    clearToken();
     window.location.href = "/login";
   }
 
@@ -299,10 +289,10 @@ export default function OSList() {
                         </div>
 
                         <div className="kpi kpi--green">
-  {Number(os.valor_total) === 0 ? "Sem Valor No Orçamento" : money(os.valor_total)}
-</div>
-
-
+                          {Number(os.valor_total) === 0
+                            ? "Sem Valor No Orçamento"
+                            : money(os.valor_total)}
+                        </div>
                       </div>
 
                       <div className="soft-box field-stack">
@@ -432,10 +422,7 @@ function statusBadgeClass(status) {
   if (status === "encerrado" || status === "finalizado") return "badge--success";
   if (status === "cancelado") return "badge--danger";
 
-  if (
-    status === "aguardando_aprovacao" ||
-    status === "orcamento_enviado"
-  ) {
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
     return "badge--warning";
   }
 
@@ -460,10 +447,7 @@ function statusToneClass(status) {
     return "table-like-row--danger";
   }
 
-  if (
-    status === "aguardando_aprovacao" ||
-    status === "orcamento_enviado"
-  ) {
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
     return "table-like-row--warning";
   }
 

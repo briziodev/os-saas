@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-const API = "http://localhost:3000";
+import { apiFetch, clearToken } from "../api";
 
 const STATUS = [
   "triagem",
@@ -82,28 +81,6 @@ export default function OSDetail() {
     loadOS();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
-    return data;
-  }
 
   async function loadOS({ preserveMessage = false } = {}) {
     if (!token) {
@@ -321,7 +298,7 @@ export default function OSDetail() {
 
   function logout() {
     if (!confirmDiscardChanges()) return;
-    localStorage.removeItem("token");
+    clearToken();
     window.location.href = "/login";
   }
 

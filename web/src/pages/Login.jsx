@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch, setToken } from "../api";
 
-const API = "http://localhost:3000";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateLoginForm(emailRaw, passwordRaw) {
@@ -42,28 +42,23 @@ export default function Login() {
       setError("");
       setLoading(true);
 
-      const res = await fetch(`${API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: rawPassword }),
-      });
+      const data = await apiFetch(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: cleanEmail,
+            password: rawPassword,
+          }),
+        },
+        { auth: false }
+      );
 
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 401) {
-        setError("Credenciais inválidas");
-        return;
-      }
-
-      if (!res.ok) {
-        setError(data.error || `Erro ${res.status}`);
-        return;
-      }
-
-      localStorage.setItem("token", data.token);
+      setToken(data.token);
       nav("/dashboard");
     } catch (err) {
-      setError("Erro de conexão. Tente novamente.");
+      const msg = err?.message || "Erro de conexão. Tente novamente.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
