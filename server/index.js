@@ -8,7 +8,24 @@ const pool = require("./db");
 const app = express();
 
 // 1) middlewares primeiro
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",")
+      : ["http://localhost:5173"];
+
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  }
+}));
+
+
+
+
+
 app.use(express.json());
 
 // 2) routes depois
@@ -38,8 +55,7 @@ app.get("/health", async (req, res) => {
     res.status(500).json({ status: "error", error: String(e.message || e) });
   }
 });
-
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => console.log(`API on http://localhost:${port}`));
-
-
+app.listen(port, "0.0.0.0", () => {
+  console.log(`API on port ${port}`);
+});
