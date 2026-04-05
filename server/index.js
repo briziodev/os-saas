@@ -1,5 +1,4 @@
-﻿
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
@@ -22,10 +21,6 @@ app.use(cors({
   }
 }));
 
-
-
-
-
 app.use(express.json());
 
 // 2) routes depois
@@ -35,16 +30,11 @@ const testRoutes = require("./routes/testRoutes");
 const osRoutes = require("./routes/os");
 const dashboardRoutes = require("./routes/dashboard");
 
-
-
-
 app.use("/auth", authRoutes);
 app.use("/clientes", clientesRoutes);
 app.use("/", testRoutes);
 app.use("/os", osRoutes);
 app.use("/dashboard", dashboardRoutes);
-
-
 
 // 3) health
 app.get("/health", async (req, res) => {
@@ -55,6 +45,7 @@ app.get("/health", async (req, res) => {
     res.status(500).json({ status: "error", error: String(e.message || e) });
   }
 });
+
 const port = Number(process.env.PORT || 3000);
 app.listen(port, "0.0.0.0", () => {
   console.log(`API on port ${port}`);
