@@ -46,11 +46,22 @@ app.get("/health/db", async (req, res) => {
     const r = await pool.query("SELECT NOW() as now;");
     res.json({ status: "ok", db: r.rows[0].now });
   } catch (e) {
-    res.status(500).json({ status: "error", error: String(e.message || e) });
-  }
-});
+    console.error("DB health error:", e);
 
-const port = Number(process.env.PORT || 3000);
-app.listen(port, "0.0.0.0", () => {
-  console.log(`API on port ${port}`);
+    res.status(500).json({
+      status: "error",
+      name: e?.name || null,
+      message: e?.message || null,
+      code: e?.code || null,
+      errors: Array.isArray(e?.errors)
+        ? e.errors.map((err) => ({
+            name: err?.name || null,
+            message: err?.message || null,
+            code: err?.code || null,
+            address: err?.address || null,
+            port: err?.port || null,
+          }))
+        : null,
+    });
+  }
 });
