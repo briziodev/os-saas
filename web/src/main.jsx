@@ -11,17 +11,25 @@ import OSNew from "./pages/OSNew.jsx";
 import OSDetail from "./pages/OSDetail.jsx";
 import Kanban from "./pages/Kanban.jsx";
 import Clientes from "./pages/Clientes.jsx";
+import AtivarConta from "./pages/AtivarConta.jsx";
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" replace />;
 }
 
+function RootRedirect() {
+  const token = localStorage.getItem("token");
+  return <Navigate to={token ? "/dashboard" : "/login"} replace />;
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/ativar-conta" element={<AtivarConta />} />
 
         <Route
           path="/dashboard"
@@ -77,7 +85,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<RootRedirect />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

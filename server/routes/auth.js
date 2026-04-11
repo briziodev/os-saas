@@ -8,6 +8,10 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function limparTexto(value) {
+  return String(value || "").trim();
+}
+
 // REGISTER
 router.post("/register", async (req, res) => {
   try {
@@ -36,11 +40,10 @@ router.post("/register", async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
 
-    // ✅ INSERE de verdade (role default no banco = member, company_id pode ser null)
     const inserted = await pool.query(
-      `INSERT INTO users (name, email, password_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, email, company_id, role, created_at`,
+      `INSERT INTO users (name, email, password_hash, is_active, activated_at)
+       VALUES ($1, $2, $3, true, now())
+       RETURNING id, name, email, company_id, role, is_active, activated_at, created_at`,
       [name.trim(), email.toLowerCase(), password_hash]
     );
 
@@ -59,43 +62,167 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Email e senha obrigatórios" });
     }
 
-const result = await pool.query(
-  "SELECT id, name, email, password_hash, company_id, role FROM users WHERE email = $1",
-  [email.toLowerCase()]
-);
+    const result = await pool.query(
+      `SELECT
+         id,
+         name,
+         email,
+         password_hash,
+         company_id,
+         role,
+         is_active
+       FROM users
+       WHERE email = $1`,
+      [email.toLowerCase()]
+    );
+
     if (result.rowCount === 0) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
     const user = result.rows[0];
 
+    if (!user.is_active) {
+      return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
+    }
+
     const senhaCorreta = await bcrypt.compare(password, user.password_hash);
 
     if (!senhaCorreta) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
-const token = jwt.sign(
-  { 
-    id: user.id, 
-    email: user.email, 
-    company_id: user.company_id,
-    role: user.role
-  },
-  process.env.JWT_SECRET,
-  { expiresIn: "7d" }
-);
 
-res.json({
-  token,
-  user: {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    company_id: user.company_id,
-    role: user.role
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        company_id: user.company_id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        company_id: user.company_id,
+        role: user.role,
+        is_active: user.is_active,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
+// GET /auth/invite/:token
+router.get("/invite/:token", async (req, res) => {
+  try {
+    const token = limparTexto(req.params.token);
+
+    if (!token) {
+      return res.status(400).json({ error: "Token inválido" });
+    }
+
+    const result = await pool.query(
+      `SELECT id, name, email, role, company_id, is_active, invite_expires_at
+       FROM users
+       WHERE invite_token = $1`,
+      [token]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Convite inválido" });
+    }
+
+    const user = result.rows[0];
+
+    if (user.is_active) {
+      return res.status(400).json({ error: "Esta conta já foi ativada" });
+    }
+
+    if (!user.invite_expires_at || new Date(user.invite_expires_at) < new Date()) {
+      return res.status(400).json({ error: "Este convite expirou" });
+    }
+
+    res.json({
+      valid: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company_id: user.company_id,
+      },
+      expires_at: user.invite_expires_at,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /auth/activate
+router.post("/activate", async (req, res) => {
+  try {
+    const token = limparTexto(req.body.token);
+    const password = String(req.body.password || "");
+    const confirmPassword = String(req.body.confirmPassword || "");
+
+    if (!token) {
+      return res.status(400).json({ error: "Token obrigatório" });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: "Senha mínimo 6 caracteres" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "As senhas não coincidem" });
+    }
+
+    const result = await pool.query(
+      `SELECT id, email, is_active, invite_expires_at
+       FROM users
+       WHERE invite_token = $1`,
+      [token]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Convite inválido" });
+    }
+
+    const user = result.rows[0];
+
+    if (user.is_active) {
+      return res.status(400).json({ error: "Esta conta já foi ativada" });
+    }
+
+    if (!user.invite_expires_at || new Date(user.invite_expires_at) < new Date()) {
+      return res.status(400).json({ error: "Este convite expirou" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const updated = await pool.query(
+      `UPDATE users
+       SET
+         password_hash = $1,
+         is_active = true,
+         activated_at = now(),
+         invite_token = NULL,
+         invite_expires_at = NULL
+       WHERE id = $2
+       RETURNING id, name, email, company_id, role, is_active, activated_at`,
+      [passwordHash, user.id]
+    );
+
+    res.json({
+      message: "Conta ativada com sucesso",
+      user: updated.rows[0],
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

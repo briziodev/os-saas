@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth");
 const clientesRoutes = require("./routes/clientes");
 const osRoutes = require("./routes/os");
 const dashboardRoutes = require("./routes/dashboard");
+const usersRoutes = require("./routes/users");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/users", usersRoutes);
 app.use("/clientes", clientesRoutes);
 app.use("/os", osRoutes);
 app.use("/dashboard", dashboardRoutes);
