@@ -20,6 +20,10 @@ function limparTexto(value) {
   return String(value || "").trim();
 }
 
+function normalizarTelefone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function gerarInviteToken() {
   return crypto.randomBytes(32).toString("hex");
 }
@@ -46,6 +50,7 @@ router.get("/", requireRole("admin"), async (req, res) => {
          id,
          name,
          email,
+         phone,
          role,
          company_id,
          is_active,
@@ -71,7 +76,8 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
   try {
     const name = limparTexto(req.body.name);
     const email = normalizarEmail(req.body.email);
-    const role = limparTexto(req.body.role) || "member";
+    const role = limparTexto(req.body.role) || "atendimento";
+    const phone = normalizarTelefone(req.body.phone);
 
     if (!name || name.length < 2) {
       return res.status(400).json({ error: "Nome obrigatório" });
@@ -81,8 +87,12 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
       return res.status(400).json({ error: "Email inválido" });
     }
 
-    if (!["admin", "member"].includes(role)) {
-      return res.status(400).json({ error: "Role inválida" });
+    if (!["atendimento", "tecnico"].includes(role)) {
+      return res.status(400).json({ error: "Perfil inválido" });
+    }
+
+    if (phone && phone.length < 10) {
+      return res.status(400).json({ error: "Telefone inválido" });
     }
 
     const exists = await pool.query(
@@ -97,7 +107,7 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
     }
 
     const inviteToken = gerarInviteToken();
-    const inviteExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72h
+    const inviteExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
     const senhaTemporaria = gerarSenhaTemporaria();
     const passwordHash = await bcrypt.hash(senhaTemporaria, 10);
 
@@ -105,6 +115,7 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
       `INSERT INTO users (
          name,
          email,
+         phone,
          password_hash,
          company_id,
          role,
@@ -113,11 +124,12 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
          invite_expires_at,
          invited_by
        )
-       VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9)
        RETURNING
          id,
          name,
          email,
+         phone,
          role,
          company_id,
          is_active,
@@ -128,6 +140,7 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
       [
         name,
         email,
+        phone || null,
         passwordHash,
         req.user.company_id,
         role,
@@ -139,18 +152,155 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
 
     const user = inserted.rows[0];
     const inviteLink = montarInviteLink(inviteToken);
+
     const whatsappText = encodeURIComponent(
       `Olá, ${user.name}.\n\n` +
-      `Você foi convidado para acessar o sistema da oficina.\n\n` +
-      `Ative sua conta pelo link:\n${inviteLink}\n\n` +
-      `Este link é válido por 72 horas.`
+        `Você foi convidado para acessar o sistema da oficina.\n\n` +
+        `Ative sua conta pelo link:\n${inviteLink}\n\n` +
+        `Este link é válido por 72 horas.`
     );
+
+    const whatsappLink = phone
+      ? `https://wa.me/55${phone}?text=${whatsappText}`
+      : null;
 
     res.status(201).json({
       message: "Usuário convidado com sucesso",
       user,
       invite_link: inviteLink,
-      whatsapp_link: `https://wa.me/?text=${whatsappText}`,
+      whatsapp_link: whatsappLink,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /users/:id/role
+router.patch("/:id/role", requireRole("admin"), async (req, res) => {
+  try {
+    const { role } = req.body;
+    const targetId = Number(req.params.id);
+
+    if (!["atendimento", "tecnico"].includes(role)) {
+      return res.status(400).json({ error: "Perfil inválido" });
+    }
+
+    if (!Number.isInteger(targetId)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (req.user.id === targetId) {
+      return res.status(403).json({
+        error: "Você não pode alterar o próprio perfil.",
+      });
+    }
+
+    const updated = await pool.query(
+      `UPDATE users
+       SET role = $1
+       WHERE id = $2 AND company_id = $3
+       RETURNING id`,
+      [role, targetId, req.user.company_id]
+    );
+
+    if (updated.rowCount === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    res.json({ message: "Perfil atualizado" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /users/:id/toggle-active
+router.patch("/:id/toggle-active", requireRole("admin"), async (req, res) => {
+  try {
+    const targetId = Number(req.params.id);
+
+    if (!Number.isInteger(targetId)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (req.user.id === targetId) {
+      return res.status(403).json({
+        error: "Você não pode alterar sua própria conta.",
+      });
+    }
+
+    const user = await pool.query(
+      `SELECT id, role, is_active
+       FROM users
+       WHERE id = $1 AND company_id = $2`,
+      [targetId, req.user.company_id]
+    );
+
+    if (user.rowCount === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    const targetUser = user.rows[0];
+    const newStatus = !targetUser.is_active;
+
+    await pool.query(
+      `UPDATE users
+       SET is_active = $1
+       WHERE id = $2 AND company_id = $3`,
+      [newStatus, targetId, req.user.company_id]
+    );
+
+    res.json({ message: "Status atualizado" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /users/:id/resend-invite
+router.post("/:id/resend-invite", requireRole("admin"), async (req, res) => {
+  try {
+    const targetId = Number(req.params.id);
+
+    if (!Number.isInteger(targetId)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (req.user.id === targetId) {
+      return res.status(403).json({
+        error: "Você não pode reenviar convite para sua própria conta.",
+      });
+    }
+
+    const targetUser = await pool.query(
+      `SELECT id, name, is_active
+       FROM users
+       WHERE id = $1 AND company_id = $2`,
+      [targetId, req.user.company_id]
+    );
+
+    if (targetUser.rowCount === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    if (targetUser.rows[0].is_active) {
+      return res.status(400).json({ error: "Usuário já está ativo" });
+    }
+
+    const inviteToken = gerarInviteToken();
+    const inviteExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE users
+       SET invite_token = $1,
+           invite_expires_at = $2
+       WHERE id = $3 AND company_id = $4`,
+      [inviteToken, inviteExpiresAt, targetId, req.user.company_id]
+    );
+
+    const inviteLink = montarInviteLink(inviteToken);
+
+    res.json({
+      message: "Convite reenviado",
+      invite_link: inviteLink,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

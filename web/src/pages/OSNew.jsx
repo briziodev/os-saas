@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const MAX_RESULTADOS = 5;
 
 export default function OSNew() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const nav = useNavigate();
+    const user = getUser();
+  const isTecnico = user?.role === "tecnico";
+
+
+
+
+
+
   const buscaRef = useRef(null);
 
   const [clientes, setClientes] = useState([]);
@@ -282,6 +290,17 @@ export default function OSNew() {
 
   const totalPrevisto =
     safeMoneyValue(form.mao_obra) + safeMoneyValue(form.valor_pecas);
+      if (isTecnico) {
+    return (
+      <div className="page">
+        <div className="container">
+          <div className="card alert alert--error">
+            Acesso negado. O perfil técnico não pode criar nova OS.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!token) {
     return (

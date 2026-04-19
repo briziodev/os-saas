@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { authRequired, loadUser } = require("../middlewares/auth");
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -52,6 +53,8 @@ router.post("/register", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
+
+
 
 // LOGIN
 router.post("/login", async (req, res) => {
@@ -118,6 +121,25 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /auth/me
+router.get("/me", authRequired, loadUser, async (req, res) => {
+  try {
+    return res.json({
+      id: req.user.id,
+      name: req.user.name,
+      email: req.user.email,
+      company_id: req.user.company_id,
+      role: req.user.role,
+      is_active: req.user.is_active,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 
 // GET /auth/invite/:token
 router.get("/invite/:token", async (req, res) => {

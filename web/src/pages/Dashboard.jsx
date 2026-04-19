@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const STATUS_LABEL = {
   triagem: "Triagem",
@@ -16,11 +16,24 @@ const STATUS_LABEL = {
   finalizado: "Finalizado",
 };
 
+const PERIOD_OPTIONS = [
+  { value: "today", label: "Hoje" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "month", label: "Mês atual" },
+  { value: "all", label: "Todo o período" },
+  { value: "custom", label: "Personalizado" },
+];
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [agoraSP, setAgoraSP] = useState(formatSaoPauloNow());
+  const [period, setPeriod] = useState("month");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const user = getUser();
+  const isTecnico = user?.role === "tecnico";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -32,14 +45,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadDashboard() {
+  async function loadDashboard(nextPeriod = period, nextStart = startDate, nextEnd = endDate) {
     try {
       setLoading(true);
       setError("");
 
-      const body = await apiFetch("/dashboard");
+      const params = new URLSearchParams();
+      params.set("period", nextPeriod);
+
+      if (nextPeriod === "custom") {
+        if (!nextStart || !nextEnd) {
+          setError("Informe data inicial e final para o período personalizado.");
+          setLoading(false);
+          return;
+        }
+        params.set("start_date", nextStart);
+        params.set("end_date", nextEnd);
+      }
+
+      const body = await apiFetch(`/dashboard?${params.toString()}`);
       setData(body);
     } catch (e) {
       if (e.message === "Sessão expirada. Faça login novamente.") {
@@ -52,6 +79,10 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function applyFilters() {
+    loadDashboard(period, startDate, endDate);
   }
 
   function logout() {
@@ -71,16 +102,6 @@ export default function Dashboard() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="page">
-        <div className="container">
-          <div className="card alert alert--error">Erro: {error}</div>
-        </div>
-      </div>
-    );
-  }
-
   if (!data) {
     return (
       <div className="page">
@@ -93,7 +114,7 @@ export default function Dashboard() {
     );
   }
 
-  const { cards, ultimas_os } = data;
+  const { cards, ultimas_os, period: periodInfo } = data;
 
   return (
     <div className="page">
@@ -104,9 +125,11 @@ export default function Dashboard() {
           description="Visão rápida da operação, orçamentos e últimas ordens de serviço."
           right={
             <>
-              <Link to="/os/new">
-                <button className="btn btn--solid">Nova OS</button>
-              </Link>
+              {!isTecnico && (
+                <Link to="/os/new">
+                  <button className="btn btn--solid">Nova OS</button>
+                </Link>
+              )}
 
               <Link to="/os">
                 <button className="btn btn--ghost-dark">OS</button>
@@ -116,9 +139,17 @@ export default function Dashboard() {
                 <button className="btn btn--ghost-dark">Quadro de OS</button>
               </Link>
 
-              <Link to="/clientes">
-                <button className="btn btn--ghost-dark">Clientes</button>
-              </Link>
+              {!isTecnico && (
+                <Link to="/clientes">
+                  <button className="btn btn--ghost-dark">Clientes</button>
+                </Link>
+              )}
+
+              {user?.role === "admin" && (
+                <Link to="/usuarios">
+                  <button className="btn btn--ghost-dark">Usuários</button>
+                </Link>
+              )}
 
               <button onClick={logout} className="btn btn--ghost-dark">
                 Sair
@@ -126,19 +157,67 @@ export default function Dashboard() {
             </>
           }
           footer={
-            <div className="page-header-footer">
-              <div className="info-chip info-chip--dark">
-                São Paulo agora: {agoraSP}
-              </div>
+            <div className="page-header-footer" style={{ gap: 10, flexWrap: "wrap" }}>
+              <div className="info-chip info-chip--dark">São Paulo agora: {agoraSP}</div>
+              <div className="info-chip">Período: {periodInfo?.label || "-"}</div>
             </div>
           }
         />
+
+        {error ? (
+          <div className="card alert alert--error section">
+            Erro: {error}
+          </div>
+        ) : null}
+
+        <div className="card section filter-panel">
+          <div className="filter-bar">
+            <div className="filter-bar-field">
+              <label className="label">Período do dashboard</label>
+              <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+                {PERIOD_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {period === "custom" && (
+              <>
+                <div className="filter-bar-field">
+                  <label className="label">Data inicial</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="filter-bar-field">
+                  <label className="label">Data final</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="filter-bar-action filter-bar-action--spaced">
+              <button className="btn btn--primary" type="button" onClick={applyFilters}>
+                Aplicar período
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="section grid-4">
           <StatCard
             title="Em andamento"
             value={cards?.em_andamento ?? 0}
-            hint="Aprovado + execução + aguardando peça + pronto retirada"
+            hint="OS criadas no período e ainda em andamento"
             kpiClass="kpi--blue"
           />
 
@@ -150,41 +229,45 @@ export default function Dashboard() {
           />
 
           <StatCard
-            title="Finalizados no mês"
-            value={cards?.finalizados_no_mes ?? 0}
-            hint="OS encerradas no mês atual"
+            title="Finalizados no período"
+            value={cards?.finalizados_no_periodo ?? 0}
+            hint="OS encerradas/finalizadas no período selecionado"
             kpiClass="kpi--green"
           />
 
-          <StatCard
-            title="Faturamento do mês"
-            value={money(cards?.faturamento_mes ?? 0)}
-            hint="Somente OS encerradas/finalizadas"
-            kpiClass="kpi--dark"
-          />
+          {user?.role === "admin" && (
+            <StatCard
+              title="Faturamento do período"
+              value={money(cards?.faturamento_periodo ?? 0)}
+              hint="Somente OS encerradas/finalizadas"
+              kpiClass="kpi--dark"
+            />
+          )}
         </div>
 
         <div className="section">
           <SectionTitle
-            title="Últimas OS"
-            subtitle="As ordens mais recentes para acompanhamento rápido."
+            title="Últimas OS do período"
+            subtitle="As ordens mais recentes dentro do filtro selecionado."
           />
 
           {ultimas_os?.length === 0 ? (
             <div className="card">
-              <div className="muted">Nenhuma OS cadastrada ainda.</div>
+              <div className="muted">Nenhuma OS encontrada para este período.</div>
 
               <div className="page-header-footer">
-                <Link to="/os/new">
-                  <button className="btn btn--solid">Criar primeira OS</button>
-                </Link>
+                {!isTecnico && (
+                  <Link to="/os/new">
+                    <button className="btn btn--solid">Criar nova OS</button>
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
             <div className="card">
               <div className="list">
                 {ultimas_os.map((os) => (
-                  <DashboardOsRow key={os.id} os={os} />
+                  <DashboardOsRow key={os.id} os={os} isTecnico={isTecnico} />
                 ))}
               </div>
             </div>
@@ -195,7 +278,7 @@ export default function Dashboard() {
   );
 }
 
-function DashboardOsRow({ os }) {
+function DashboardOsRow({ os, isTecnico }) {
   const toneClass = statusToneClass(os.status);
 
   return (
@@ -225,8 +308,12 @@ function DashboardOsRow({ os }) {
           <div className="meta-label">Criada em</div>
           <div className="meta-value">{formatDateBR(os.created_at)}</div>
 
-          <div className="meta-label page-header-footer">Valor total</div>
-          <div className="meta-value-strong">{money(os.valor_total)}</div>
+          {!isTecnico ? (
+            <>
+              <div className="meta-label page-header-footer">Valor total</div>
+              <div className="meta-value-strong">{money(os.valor_total)}</div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

@@ -751,6 +751,101 @@ textarea:focus {
   line-height: 1.2;
 }
 
+
+/* =========================
+   FILTROS - DASHBOARD / OS
+   ========================= */
+
+.filter-panel {
+  gap: 18px;
+}
+
+.filter-bar {
+  display: grid;
+  gap: 14px;
+  align-items: end;
+}
+
+.filter-bar-field {
+  display: grid;
+  gap: 6px;
+}
+
+.filter-bar-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.filter-bar-action--spaced {
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
+.filter-bar-action .btn {
+  min-width: 180px;
+  min-height: 44px;
+}
+
+.filter-bar-total {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-weight: 700;
+}
+
+.filter-bar-total--spaced {
+  margin-top: 4px;
+}
+
+@media (min-width: 769px) {
+  .filter-bar {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .filter-bar-field:first-child {
+    grid-column: span 4;
+  }
+
+  .filter-bar-field {
+    grid-column: span 3;
+  }
+
+  .filter-bar-action {
+    grid-column: span 2;
+  }
+
+  .filter-bar-total {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-panel {
+    gap: 14px;
+  }
+
+  .filter-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-bar-action--spaced,
+  .filter-bar-total--spaced {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .filter-bar-action .btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+
+
+
+
 /* =========================
    DETALHE DA OS / NOVA OS
    ========================= */

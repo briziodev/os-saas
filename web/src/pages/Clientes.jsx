@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +37,8 @@ export default function Clientes({ onLogout }) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [busca, setBusca] = useState("");
+  const user = getUser();
+  const isAdmin = user?.role === "admin";
 
   const [form, setForm] = useState({
     nome: "",
@@ -442,15 +444,19 @@ export default function Clientes({ onLogout }) {
                               Editar
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => excluirCliente(c.id)}
-                              disabled={deletingId === c.id}
-                              className="btn btn--danger"
-                              style={{ opacity: deletingId === c.id ? 0.7 : 1 }}
-                            >
-                              {deletingId === c.id ? "Excluindo..." : "Excluir"}
-                            </button>
+                            {isAdmin && (
+  <button
+    type="button"
+    onClick={() => excluirCliente(c.id)}
+    disabled={deletingId === c.id}
+    className="btn btn--danger"
+    style={{ opacity: deletingId === c.id ? 0.7 : 1 }}
+  >
+    {deletingId === c.id ? "Excluindo..." : "Excluir"}
+  </button>
+)}
+
+                            
                           </div>
                         </div>
                       )}

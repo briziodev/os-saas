@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const STATUS = [
   "triagem",
@@ -30,6 +30,8 @@ export default function OSDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useMemo(() => localStorage.getItem("token"), []);
+  const user = getUser();
+  const isTecnico = user?.role === "tecnico";
 
   const [os, setOs] = useState(null);
   const [pecas, setPecas] = useState([]);
@@ -182,7 +184,7 @@ export default function OSDetail() {
     const problemaRelatado = form.problema_relatado.trim();
 
     if (!problemaRelatado) {
-      setMsg("Informe o problema relatado.");
+      setMsg("Informe a descrição do serviço.");
       return;
     }
 
@@ -404,7 +406,7 @@ export default function OSDetail() {
             </div>
 
             <div className="soft-box detail-box">
-              <div className="label detail-label-tight">Problema relatado</div>
+              <div className="label detail-label-tight">Descrição do serviço</div>
               <div className="detail-text">{form.problema_relatado || "Sem descrição"}</div>
             </div>
           </div>
@@ -423,19 +425,21 @@ export default function OSDetail() {
                 </span>
               </div>
 
-              <button
-                onClick={abrirWhatsapp}
-                className="btn btn--primary whatsapp-btn"
-                type="button"
-                disabled={whatsappDisabled}
-                title={
-                  whatsappDisabled
-                    ? "Envio indisponível para OS encerrada ou cancelada."
-                    : "Enviar orçamento no WhatsApp"
-                }
-              >
-                Enviar orçamento no WhatsApp
-              </button>
+              {!isTecnico ? (
+                <button
+                  onClick={abrirWhatsapp}
+                  className="btn btn--primary whatsapp-btn"
+                  type="button"
+                  disabled={whatsappDisabled}
+                  title={
+                    whatsappDisabled
+                      ? "Envio indisponível para OS encerrada ou cancelada."
+                      : "Enviar orçamento no WhatsApp"
+                  }
+                >
+                  Enviar orçamento no WhatsApp
+                </button>
+              ) : null}
             </div>
 
             <div className="grid-2">
@@ -450,170 +454,174 @@ export default function OSDetail() {
               </div>
             </div>
 
-            <div className="soft-box detail-box">
-              <div className="label detail-label-tight">Total atual</div>
-              <div className="kpi kpi--dark detail-kpi-compact">{money(total)}</div>
-            </div>
+            {!isTecnico ? (
+              <div className="soft-box detail-box">
+                <div className="label detail-label-tight">Total atual</div>
+                <div className="kpi kpi--dark detail-kpi-compact">{money(total)}</div>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="section">
-          <div className="card">
-            <SectionTitle
-              title="Peças da OS"
-              subtitle="Adicione peças para montar o orçamento completo."
-            />
+        {!isTecnico ? (
+          <div className="section">
+            <div className="card">
+              <SectionTitle
+                title="Peças da OS"
+                subtitle="Adicione peças para montar o orçamento completo."
+              />
 
-            <div className="grid-3 section-gap-sm">
-              <div className="form-group">
-                <label className="label">Nome da peça</label>
-                <input
-                  type="text"
-                  value={pieceForm.nome}
-                  onChange={(event) => handlePieceFieldChange("nome", event.target.value)}
-                  placeholder="Ex.: Filtro de óleo"
-                />
+              <div className="grid-3 section-gap-sm">
+                <div className="form-group">
+                  <label className="label">Nome da peça</label>
+                  <input
+                    type="text"
+                    value={pieceForm.nome}
+                    onChange={(event) => handlePieceFieldChange("nome", event.target.value)}
+                    placeholder="Ex.: Filtro de óleo"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Quantidade</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={pieceForm.quantidade}
+                    onChange={(event) => handlePieceFieldChange("quantidade", event.target.value)}
+                    placeholder="1"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Valor unitário (R$)</label>
+                  <input
+                    className="input--money"
+                    value={pieceForm.valor_unitario}
+                    onChange={(event) => handlePieceFieldChange("valor_unitario", event.target.value)}
+                    onBlur={handlePieceMoneyBlur}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="label">Quantidade</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={pieceForm.quantidade}
-                  onChange={(event) => handlePieceFieldChange("quantidade", event.target.value)}
-                  placeholder="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="label">Valor unitário (R$)</label>
-                <input
-                  className="input--money"
-                  value={pieceForm.valor_unitario}
-                  onChange={(event) => handlePieceFieldChange("valor_unitario", event.target.value)}
-                  onBlur={handlePieceMoneyBlur}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-
-            <div
-              className="piece-form-actions section-gap-sm"
-              style={{
-                marginTop: 16,
-                marginBottom: 18,
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 14,
-                alignItems: "end",
-              }}
-            >
-              <div className="soft-box piece-subtotal-box">
-                <div className="label detail-label-tight">Subtotal da peça</div>
-                <div className="piece-subtotal-value">{money(pieceSubtotal)}</div>
-              </div>
-
-              <button
-                onClick={adicionarPeca}
-                className="btn btn--primary"
-                type="button"
-                disabled={addingPiece}
-                style={{ alignSelf: "end" }}
-              >
-                {addingPiece ? "Adicionando..." : "Adicionar peça"}
-              </button>
-            </div>
-
-            {pecas.length === 0 ? (
-              <div className="empty-state-box section-gap-md">
-                Nenhuma peça adicionada nesta OS ainda.
-              </div>
-            ) : (
               <div
-                className="piece-list section-gap-md"
+                className="piece-form-actions section-gap-sm"
                 style={{
+                  marginTop: 16,
+                  marginBottom: 18,
                   display: "grid",
-                  gridTemplateColumns: "1fr",
+                  gridTemplateColumns: "1fr auto",
                   gap: 14,
-                  marginTop: 18,
+                  alignItems: "end",
                 }}
               >
-                {pecas.map((peca) => (
-                  <div
-                    key={peca.id}
-                    className="piece-item"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr",
-                      gap: 10,
-                      padding: 16,
-                      border: "1px solid #d9e3ee",
-                      borderRadius: 18,
-                      background: "linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)",
-                      boxShadow: "0 8px 18px rgba(15, 23, 42, 0.05)",
-                    }}
-                  >
+                <div className="soft-box piece-subtotal-box">
+                  <div className="label detail-label-tight">Subtotal da peça</div>
+                  <div className="piece-subtotal-value">{money(pieceSubtotal)}</div>
+                </div>
+
+                <button
+                  onClick={adicionarPeca}
+                  className="btn btn--primary"
+                  type="button"
+                  disabled={addingPiece}
+                  style={{ alignSelf: "end" }}
+                >
+                  {addingPiece ? "Adicionando..." : "Adicionar peça"}
+                </button>
+              </div>
+
+              {pecas.length === 0 ? (
+                <div className="empty-state-box section-gap-md">
+                  Nenhuma peça adicionada nesta OS ainda.
+                </div>
+              ) : (
+                <div
+                  className="piece-list section-gap-md"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: 14,
+                    marginTop: 18,
+                  }}
+                >
+                  {pecas.map((peca) => (
                     <div
-                      className="piece-item-main"
-                      style={{ display: "grid", gap: 6, minWidth: 0 }}
+                      key={peca.id}
+                      className="piece-item"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr",
+                        gap: 10,
+                        padding: 16,
+                        border: "1px solid #d9e3ee",
+                        borderRadius: 18,
+                        background: "linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)",
+                        boxShadow: "0 8px 18px rgba(15, 23, 42, 0.05)",
+                      }}
                     >
                       <div
-                        className="piece-item-name"
-                        style={{
-                          fontSize: 18,
-                          fontWeight: 900,
-                          lineHeight: 1.25,
-                          color: "var(--text)",
-                          wordBreak: "break-word",
-                        }}
+                        className="piece-item-main"
+                        style={{ display: "grid", gap: 6, minWidth: 0 }}
                       >
-                        {peca.nome}
+                        <div
+                          className="piece-item-name"
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 900,
+                            lineHeight: 1.25,
+                            color: "var(--text)",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {peca.nome}
+                        </div>
+
+                        <div
+                          className="piece-item-meta"
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 1.5,
+                            color: "var(--text-soft)",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {Number(peca.quantidade)}x {money(peca.valor_unitario)} ={" "}
+                          <strong>{money(peca.valor_total)}</strong>
+                        </div>
                       </div>
 
-                      <div
-                        className="piece-item-meta"
-                        style={{
-                          fontSize: 15,
-                          lineHeight: 1.5,
-                          color: "var(--text-soft)",
-                          wordBreak: "break-word",
-                        }}
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => removerPeca(peca.id)}
+                        disabled={removingPieceId === peca.id}
+                        style={{ width: "100%" }}
                       >
-                        {Number(peca.quantidade)}x {money(peca.valor_unitario)} ={" "}
-                        <strong>{money(peca.valor_total)}</strong>
-                      </div>
+                        {removingPieceId === peca.id ? "Removendo..." : "Remover"}
+                      </button>
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    <button
-                      type="button"
-                      className="btn btn--ghost"
-                      onClick={() => removerPeca(peca.id)}
-                      disabled={removingPieceId === peca.id}
-                      style={{ width: "100%" }}
-                    >
-                      {removingPieceId === peca.id ? "Removendo..." : "Remover"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+              <div className="grid-2 section-gap-md">
+                <div className="soft-box total-box">
+                  <div className="label detail-label-tight">Total das peças</div>
+                  <div className="total-box-value">{money(parseMoneyInput(form.valor_pecas))}</div>
+                </div>
 
-            <div className="grid-2 section-gap-md">
-              <div className="soft-box total-box">
-                <div className="label detail-label-tight">Total das peças</div>
-                <div className="total-box-value">{money(parseMoneyInput(form.valor_pecas))}</div>
-              </div>
-
-              <div className="soft-box total-box">
-                <div className="label detail-label-tight">Total geral da OS</div>
-                <div className="total-box-value">{money(total)}</div>
+                <div className="soft-box total-box">
+                  <div className="label detail-label-tight">Total geral da OS</div>
+                  <div className="total-box-value">{money(total)}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="section">
           <div className="card">
@@ -623,66 +631,84 @@ export default function OSDetail() {
             />
 
             <div className="form-group">
-              <label className="label">Problema relatado</label>
+             <label className="label">Descrição do serviço</label>
               <textarea
                 rows={5}
                 value={form.problema_relatado}
                 onChange={(event) => handleChange("problema_relatado", event.target.value)}
-                placeholder="Descreva o problema relatado..."
+                placeholder="Descreva o serviço, diagnóstico ou observações técnicas..."
               />
             </div>
 
-            <div className="grid-2 section-gap-sm">
-              <div className="form-group">
-                <label className="label">Modelo</label>
-                <input
-                  type="text"
-                  value={form.modelo}
-                  onChange={(event) => handleChange("modelo", event.target.value)}
-                  placeholder="Ex.: Gol, Uno, Civic..."
-                />
-              </div>
 
-              <div className="form-group">
-                <label className="label">Placa</label>
-                <input
-                  type="text"
-                  value={form.placa}
-                  onChange={(event) => handleChange("placa", event.target.value)}
-                  placeholder="ABC1D23"
-                  maxLength={8}
-                />
-              </div>
-            </div>
 
-            <div className="grid-2 section-gap-sm">
-              <div className="form-group">
-                <label className="label">Mão de obra (R$)</label>
-                <input
-                  className="input--money"
-                  value={form.mao_obra}
-                  onChange={(event) => handleMoneyChange("mao_obra", event.target.value)}
-                  onBlur={() => handleMoneyBlur("mao_obra")}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                />
-              </div>
 
-              <div className="form-group">
-                <label className="label">Peças (R$)</label>
-                <input
-                  className="input--money"
-                  value={form.valor_pecas}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  disabled
-                  readOnly
-                />
-                <div className="help">
-                  Total calculado automaticamente pelas peças adicionadas.
+
+            {!isTecnico ? (
+  <div className="grid-2 section-gap-sm">
+    <div className="form-group">
+      <label className="label">Modelo</label>
+      <input
+        type="text"
+        value={form.modelo}
+        onChange={(event) => handleChange("modelo", event.target.value)}
+        placeholder="Ex.: Gol, Uno, Civic..."
+      />
+    </div>
+
+    <div className="form-group">
+      <label className="label">Placa</label>
+      <input
+        type="text"
+        value={form.placa}
+        onChange={(event) => handleChange("placa", event.target.value)}
+        placeholder="ABC1D23"
+        maxLength={8}
+      />
+    </div>
+  </div>
+) : null}
+
+
+
+            
+
+            {!isTecnico ? (
+              <div className="grid-2 section-gap-sm">
+                <div className="form-group">
+                  <label className="label">Mão de obra (R$)</label>
+                  <input
+                    className="input--money"
+                    value={form.mao_obra}
+                    onChange={(event) => handleMoneyChange("mao_obra", event.target.value)}
+                    onBlur={() => handleMoneyBlur("mao_obra")}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Peças (R$)</label>
+                  <input
+                    className="input--money"
+                    value={form.valor_pecas}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    disabled
+                    readOnly
+                  />
+                  <div className="help">
+                    Total calculado automaticamente pelas peças adicionadas.
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
+
+
+
+
+
+
 
             <div className="grid-2 section-gap-sm">
               <div className="form-group">
@@ -699,10 +725,12 @@ export default function OSDetail() {
                 </select>
               </div>
 
-              <div className="soft-box total-box">
-                <div className="label detail-label-tight">Total calculado</div>
-                <div className="total-box-value">{money(total)}</div>
-              </div>
+              {!isTecnico ? (
+                <div className="soft-box total-box">
+                  <div className="label detail-label-tight">Total calculado</div>
+                  <div className="total-box-value">{money(total)}</div>
+                </div>
+              ) : null}
             </div>
 
             <div className="form-actions section-gap-md">
@@ -810,7 +838,7 @@ function parseMoneyInput(value) {
 
   if (!text) return 0;
 
-  text = text.replace(/\s+/g, "").replace(/[R$\u00A0]/g, "");
+  text = text.replace(/\s+/g, "").replace(/[R$ ]/g, "");
 
   const hasComma = text.includes(",");
   const hasDot = text.includes(".");

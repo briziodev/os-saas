@@ -1,3 +1,4 @@
+const { requireRole } = require("../middlewares/requireRole");
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
@@ -62,7 +63,7 @@ router.get("/", async (req, res) => {
 });
 
 // CREATE (por empresa)
-router.post("/", async (req, res) => {
+router.post("/", requireRole("admin", "atendimento"), async (req, res) => {
   const validacao = validarCliente(req.body);
 
   if (validacao.error) {
@@ -94,7 +95,7 @@ router.post("/", async (req, res) => {
 });
 
 // UPDATE (só se for da empresa)
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireRole("admin", "atendimento"), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isFinite(id)) {
@@ -133,7 +134,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE (só se for da empresa)
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireRole("admin"), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isFinite(id)) {

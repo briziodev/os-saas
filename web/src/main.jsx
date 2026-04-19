@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import "./index.css";
 
+
+import { getUser } from "./api";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import OSList from "./pages/OSList.jsx";
@@ -12,10 +14,58 @@ import OSDetail from "./pages/OSDetail.jsx";
 import Kanban from "./pages/Kanban.jsx";
 import Clientes from "./pages/Clientes.jsx";
 import AtivarConta from "./pages/AtivarConta.jsx";
+import Usuarios from "./pages/Usuarios.jsx";
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" replace />;
+}
+
+
+
+function NoTecnicoRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const user = getUser();
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (user.role === "tecnico") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+
+
+
+
+
+
+
+function AdminRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const user = getUser();
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (user.role !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 }
 
 function RootRedirect() {
@@ -41,13 +91,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         />
 
         <Route
-          path="/clientes"
-          element={
-            <PrivateRoute>
-              <Clientes />
-            </PrivateRoute>
-          }
-        />
+  path="/clientes"
+  element={
+    <NoTecnicoRoute>
+      <Clientes />
+    </NoTecnicoRoute>
+  }
+/>
 
         <Route
           path="/os"
@@ -59,13 +109,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         />
 
         <Route
-          path="/os/new"
-          element={
-            <PrivateRoute>
-              <OSNew />
-            </PrivateRoute>
-          }
-        />
+  path="/os/new"
+  element={
+    <NoTecnicoRoute>
+      <OSNew />
+    </NoTecnicoRoute>
+  }
+/>
 
         <Route
           path="/os/:id"
@@ -82,6 +132,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <PrivateRoute>
               <Kanban />
             </PrivateRoute>
+          }
+        />
+
+                <Route
+          path="/usuarios"
+          element={
+            <AdminRoute>
+              <Usuarios />
+            </AdminRoute>
           }
         />
 

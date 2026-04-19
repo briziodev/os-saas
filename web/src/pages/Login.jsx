@@ -54,8 +54,11 @@ export default function Login() {
         { auth: false }
       );
 
-      setToken(data.token);
+            setToken(data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       nav("/dashboard");
+
+
     } catch (err) {
       const msg = err?.message || "Erro de conexão. Tente novamente.";
       setError(msg);

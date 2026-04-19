@@ -55,3 +55,13 @@ export async function apiFetch(path, options = {}, config = {}) {
 
   return data;
 }
+
+
+export function getUser() {
+  try {
+    const raw = localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}

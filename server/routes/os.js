@@ -1,3 +1,4 @@
+const { requireRole } = require("../middlewares/requireRole");
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
@@ -6,7 +7,6 @@ const { authRequired, loadUser } = require("../middlewares/auth");
 
 router.use(authRequired, loadUser);
 
-// Status permitidos (novos + compatibilidade)
 const allowedStatus = [
   "triagem",
   "em_analise",
@@ -16,8 +16,6 @@ const allowedStatus = [
   "aguardando_peca",
   "pronto_retirada",
   "encerrado",
-
-  // antigos (compatibilidade)
   "orcamento_enviado",
   "finalizado",
   "cancelado",
@@ -36,6 +34,64 @@ function sanitizePhoneBR(phone) {
     clean = `55${clean}`;
   }
   return clean;
+}
+
+function parseOSDateFilter(query) {
+  const period = String(query.period || "all").trim();
+  const startDate = String(query.start_date || "").trim();
+  const endDate = String(query.end_date || "").trim();
+
+  if (period === "custom") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return { error: "Para período personalizado, informe data inicial e final válidas." };
+    }
+
+    if (startDate > endDate) {
+      return { error: "A data inicial não pode ser maior que a data final." };
+    }
+
+    return {
+      period,
+      startDate,
+      endDate,
+      clause:
+        "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN $2::date AND $3::date",
+      params: (companyId) => [companyId, startDate, endDate],
+    };
+  }
+
+  if (period === "today") {
+    return {
+      period,
+      clause:
+        "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo')::date = (now() AT TIME ZONE 'America/Sao_Paulo')::date",
+      params: (companyId) => [companyId],
+    };
+  }
+
+  if (period === "7d") {
+    return {
+      period,
+      clause:
+        "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo')::date >= ((now() AT TIME ZONE 'America/Sao_Paulo')::date - 6)",
+      params: (companyId) => [companyId],
+    };
+  }
+
+  if (period === "month") {
+    return {
+      period,
+      clause:
+        "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo') >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') AND (os.created_at AT TIME ZONE 'America/Sao_Paulo') < (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') + interval '1 month')",
+      params: (companyId) => [companyId],
+    };
+  }
+
+  return {
+    period: "all",
+    clause: "",
+    params: (companyId) => [companyId],
+  };
 }
 
 async function getCompanyDisplayColumn() {
@@ -134,10 +190,6 @@ async function getWhatsappOSData(osId, companyId) {
   return result;
 }
 
-// =====================================================
-// FUNÇÃO AUXILIAR
-// recalcula valor_pecas e valor_total da OS
-// =====================================================
 async function recalcularTotaisOS(osId, companyId) {
   const pecasResult = await pool.query(
     `SELECT COALESCE(SUM(valor_total), 0) AS total_pecas
@@ -172,11 +224,16 @@ async function recalcularTotaisOS(osId, companyId) {
   );
 }
 
-// =====================================================
-// GET /os (listar OS da empresa)
-// =====================================================
 router.get("/", async (req, res) => {
   try {
+    const filter = parseOSDateFilter(req.query);
+
+    if (filter.error) {
+      return res.status(400).json({ error: filter.error });
+    }
+
+    const params = filter.params(req.user.company_id);
+
     const result = await pool.query(
       `SELECT os.id,
               os.cliente_id,
@@ -197,8 +254,9 @@ router.get("/", async (req, res) => {
        JOIN clientes c ON c.id = os.cliente_id
        LEFT JOIN users u ON u.id = os.user_id
        WHERE os.company_id = $1
+       ${filter.clause}
        ORDER BY os.id DESC`,
-      [req.user.company_id]
+      params
     );
 
     res.json(result.rows);
@@ -207,9 +265,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// =====================================================
-// GET /os/:id (buscar uma OS específica da empresa)
-// =====================================================
 router.get("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -251,9 +306,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// =====================================================
-// GET /os/:id/whatsapp-link
-// =====================================================
 router.get("/:id/whatsapp-link", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -284,10 +336,7 @@ router.get("/:id/whatsapp-link", async (req, res) => {
   }
 });
 
-// =====================================================
-// POST /os (criar OS)
-// =====================================================
-router.post("/", async (req, res) => {
+router.post("/", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const {
       cliente_id,
@@ -356,9 +405,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// =====================================================
-// PUT /os/:id (atualizar OS)
-// =====================================================
 router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -367,6 +413,17 @@ router.put("/:id", async (req, res) => {
     }
 
     const { status, mao_obra, problema_relatado, modelo, placa } = req.body;
+    if (req.user.role === "tecnico") {
+      const camposEnviados = Object.keys(req.body);
+      const camposPermitidos = ["status", "problema_relatado"];
+      const campoInvalido = camposEnviados.find((campo) => !camposPermitidos.includes(campo));
+
+      if (campoInvalido) {
+        return res.status(403).json({
+          error: "Técnico só pode alterar descrição do serviço e status.",
+        });
+      }
+    }
 
     if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({ error: "status inválido" });
@@ -386,7 +443,11 @@ router.put("/:id", async (req, res) => {
     const cur = current.rows[0];
 
     const newMao =
-      mao_obra !== undefined ? Number(mao_obra) : Number(cur.mao_obra);
+      req.user.role === "tecnico"
+        ? Number(cur.mao_obra)
+        : mao_obra !== undefined
+          ? Number(mao_obra)
+          : Number(cur.mao_obra);
 
     const newPecas = Number(cur.valor_pecas || 0);
     const newTotal = newMao + newPecas;
@@ -426,10 +487,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// =====================================================
-// DELETE /os/:id
-// =====================================================
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -451,11 +509,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// =====================================================
-// POST /os/:id/enviar-orcamento
-// seta status = aguardando_aprovacao e retorna wa.me
-// =====================================================
-router.post("/:id/enviar-orcamento", async (req, res) => {
+router.post("/:id/enviar-orcamento", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -497,15 +551,6 @@ router.post("/:id/enviar-orcamento", async (req, res) => {
   }
 });
 
-// =====================================================
-// 🔧 PEÇAS DA OS
-// GET /os/:id/pecas  -> lista peças
-// POST /os/:id/pecas -> adiciona peça
-// PUT /os/:id/pecas/:pecaId -> edita peça
-// DELETE /os/:id/pecas/:pecaId -> remove peça
-// =====================================================
-
-// GET listar peças da OS
 router.get("/:id/pecas", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -536,8 +581,7 @@ router.get("/:id/pecas", async (req, res) => {
   }
 });
 
-// POST adicionar peça na OS
-router.post("/:id/pecas", async (req, res) => {
+router.post("/:id/pecas", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -584,8 +628,7 @@ router.post("/:id/pecas", async (req, res) => {
   }
 });
 
-// PUT editar peça da OS
-router.put("/:id/pecas/:pecaId", async (req, res) => {
+router.put("/:id/pecas/:pecaId", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const pecaId = Number(req.params.pecaId);
@@ -632,8 +675,7 @@ router.put("/:id/pecas/:pecaId", async (req, res) => {
   }
 });
 
-// DELETE remover peça
-router.delete("/:id/pecas/:pecaId", async (req, res) => {
+router.delete("/:id/pecas/:pecaId", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const pecaId = Number(req.params.pecaId);

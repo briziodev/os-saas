@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const INITIAL_VISIBLE_PER_COLUMN = 4;
 
@@ -69,6 +69,8 @@ export default function Kanban() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("success");
   const [expandedColumns, setExpandedColumns] = useState({});
+  const user = getUser();
+  const isTecnico = user?.role === "tecnico";
 
   async function loadOS({ silent = false } = {}) {
     if (!silent) {
@@ -301,7 +303,9 @@ export default function Kanban() {
                                 </span>
                               </div>
 
-                              <div className="kanban-os-price">{money(os.valor_total)}</div>
+                              {!isTecnico ? (
+  <div className="kanban-os-price">{money(os.valor_total)}</div>
+) : null}
 
                               <div className="kanban-os-body">
                                 <div className="kanban-field">

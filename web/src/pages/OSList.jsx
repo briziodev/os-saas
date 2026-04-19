@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch, clearToken } from "../api";
+import { apiFetch, clearToken, getUser } from "../api";
 
 const STATUS = [
   "triagem",
@@ -28,24 +28,51 @@ const STATUS_LABEL = {
   finalizado: "Finalizado",
 };
 
+const PERIOD_OPTIONS = [
+  { value: "all", label: "Todo o período" },
+  { value: "today", label: "Hoje" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "month", label: "Mês atual" },
+  { value: "custom", label: "Personalizado" },
+];
+
 export default function OSList() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const [osList, setOsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("todos");
+  const [period, setPeriod] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [detalhesAbertos, setDetalhesAbertos] = useState({});
+  const user = getUser();
+  const isTecnico = user?.role === "tecnico";
 
   useEffect(() => {
     loadOS();
   }, []);
 
-  async function loadOS() {
+  async function loadOS(nextPeriod = period, nextStart = startDate, nextEnd = endDate) {
     setLoading(true);
     setMsg("");
 
     try {
-      const data = await apiFetch("/os");
+      const params = new URLSearchParams();
+      params.set("period", nextPeriod);
+
+      if (nextPeriod === "custom") {
+        if (!nextStart || !nextEnd) {
+          setMsg("Informe data inicial e final para o período personalizado.");
+          setLoading(false);
+          return;
+        }
+
+        params.set("start_date", nextStart);
+        params.set("end_date", nextEnd);
+      }
+
+      const data = await apiFetch(`/os?${params.toString()}`);
       const lista = Array.isArray(data) ? data : [];
 
       const ordenada = [...lista].sort((a, b) => {
@@ -116,6 +143,10 @@ export default function OSList() {
     window.location.href = "/login";
   }
 
+  function applyFilters() {
+    loadOS(period, startDate, endDate);
+  }
+
   const osFiltradas =
     statusFiltro === "todos"
       ? osList
@@ -150,11 +181,13 @@ export default function OSList() {
           description="Controle de OS, andamento da oficina e envio de orçamento."
           right={
             <>
-              <Link to="/os/new">
-                <button className="btn btn--solid" type="button">
-                  Nova OS
-                </button>
-              </Link>
+              {!isTecnico && (
+                <Link to="/os/new">
+                  <button className="btn btn--solid" type="button">
+                    Nova OS
+                  </button>
+                </Link>
+              )}
 
               <Link to="/dashboard">
                 <button className="btn btn--ghost-dark" type="button">
@@ -171,14 +204,11 @@ export default function OSList() {
 
         {msg ? <AlertMessage message={msg} /> : null}
 
-        <div className="card section">
+        <div className="card section filter-panel">
           <div className="filter-bar">
             <div className="filter-bar-field">
               <label className="label">Filtrar status</label>
-              <select
-                value={statusFiltro}
-                onChange={(e) => setStatusFiltro(e.target.value)}
-              >
+              <select value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)}>
                 <option value="todos">Todos</option>
                 {STATUS.map((status) => (
                   <option key={status} value={status}>
@@ -188,13 +218,40 @@ export default function OSList() {
               </select>
             </div>
 
-            <div className="filter-bar-action">
-              <button onClick={loadOS} className="btn btn--primary" type="button">
-                Atualizar
-              </button>
+            <div className="filter-bar-field">
+              <label className="label">Período</label>
+              <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+                {PERIOD_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="soft-box filter-bar-total">Total: {osFiltradas.length}</div>
+            {period === "custom" && (
+              <>
+                <div className="filter-bar-field">
+                  <label className="label">Data inicial</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+
+                <div className="filter-bar-field">
+                  <label className="label">Data final</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
+              </>
+            )}
+
+           <div className="filter-bar-action filter-bar-action--spaced">
+  <button onClick={applyFilters} className="btn btn--primary" type="button">
+    Aplicar filtros
+  </button>
+</div>
+
+           <div className="soft-box filter-bar-total filter-bar-total--spaced">
+  Total: {osFiltradas.length}
+</div>
           </div>
         </div>
 
@@ -209,21 +266,11 @@ export default function OSList() {
               const toneClass = statusToneClass(os.status);
 
               return (
-                <div
-                  key={os.id}
-                  className={`card table-like-row--status ${toneClass}`}
-                >
+                <div key={os.id} className={`card table-like-row--status ${toneClass}`}>
                   <div className="os-card-layout">
                     <div className="os-card-main">
-                      <div
-                        className="os-row-head"
-                        style={{ marginBottom: 14, alignItems: "center" }}
-                      >
-                        <Link
-                          to={`/os/${os.id}`}
-                          className="os-row-title-link"
-                          style={{ textDecoration: "none" }}
-                        >
+                      <div className="os-row-head" style={{ marginBottom: 14, alignItems: "center" }}>
+                        <Link to={`/os/${os.id}`} className="os-row-title-link" style={{ textDecoration: "none" }}>
                           <strong
                             className="os-row-title"
                             style={{
@@ -250,10 +297,7 @@ export default function OSList() {
 
                       <div className="soft-box field-stack">
                         <div className="label field-label-tight">Cliente</div>
-                        <div
-                          className="field-value-lg"
-                          style={{ fontWeight: 800 }}
-                        >
+                        <div className="field-value-lg" style={{ fontWeight: 800 }}>
                           {os.cliente_nome || "-"}
                         </div>
                       </div>
@@ -283,17 +327,17 @@ export default function OSList() {
                     </div>
 
                     <div className="os-card-side">
-                      <div className="soft-box">
-                        <div className="label" style={{ marginBottom: 6 }}>
-                          Valor da OS
-                        </div>
+                      {!isTecnico ? (
+                        <div className="soft-box">
+                          <div className="label" style={{ marginBottom: 6 }}>
+                            Valor da OS
+                          </div>
 
-                        <div className="kpi kpi--green">
-                          {Number(os.valor_total) === 0
-                            ? "Sem Valor No Orçamento"
-                            : money(os.valor_total)}
+                          <div className="kpi kpi--green">
+                            {Number(os.valor_total) === 0 ? "Sem Valor No Orçamento" : money(os.valor_total)}
+                          </div>
                         </div>
-                      </div>
+                      ) : null}
 
                       <div className="soft-box field-stack">
                         <div className="meta-label">Criada em</div>
@@ -320,11 +364,7 @@ export default function OSList() {
                           </button>
                         </Link>
 
-                        <button
-                          className="btn btn--ghost"
-                          type="button"
-                          onClick={() => toggleDetalhes(os.id)}
-                        >
+                        <button className="btn btn--ghost" type="button" onClick={() => toggleDetalhes(os.id)}>
                           {aberto ? "Fechar" : "Atualizar OS"}
                         </button>
                       </div>
@@ -338,10 +378,7 @@ export default function OSList() {
                       <div className="grid-2">
                         <div className="soft-box">
                           <label className="label">Atualizar status</label>
-                          <select
-                            value={os.status}
-                            onChange={(e) => mudarStatus(os.id, e.target.value)}
-                          >
+                          <select value={os.status} onChange={(e) => mudarStatus(os.id, e.target.value)}>
                             {STATUS.map((status) => (
                               <option key={status} value={status}>
                                 {statusLabel(status)}
@@ -350,23 +387,19 @@ export default function OSList() {
                           </select>
                         </div>
 
-                        <div className="soft-box">
-                          <label className="label">Ações rápidas</label>
+                        {!isTecnico ? (
+                          <div className="soft-box">
+                            <label className="label">Ações rápidas</label>
 
-                          {os.status === "aguardando_aprovacao" ? (
-                            <button
-                              onClick={() => abrirWhatsapp(os.id)}
-                              className="btn whatsapp-btn"
-                              type="button"
-                            >
-                              Enviar orçamento no WhatsApp
-                            </button>
-                          ) : (
-                            <div className="help">
-                              Disponível somente em “Aguardando aprovação”.
-                            </div>
-                          )}
-                        </div>
+                            {os.status === "aguardando_aprovacao" ? (
+                              <button onClick={() => abrirWhatsapp(os.id)} className="btn whatsapp-btn" type="button">
+                                Enviar orçamento no WhatsApp
+                              </button>
+                            ) : (
+                              <div className="help">Disponível somente em “Aguardando aprovação”.</div>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </>
                   ) : null}
@@ -396,9 +429,7 @@ function PageHeader({ eyebrow, title, description, right }) {
 
 function AlertMessage({ message }) {
   const textoBase = String(message || "").toLowerCase();
-  const texto = textoBase
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  const texto = textoBase.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   const isError =
     texto.includes("erro") ||
@@ -407,11 +438,7 @@ function AlertMessage({ message }) {
     texto.includes("nao") ||
     texto.includes("obrigatorio");
 
-  return (
-    <div className={`card section alert ${isError ? "alert--error" : "alert--success"}`}>
-      {message}
-    </div>
-  );
+  return <div className={`card section alert ${isError ? "alert--error" : "alert--success"}`}>{message}</div>;
 }
 
 function statusLabel(status) {
