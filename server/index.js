@@ -1,4 +1,5 @@
 ﻿require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -8,7 +9,11 @@ const clientesRoutes = require("./routes/clientes");
 const osRoutes = require("./routes/os");
 const dashboardRoutes = require("./routes/dashboard");
 const usersRoutes = require("./routes/users");
+
 const { apiLimiter } = require("./middlewares/rateLimiters");
+const requestLogger = require("./middlewares/requestLogger");
+const errorHandler = require("./middlewares/errorHandler");
+const { logger } = require("./utils/logger");
 
 const app = express();
 
@@ -44,10 +49,16 @@ app.use(helmet({
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
+app.use(requestLogger);
+
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (req, res) => {
-  return res.json({ status: "ok", app: "running" });
+  return res.json({
+    status: "ok",
+    app: "running",
+    requestId: req.requestId,
+  });
 });
 
 app.use(apiLimiter);
@@ -59,35 +70,29 @@ app.use("/os", osRoutes);
 app.use("/dashboard", dashboardRoutes);
 
 app.use((req, res) => {
-  return res.status(404).json({
-    error: "Rota não encontrada.",
-  });
-});
-app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
-    return res.status(400).json({
-      error: "JSON inválido.",
-    });
-  }
-
-  if (err.message === "Origem não permitida pelo CORS.") {
-    return res.status(403).json({
-      error: "Origem não permitida pelo CORS.",
-    });
-  }
-
-  console.error("Erro não tratado:", {
+  logger.warn("ROUTE_NOT_FOUND", "Rota não encontrada", {
+    requestId: req.requestId,
     method: req.method,
     path: req.originalUrl,
-    message: err.message,
+    ip: req.ip,
+    userId: req.user?.id,
+    companyId: req.user?.company_id,
+    role: req.user?.role,
   });
 
-  return res.status(500).json({
-    error: "Erro interno do servidor.",
+  return res.status(404).json({
+    error: "Rota não encontrada.",
+    requestId: req.requestId,
   });
 });
+
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  logger.info("SERVER_STARTED", "Servidor iniciado", {
+    port: PORT,
+    env: process.env.NODE_ENV || "development",
+  });
 });

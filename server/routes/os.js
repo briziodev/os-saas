@@ -5,6 +5,7 @@ const pool = require("../db");
 
 const { authRequired, loadUser } = require("../middlewares/auth");
 const validate = require("../middlewares/validate");
+const { logger } = require("../utils/logger");
 const {
   osIdParamSchema,
   osPecaParamSchema,
@@ -210,7 +211,9 @@ async function recalcularTotaisOS(osId, companyId) {
   );
 
   if (osResult.rowCount === 0) {
-    throw new Error("OS não encontrada para recalcular totais");
+    const error = new Error("OS não encontrada para recalcular totais");
+    error.statusCode = 404;
+    throw error;
   }
 
   const maoObra = Number(osResult.rows[0].mao_obra || 0);
@@ -249,12 +252,28 @@ function ocultarListaDadosFinanceirosParaTecnico(lista, role) {
   return lista.map((item) => ocultarDadosFinanceirosParaTecnico(item, role));
 }
 
-router.get("/", async (req, res) => {
+function logOSNotFound(req, event, message, osId) {
+  logger.warn(event, message, {
+    requestId: req.requestId,
+    userId: req.user?.id,
+    companyId: req.user?.company_id,
+    role: req.user?.role,
+    osId: Number(osId),
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+  });
+}
+
+router.get("/", async (req, res, next) => {
   try {
     const filter = parseOSDateFilter(req.query);
 
     if (filter.error) {
-      return res.status(400).json({ error: filter.error });
+      return res.status(400).json({
+        error: filter.error,
+        requestId: req.requestId,
+      });
     }
 
     const params = filter.params(req.user.company_id);
@@ -290,14 +309,14 @@ router.get("/", async (req, res) => {
 
     return res.json(ocultarListaDadosFinanceirosParaTecnico(result.rows, req.user.role));
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 });
 
 router.get(
   "/:id",
   validate(osIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
 
@@ -329,12 +348,15 @@ router.get(
       );
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       return res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -343,19 +365,37 @@ router.get(
   "/:id/whatsapp-link",
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const result = await getWhatsappOSData(id, req.user.company_id);
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        logOSNotFound(req, "OS_WHATSAPP_LINK_NOT_FOUND", "Tentativa de gerar WhatsApp para OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       const osData = result.rows[0];
 
       if (!osData.telefone) {
-        return res.status(400).json({ error: "Cliente sem telefone" });
+        logger.warn("OS_WHATSAPP_LINK_BLOCKED_NO_PHONE", "Geração de WhatsApp bloqueada: cliente sem telefone", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: Number(id),
+          osStatus: osData.status,
+          ip: req.ip,
+        });
+
+        return res.status(400).json({
+          error: "Cliente sem telefone",
+          requestId: req.requestId,
+        });
       }
 
       const pecas = await getPecasOS(id, req.user.company_id);
@@ -363,9 +403,20 @@ router.get(
       const mensagem = buildWhatsappMessage(osData, pecas);
       const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
 
+      logger.info("OS_WHATSAPP_LINK_GENERATED", "Link de WhatsApp da OS gerado", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        osStatus: osData.status,
+        partsCount: pecas.length,
+        ip: req.ip,
+      });
+
       return res.json({ whatsapp_url: url });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -374,7 +425,7 @@ router.post(
   "/",
   requireRole("admin", "atendimento"),
   validate(osCreateSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const {
         cliente_id,
@@ -391,7 +442,19 @@ router.post(
       );
 
       if (cliente.rowCount === 0) {
-        return res.status(400).json({ error: "Cliente não pertence à sua empresa" });
+        logger.warn("OS_CREATE_BLOCKED_INVALID_CLIENT", "Criação de OS bloqueada: cliente não pertence à empresa", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          clienteId: Number(cliente_id),
+          ip: req.ip,
+        });
+
+        return res.status(400).json({
+          error: "Cliente não pertence à sua empresa",
+          requestId: req.requestId,
+        });
       }
 
       const total = Number(mao_obra) + Number(valor_pecas);
@@ -416,9 +479,22 @@ router.post(
         ]
       );
 
-      return res.status(201).json(result.rows[0]);
+      const createdOS = result.rows[0];
+
+      logger.info("OS_CREATED", "Ordem de serviço criada", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: createdOS.id,
+        clienteId: createdOS.cliente_id,
+        status: createdOS.status,
+        ip: req.ip,
+      });
+
+      return res.status(201).json(createdOS);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -428,7 +504,7 @@ router.put(
   requireRole("admin", "atendimento", "tecnico"),
   validate(osIdParamSchema, "params"),
   validate(osUpdateSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const { status, mao_obra, problema_relatado, modelo, placa } = req.body;
@@ -439,8 +515,19 @@ router.put(
         const campoInvalido = camposEnviados.find((campo) => !camposPermitidos.includes(campo));
 
         if (campoInvalido) {
+          logger.warn("OS_UPDATE_BLOCKED_FOR_TECHNICIAN", "Técnico tentou alterar campo não permitido da OS", {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            blockedField: campoInvalido,
+            ip: req.ip,
+          });
+
           return res.status(403).json({
             error: "Técnico só pode alterar descrição do serviço e status.",
+            requestId: req.requestId,
           });
         }
       }
@@ -453,7 +540,12 @@ router.put(
       );
 
       if (current.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        logOSNotFound(req, "OS_UPDATE_NOT_FOUND", "Tentativa de atualizar OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       const cur = current.rows[0];
@@ -497,9 +589,36 @@ router.put(
         ]
       );
 
-      return res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));
+      const updatedOS = result.rows[0];
+
+      logger.info("OS_UPDATED", "Ordem de serviço atualizada", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: updatedOS.id,
+        oldStatus: cur.status,
+        newStatus: updatedOS.status,
+        changedStatus: cur.status !== updatedOS.status,
+        ip: req.ip,
+      });
+
+      if (cur.status !== updatedOS.status) {
+        logger.info("OS_STATUS_UPDATED", "Status da OS atualizado", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: updatedOS.id,
+          oldStatus: cur.status,
+          newStatus: updatedOS.status,
+          ip: req.ip,
+        });
+      }
+
+      return res.json(ocultarDadosFinanceirosParaTecnico(updatedOS, req.user.role));
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -508,22 +627,40 @@ router.delete(
   "/:id",
   requireRole("admin"),
   validate(osIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
 
       const result = await pool.query(
-        "DELETE FROM ordens_servico WHERE id = $1 AND company_id = $2 RETURNING *",
+        "DELETE FROM ordens_servico WHERE id = $1 AND company_id = $2 RETURNING id, cliente_id, status, company_id",
         [id, req.user.company_id]
       );
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        logOSNotFound(req, "OS_DELETE_NOT_FOUND", "Tentativa de excluir OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
-      return res.json({ deleted: result.rows[0] });
+      const deletedOS = result.rows[0];
+
+      logger.warn("OS_DELETED", "Ordem de serviço excluída", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: deletedOS.id,
+        clienteId: deletedOS.cliente_id,
+        status: deletedOS.status,
+        ip: req.ip,
+      });
+
+      return res.json({ deleted: deletedOS, requestId: req.requestId });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -532,21 +669,40 @@ router.post(
   "/:id/enviar-orcamento",
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const result = await getWhatsappOSData(id, req.user.company_id);
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        logOSNotFound(req, "OS_BUDGET_SEND_NOT_FOUND", "Tentativa de enviar orçamento para OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       const osData = result.rows[0];
 
       if (!osData.telefone) {
-        return res.status(400).json({ error: "Cliente sem telefone" });
+        logger.warn("OS_BUDGET_SEND_BLOCKED_NO_PHONE", "Envio de orçamento bloqueado: cliente sem telefone", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: Number(id),
+          osStatus: osData.status,
+          ip: req.ip,
+        });
+
+        return res.status(400).json({
+          error: "Cliente sem telefone",
+          requestId: req.requestId,
+        });
       }
 
+      const oldStatus = osData.status;
       const targetStatus = "aguardando_aprovacao";
 
       if (osData.status !== targetStatus) {
@@ -558,6 +714,17 @@ router.post(
         );
 
         osData.status = targetStatus;
+
+        logger.info("OS_STATUS_UPDATED", "Status da OS atualizado pelo envio de orçamento", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: Number(id),
+          oldStatus,
+          newStatus: targetStatus,
+          ip: req.ip,
+        });
       }
 
       const pecas = await getPecasOS(id, req.user.company_id);
@@ -565,9 +732,21 @@ router.post(
       const mensagem = buildWhatsappMessage(osData, pecas);
       const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
 
+      logger.info("OS_BUDGET_SENT", "Orçamento da OS preparado para envio via WhatsApp", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        osStatus: osData.status,
+        partsCount: pecas.length,
+        changedStatus: oldStatus !== osData.status,
+        ip: req.ip,
+      });
+
       return res.json({ whatsapp_url: url });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -576,7 +755,7 @@ router.get(
   "/:id/pecas",
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
 
@@ -586,7 +765,10 @@ router.get(
       );
 
       if (osCheck.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       const result = await pool.query(
@@ -599,7 +781,7 @@ router.get(
 
       return res.json(result.rows);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -609,7 +791,7 @@ router.post(
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
   validate(osPecaCreateSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const { nome, quantidade, valor_unitario } = req.body;
@@ -620,7 +802,12 @@ router.post(
       );
 
       if (osCheck.rowCount === 0) {
-        return res.status(404).json({ error: "OS não encontrada" });
+        logOSNotFound(req, "OS_PART_CREATE_NOT_FOUND", "Tentativa de adicionar peça em OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       const result = await pool.query(
@@ -632,9 +819,22 @@ router.post(
 
       await recalcularTotaisOS(id, req.user.company_id);
 
-      return res.status(201).json(result.rows[0]);
+      const createdPart = result.rows[0];
+
+      logger.info("OS_PART_CREATED", "Peça adicionada à OS", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        partId: createdPart.id,
+        quantity: Number(createdPart.quantidade),
+        ip: req.ip,
+      });
+
+      return res.status(201).json(createdPart);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -644,7 +844,7 @@ router.put(
   requireRole("admin", "atendimento"),
   validate(osPecaParamSchema, "params"),
   validate(osPecaUpdateSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id, pecaId } = req.params;
       const { nome, quantidade, valor_unitario } = req.body;
@@ -660,14 +860,40 @@ router.put(
       );
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "Peça não encontrada" });
+        logger.warn("OS_PART_UPDATE_NOT_FOUND", "Tentativa de atualizar peça inexistente", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: Number(id),
+          partId: Number(pecaId),
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Peça não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       await recalcularTotaisOS(id, req.user.company_id);
 
-      return res.json(result.rows[0]);
+      const updatedPart = result.rows[0];
+
+      logger.info("OS_PART_UPDATED", "Peça da OS atualizada", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        partId: updatedPart.id,
+        quantity: Number(updatedPart.quantidade),
+        ip: req.ip,
+      });
+
+      return res.json(updatedPart);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -676,26 +902,52 @@ router.delete(
   "/:id/pecas/:pecaId",
   requireRole("admin", "atendimento"),
   validate(osPecaParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id, pecaId } = req.params;
 
       const result = await pool.query(
         `DELETE FROM os_pecas
          WHERE id = $1 AND os_id = $2 AND company_id = $3
-         RETURNING *`,
+         RETURNING id, os_id, company_id, nome, quantidade`,
         [pecaId, id, req.user.company_id]
       );
 
       if (result.rowCount === 0) {
-        return res.status(404).json({ error: "Peça não encontrada" });
+        logger.warn("OS_PART_DELETE_NOT_FOUND", "Tentativa de excluir peça inexistente", {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId: Number(id),
+          partId: Number(pecaId),
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Peça não encontrada",
+          requestId: req.requestId,
+        });
       }
 
       await recalcularTotaisOS(id, req.user.company_id);
 
-      return res.json({ deleted: result.rows[0] });
+      const deletedPart = result.rows[0];
+
+      logger.warn("OS_PART_DELETED", "Peça removida da OS", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        partId: deletedPart.id,
+        quantity: Number(deletedPart.quantidade),
+        ip: req.ip,
+      });
+
+      return res.json({ deleted: deletedPart, requestId: req.requestId });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );

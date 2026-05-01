@@ -11,6 +11,7 @@ const {
   inviteUserSchema,
   updateUserRoleSchema,
 } = require("../validators/userSchemas");
+const { logger, maskEmail } = require("../utils/logger");
 
 const router = express.Router();
 
@@ -34,8 +35,12 @@ function montarInviteLink(token) {
   return `${baseUrl.replace(/\/$/, "")}/ativar-conta?token=${token}`;
 }
 
+function getTargetId(req) {
+  return Number(req.params.id);
+}
+
 // GET /users
-router.get("/", requireRole("admin"), async (req, res) => {
+router.get("/", requireRole("admin"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT
@@ -58,7 +63,7 @@ router.get("/", requireRole("admin"), async (req, res) => {
 
     return res.json(result.rows);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 });
 
@@ -67,9 +72,10 @@ router.post(
   "/invite",
   requireRole("admin"),
   validate(inviteUserSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const { name, email, role, phone } = req.body;
+      const { name, role, phone } = req.body;
+      const email = String(req.body.email || "").trim().toLowerCase();
 
       const exists = await pool.query(
         `SELECT id, company_id, is_active
@@ -79,7 +85,20 @@ router.post(
       );
 
       if (exists.rowCount > 0) {
-        return res.status(409).json({ error: "Email já cadastrado" });
+        logger.warn("USER_INVITE_DUPLICATE_EMAIL", "Tentativa de convite com email já cadastrado", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetEmail: maskEmail(email),
+          existingUserId: exists.rows[0].id,
+          existingCompanyId: exists.rows[0].company_id,
+          ip: req.ip,
+        });
+
+        return res.status(409).json({
+          error: "Email já cadastrado",
+          requestId: req.requestId,
+        });
       }
 
       const inviteToken = gerarInviteToken();
@@ -139,6 +158,18 @@ router.post(
         ? `https://wa.me/55${phone}?text=${whatsappText}`
         : null;
 
+      logger.info("USER_INVITE_CREATED", "Convite de usuário criado", {
+        requestId: req.requestId,
+        adminUserId: req.user.id,
+        companyId: req.user.company_id,
+        invitedUserId: user.id,
+        invitedEmail: maskEmail(user.email),
+        invitedRole: user.role,
+        hasPhone: Boolean(user.phone),
+        inviteExpiresAt: user.invite_expires_at,
+        ip: req.ip,
+      });
+
       return res.status(201).json({
         message: "Usuário convidado com sucesso",
         user,
@@ -146,7 +177,7 @@ router.post(
         whatsapp_link: whatsappLink,
       });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -157,32 +188,75 @@ router.patch(
   requireRole("admin"),
   validate(userIdParamSchema, "params"),
   validate(updateUserRoleSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const targetId = req.params.id;
+      const targetId = getTargetId(req);
       const { role } = req.body;
 
       if (req.user.id === targetId) {
+        logger.warn("USER_ROLE_CHANGE_BLOCKED_SELF", "Admin tentou alterar o próprio perfil", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          attemptedRole: role,
+          ip: req.ip,
+        });
+
         return res.status(403).json({
           error: "Você não pode alterar o próprio perfil.",
+          requestId: req.requestId,
         });
       }
 
-      const updated = await pool.query(
+      const currentUser = await pool.query(
+        `SELECT id, email, role, company_id
+         FROM users
+         WHERE id = $1 AND company_id = $2`,
+        [targetId, req.user.company_id]
+      );
+
+      if (currentUser.rowCount === 0) {
+        logger.warn("USER_ROLE_CHANGE_TARGET_NOT_FOUND", "Tentativa de alterar perfil de usuário inexistente", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetId,
+          attemptedRole: role,
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Usuário não encontrado",
+          requestId: req.requestId,
+        });
+      }
+
+      const targetUser = currentUser.rows[0];
+
+      await pool.query(
         `UPDATE users
          SET role = $1
-         WHERE id = $2 AND company_id = $3
-         RETURNING id`,
+         WHERE id = $2 AND company_id = $3`,
         [role, targetId, req.user.company_id]
       );
 
-      if (updated.rowCount === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
+      logger.info("USER_ROLE_UPDATED", "Perfil de usuário atualizado", {
+        requestId: req.requestId,
+        adminUserId: req.user.id,
+        companyId: req.user.company_id,
+        targetUserId: targetUser.id,
+        targetEmail: maskEmail(targetUser.email),
+        oldRole: targetUser.role,
+        newRole: role,
+        ip: req.ip,
+      });
 
-      return res.json({ message: "Perfil atualizado" });
+      return res.json({
+        message: "Perfil atualizado",
+        requestId: req.requestId,
+      });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -192,28 +266,48 @@ router.patch(
   "/:id/toggle-active",
   requireRole("admin"),
   validate(userIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const targetId = req.params.id;
+      const targetId = getTargetId(req);
 
       if (req.user.id === targetId) {
+        logger.warn("USER_STATUS_CHANGE_BLOCKED_SELF", "Admin tentou alterar a própria conta", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          ip: req.ip,
+        });
+
         return res.status(403).json({
           error: "Você não pode alterar sua própria conta.",
+          requestId: req.requestId,
         });
       }
 
       const user = await pool.query(
-        `SELECT id, role, is_active
+        `SELECT id, email, role, is_active
          FROM users
          WHERE id = $1 AND company_id = $2`,
         [targetId, req.user.company_id]
       );
 
       if (user.rowCount === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
+        logger.warn("USER_STATUS_CHANGE_TARGET_NOT_FOUND", "Tentativa de alterar status de usuário inexistente", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetId,
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Usuário não encontrado",
+          requestId: req.requestId,
+        });
       }
 
       const targetUser = user.rows[0];
+      const oldStatus = targetUser.is_active;
       const newStatus = !targetUser.is_active;
 
       await pool.query(
@@ -223,9 +317,24 @@ router.patch(
         [newStatus, targetId, req.user.company_id]
       );
 
-      return res.json({ message: "Status atualizado" });
+      logger.info("USER_STATUS_UPDATED", "Status de usuário atualizado", {
+        requestId: req.requestId,
+        adminUserId: req.user.id,
+        companyId: req.user.company_id,
+        targetUserId: targetUser.id,
+        targetEmail: maskEmail(targetUser.email),
+        targetRole: targetUser.role,
+        oldStatus,
+        newStatus,
+        ip: req.ip,
+      });
+
+      return res.json({
+        message: "Status atualizado",
+        requestId: req.requestId,
+      });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -235,29 +344,63 @@ router.post(
   "/:id/resend-invite",
   requireRole("admin"),
   validate(userIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const targetId = req.params.id;
+      const targetId = getTargetId(req);
 
       if (req.user.id === targetId) {
+        logger.warn("USER_INVITE_RESEND_BLOCKED_SELF", "Admin tentou reenviar convite para a própria conta", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          ip: req.ip,
+        });
+
         return res.status(403).json({
           error: "Você não pode reenviar convite para sua própria conta.",
+          requestId: req.requestId,
         });
       }
 
       const targetUser = await pool.query(
-        `SELECT id, name, is_active
+        `SELECT id, name, email, role, is_active
          FROM users
          WHERE id = $1 AND company_id = $2`,
         [targetId, req.user.company_id]
       );
 
       if (targetUser.rowCount === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
+        logger.warn("USER_INVITE_RESEND_TARGET_NOT_FOUND", "Tentativa de reenviar convite para usuário inexistente", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetId,
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Usuário não encontrado",
+          requestId: req.requestId,
+        });
       }
 
-      if (targetUser.rows[0].is_active) {
-        return res.status(400).json({ error: "Usuário já está ativo" });
+      const user = targetUser.rows[0];
+
+      if (user.is_active) {
+        logger.warn("USER_INVITE_RESEND_BLOCKED_ACTIVE_USER", "Tentativa de reenviar convite para usuário já ativo", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: user.id,
+          targetEmail: maskEmail(user.email),
+          targetRole: user.role,
+          ip: req.ip,
+        });
+
+        return res.status(400).json({
+          error: "Usuário já está ativo",
+          requestId: req.requestId,
+        });
       }
 
       const inviteToken = gerarInviteToken();
@@ -273,12 +416,24 @@ router.post(
 
       const inviteLink = montarInviteLink(inviteToken);
 
+      logger.info("USER_INVITE_RESENT", "Convite de usuário reenviado", {
+        requestId: req.requestId,
+        adminUserId: req.user.id,
+        companyId: req.user.company_id,
+        targetUserId: user.id,
+        targetEmail: maskEmail(user.email),
+        targetRole: user.role,
+        inviteExpiresAt,
+        ip: req.ip,
+      });
+
       return res.json({
         message: "Convite reenviado",
         invite_link: inviteLink,
+        requestId: req.requestId,
       });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
