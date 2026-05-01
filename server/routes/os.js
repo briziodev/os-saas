@@ -518,7 +518,7 @@ router.put("/:id", requireRole("admin", "atendimento", "tecnico"), async (req, r
       ]
     );
 
-    res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));;
+    res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
