@@ -4,15 +4,17 @@ const pool = require("../db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { authRequired, loadUser } = require("../middlewares/auth");
+const validate = require("../middlewares/validate");
+const {
+  loginSchema,
+  activateAccountSchema,
+} = require("../validators/authSchemas");
 
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const ALLOWED_ROLES = ["admin", "atendimento", "tecnico"];
 
 function limparTexto(value) {
   return String(value || "").trim();
 }
-
 
 // REGISTER DESATIVADO
 // O SaaS agora usa fluxo oficial de convite.
@@ -23,16 +25,10 @@ router.post("/register", async (req, res) => {
   });
 });
 
-
-
 // LOGIN
-router.post("/login", async (req, res) => {
+router.post("/login", validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email e senha obrigatórios" });
-    }
 
     const result = await pool.query(
       `SELECT
@@ -54,33 +50,23 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
+    if (!user.is_active) {
+      return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
+    }
 
+    if (!user.company_id) {
+      return res.status(403).json({
+        error: "Usuário sem empresa vinculada. Acesse pelo fluxo de convite.",
+      });
+    }
 
+    if (!ALLOWED_ROLES.includes(user.role)) {
+      return res.status(403).json({
+        error: "Perfil de usuário inválido.",
+      });
+    }
 
-
- if (!user.is_active) {
-  return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
-}
-
-if (!user.company_id) {
-  return res.status(403).json({
-    error: "Usuário sem empresa vinculada. Acesse pelo fluxo de convite.",
-  });
-}
-
-if (!["admin", "atendimento", "tecnico"].includes(user.role)) {
-  return res.status(403).json({
-    error: "Perfil de usuário inválido.",
-  });
-}
-
-const senhaCorreta = await bcrypt.compare(password, user.password_hash);
-
-
-
-
-
-
+    const senhaCorreta = await bcrypt.compare(password, user.password_hash);
 
     if (!senhaCorreta) {
       return res.status(401).json({ error: "Credenciais inválidas" });
@@ -97,7 +83,7 @@ const senhaCorreta = await bcrypt.compare(password, user.password_hash);
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    res.json({
+    return res.json({
       token,
       user: {
         id: user.id,
@@ -109,7 +95,7 @@ const senhaCorreta = await bcrypt.compare(password, user.password_hash);
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -128,9 +114,6 @@ router.get("/me", authRequired, loadUser, async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
-
-
-
 
 // GET /auth/invite/:token
 router.get("/invite/:token", async (req, res) => {
@@ -162,7 +145,7 @@ router.get("/invite/:token", async (req, res) => {
       return res.status(400).json({ error: "Este convite expirou" });
     }
 
-    res.json({
+    return res.json({
       valid: true,
       user: {
         name: user.name,
@@ -173,28 +156,14 @@ router.get("/invite/:token", async (req, res) => {
       expires_at: user.invite_expires_at,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
 // POST /auth/activate
-router.post("/activate", async (req, res) => {
+router.post("/activate", validate(activateAccountSchema), async (req, res) => {
   try {
-    const token = limparTexto(req.body.token);
-    const password = String(req.body.password || "");
-    const confirmPassword = String(req.body.confirmPassword || "");
-
-    if (!token) {
-      return res.status(400).json({ error: "Token obrigatório" });
-    }
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ error: "Senha mínimo 6 caracteres" });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({ error: "As senhas não coincidem" });
-    }
+    const { token, password } = req.body;
 
     const result = await pool.query(
       `SELECT id, email, is_active, invite_expires_at
@@ -232,12 +201,12 @@ router.post("/activate", async (req, res) => {
       [passwordHash, user.id]
     );
 
-    res.json({
+    return res.json({
       message: "Conta ativada com sucesso",
       user: updated.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
