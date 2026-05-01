@@ -20,10 +20,11 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
-app.use(express.json());
+
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", app: "running" });
+  return res.json({ status: "ok", app: "running" });
 });
 
 app.use("/auth", authRoutes);
@@ -31,6 +32,30 @@ app.use("/users", usersRoutes);
 app.use("/clientes", clientesRoutes);
 app.use("/os", osRoutes);
 app.use("/dashboard", dashboardRoutes);
+
+app.use((req, res) => {
+  return res.status(404).json({
+    error: "Rota não encontrada.",
+  });
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({
+      error: "JSON inválido.",
+    });
+  }
+
+  console.error("Erro não tratado:", {
+    method: req.method,
+    path: req.originalUrl,
+    message: err.message,
+  });
+
+  return res.status(500).json({
+    error: "Erro interno do servidor.",
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 
