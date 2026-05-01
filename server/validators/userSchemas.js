@@ -1,58 +1,65 @@
 const { z } = require("zod");
 
-const allowedRoles = ["admin", "atendimento", "tecnico"];
+const manageableUserRoles = ["atendimento", "tecnico"];
 
-const inviteUserSchema = z.object({
-  name: z
+const phoneSchema = z.preprocess((value) => {
+  if (value === undefined || value === null) return null;
+
+  const digits = String(value).replace(/\D/g, "");
+  return digits || null;
+}, z.union([
+  z
     .string()
-    .trim()
-    .min(2, "Nome deve ter pelo menos 2 caracteres.")
-    .max(120, "Nome muito longo."),
+    .min(10, "Telefone inválido.")
+    .max(13, "Telefone muito longo."),
+  z.null(),
+]));
 
-  email: z
-    .string()
-    .trim()
-    .email("Email inválido.")
-    .max(150, "Email muito longo."),
+const userIdParamSchema = z
+  .object({
+    id: z.coerce
+      .number()
+      .int("ID inválido.")
+      .positive("ID inválido."),
+  })
+  .strict();
 
-  phone: z
-    .string()
-    .trim()
-    .max(20, "Telefone muito longo.")
-    .optional()
-    .nullable(),
+const inviteUserSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, "Nome deve ter pelo menos 2 caracteres.")
+      .max(120, "Nome muito longo."),
 
-  role: z.enum(allowedRoles, {
-    message: "Perfil inválido.",
-  }),
-});
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email("Email inválido.")
+      .max(150, "Email muito longo."),
 
-const updateUserSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Nome deve ter pelo menos 2 caracteres.")
-    .max(120, "Nome muito longo.")
-    .optional(),
+    phone: phoneSchema,
 
-  phone: z
-    .string()
-    .trim()
-    .max(20, "Telefone muito longo.")
-    .optional()
-    .nullable(),
+    role: z
+      .enum(manageableUserRoles, {
+        message: "Perfil inválido.",
+      })
+      .default("atendimento"),
+  })
+  .strict();
 
-  role: z
-    .enum(allowedRoles, {
+const updateUserRoleSchema = z
+  .object({
+    role: z.enum(manageableUserRoles, {
       message: "Perfil inválido.",
-    })
-    .optional(),
-
-  is_active: z.boolean().optional(),
-});
+    }),
+  })
+  .strict();
 
 module.exports = {
+  manageableUserRoles,
+  userIdParamSchema,
   inviteUserSchema,
-  updateUserSchema,
-  allowedRoles,
+  updateUserRoleSchema,
 };
