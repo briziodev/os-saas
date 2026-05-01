@@ -360,13 +360,26 @@ export default function OSDetail() {
                 Voltar para lista
               </button>
 
-              <button
-                className="btn btn--header-secondary"
-                type="button"
-                onClick={() => goTo("/dashboard")}
-              >
-                Dashboard
-              </button>
+
+
+
+
+              {!isTecnico ? (
+  <button
+    className="btn btn--header-secondary"
+    type="button"
+    onClick={() => goTo("/dashboard")}
+  >
+    Dashboard
+  </button>
+) : null}
+
+
+
+
+
+
+
 
               <button
                 onClick={logout}

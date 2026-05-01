@@ -181,9 +181,12 @@ async function getWhatsappOSData(osId, companyId) {
            c.telefone
            ${companySelect}
     FROM ordens_servico os
-    JOIN clientes c ON c.id = os.cliente_id
-    LEFT JOIN companies comp ON comp.id = os.company_id
-    WHERE os.id = $1 AND os.company_id = $2
+JOIN clientes c
+  ON c.id = os.cliente_id
+ AND c.company_id = os.company_id
+LEFT JOIN companies comp
+  ON comp.id = os.company_id
+WHERE os.id = $1 AND os.company_id = $2
   `;
 
   const result = await pool.query(query, [osId, companyId]);
@@ -224,6 +227,29 @@ async function recalcularTotaisOS(osId, companyId) {
   );
 }
 
+function ocultarDadosFinanceirosParaTecnico(os, role) {
+  if (role !== "tecnico" || !os) {
+    return os;
+  }
+
+  const {
+    mao_obra,
+    valor_pecas,
+    valor_total,
+    ...osSemDadosFinanceiros
+  } = os;
+
+  return osSemDadosFinanceiros;
+}
+
+function ocultarListaDadosFinanceirosParaTecnico(lista, role) {
+  if (role !== "tecnico") {
+    return lista;
+  }
+
+  return lista.map((item) => ocultarDadosFinanceirosParaTecnico(item, role));
+}
+
 router.get("/", async (req, res) => {
   try {
     const filter = parseOSDateFilter(req.query);
@@ -250,16 +276,20 @@ router.get("/", async (req, res) => {
               os.created_at,
               os.updated_at,
               os.closed_at
-       FROM ordens_servico os
-       JOIN clientes c ON c.id = os.cliente_id
-       LEFT JOIN users u ON u.id = os.user_id
-       WHERE os.company_id = $1
+          FROM ordens_servico os
+          JOIN clientes c
+          ON c.id = os.cliente_id
+          AND c.company_id = os.company_id
+          LEFT JOIN users u
+          ON u.id = os.user_id
+          AND u.company_id = os.company_id
+          WHERE os.company_id = $1
        ${filter.clause}
        ORDER BY os.id DESC`,
       params
     );
 
-    res.json(result.rows);
+    res.json(ocultarListaDadosFinanceirosParaTecnico(result.rows, req.user.role));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -289,10 +319,15 @@ router.get("/:id", async (req, res) => {
               os.created_at,
               os.updated_at,
               os.closed_at
-       FROM ordens_servico os
-       JOIN clientes c ON c.id = os.cliente_id
-       LEFT JOIN users u ON u.id = os.user_id
-       WHERE os.id = $1 AND os.company_id = $2`,
+
+            FROM ordens_servico os
+            JOIN clientes c
+            ON c.id = os.cliente_id
+            AND c.company_id = os.company_id
+            LEFT JOIN users u
+            ON u.id = os.user_id
+            AND u.company_id = os.company_id
+            WHERE os.id = $1 AND os.company_id = $2`,
       [id, req.user.company_id]
     );
 
@@ -300,13 +335,15 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "OS não encontrada" });
     }
 
-    res.json(result.rows[0]);
+    res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));
+
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get("/:id/whatsapp-link", async (req, res) => {
+router.get("/:id/whatsapp-link", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -405,7 +442,7 @@ router.post("/", requireRole("admin", "atendimento"), async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireRole("admin", "atendimento", "tecnico"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
@@ -481,7 +518,7 @@ router.put("/:id", async (req, res) => {
       ]
     );
 
-    res.json(result.rows[0]);
+    res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));;
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -551,7 +588,7 @@ router.post("/:id/enviar-orcamento", requireRole("admin", "atendimento"), async 
   }
 });
 
-router.get("/:id/pecas", async (req, res) => {
+router.get("/:id/pecas", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {

@@ -26,18 +26,47 @@ async function loadUser(req, res, next) {
     if (!userId) return res.status(401).json({ error: "Token sem id." });
 
     const { rows } = await pool.query(
-      "SELECT id, email, role, company_id FROM users WHERE id = $1",
+     "SELECT id, name, email, role, company_id, is_active FROM users WHERE id = $1",
       [userId]
     );
+
+
 
     if (rows.length === 0) {
       return res.status(401).json({ error: "Usuário não encontrado." });
     }
 
-    // substitui o payload por dados do banco (fonte da verdade)
-    req.user = rows[0];
 
-    return next();
+
+
+
+ const dbUser = rows[0];
+
+if (!dbUser.is_active) {
+  return res.status(403).json({ error: "Usuário inativo." });
+}
+
+if (!dbUser.company_id) {
+  return res.status(403).json({
+    error: "Usuário sem empresa vinculada.",
+  });
+}
+
+if (!["admin", "atendimento", "tecnico"].includes(dbUser.role)) {
+  return res.status(403).json({
+    error: "Perfil de usuário inválido.",
+  });
+}
+
+// substitui o payload por dados do banco (fonte da verdade)
+req.user = dbUser;
+
+return next();
+
+
+
+
+
   } catch (err) {
     return res.status(500).json({ error: "Erro ao carregar usuário." });
   }

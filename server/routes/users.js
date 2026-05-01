@@ -53,10 +53,9 @@ router.get("/", requireRole("admin"), async (req, res) => {
          phone,
          role,
          company_id,
-         is_active,
-         invite_token,
-         invite_expires_at,
-         activated_at,
+        is_active,
+        invite_expires_at,
+        activated_at,
          invited_by,
          created_at
        FROM users
@@ -112,43 +111,42 @@ router.post("/invite", requireRole("admin"), async (req, res) => {
     const passwordHash = await bcrypt.hash(senhaTemporaria, 10);
 
     const inserted = await pool.query(
-      `INSERT INTO users (
-         name,
-         email,
-         phone,
-         password_hash,
-         company_id,
-         role,
-         is_active,
-         invite_token,
-         invite_expires_at,
-         invited_by
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9)
-       RETURNING
-         id,
-         name,
-         email,
-         phone,
-         role,
-         company_id,
-         is_active,
-         invite_token,
-         invite_expires_at,
-         invited_by,
-         created_at`,
-      [
-        name,
-        email,
-        phone || null,
-        passwordHash,
-        req.user.company_id,
-        role,
-        inviteToken,
-        inviteExpiresAt,
-        req.user.id,
-      ]
-    );
+  `INSERT INTO users (
+     name,
+     email,
+     phone,
+     password_hash,
+     company_id,
+     role,
+     is_active,
+     invite_token,
+     invite_expires_at,
+     invited_by
+   )
+   VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9)
+   RETURNING
+     id,
+     name,
+     email,
+     phone,
+     role,
+     company_id,
+     is_active,
+     invite_expires_at,
+     invited_by,
+     created_at`,
+  [
+    name,
+    email,
+    phone || null,
+    passwordHash,
+    req.user.company_id,
+    role,
+    inviteToken,
+    inviteExpiresAt,
+    req.user.id,
+  ]
+);
 
     const user = inserted.rows[0];
     const inviteLink = montarInviteLink(inviteToken);

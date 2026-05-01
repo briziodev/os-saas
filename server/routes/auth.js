@@ -13,45 +13,14 @@ function limparTexto(value) {
   return String(value || "").trim();
 }
 
-// REGISTER
+
+// REGISTER DESATIVADO
+// O SaaS agora usa fluxo oficial de convite.
+// Não permitir cadastro público para evitar usuários sem empresa/company_id.
 router.post("/register", async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    if (!name || name.trim().length < 2) {
-      return res.status(400).json({ error: "Nome obrigatório" });
-    }
-
-    if (!email || !isValidEmail(email)) {
-      return res.status(400).json({ error: "Email inválido" });
-    }
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ error: "Senha mínimo 6 caracteres" });
-    }
-
-    const exists = await pool.query(
-      "SELECT id FROM users WHERE email = $1",
-      [email.toLowerCase()]
-    );
-
-    if (exists.rowCount > 0) {
-      return res.status(409).json({ error: "Email já cadastrado" });
-    }
-
-    const password_hash = await bcrypt.hash(password, 10);
-
-    const inserted = await pool.query(
-      `INSERT INTO users (name, email, password_hash, is_active, activated_at)
-       VALUES ($1, $2, $3, true, now())
-       RETURNING id, name, email, company_id, role, is_active, activated_at, created_at`,
-      [name.trim(), email.toLowerCase(), password_hash]
-    );
-
-    return res.status(201).json(inserted.rows[0]);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
+  return res.status(403).json({
+    error: "Cadastro público desativado. Use o fluxo de convite.",
+  });
 });
 
 
@@ -85,11 +54,33 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    if (!user.is_active) {
-      return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
-    }
 
-    const senhaCorreta = await bcrypt.compare(password, user.password_hash);
+
+
+
+ if (!user.is_active) {
+  return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
+}
+
+if (!user.company_id) {
+  return res.status(403).json({
+    error: "Usuário sem empresa vinculada. Acesse pelo fluxo de convite.",
+  });
+}
+
+if (!["admin", "atendimento", "tecnico"].includes(user.role)) {
+  return res.status(403).json({
+    error: "Perfil de usuário inválido.",
+  });
+}
+
+const senhaCorreta = await bcrypt.compare(password, user.password_hash);
+
+
+
+
+
+
 
     if (!senhaCorreta) {
       return res.status(401).json({ error: "Credenciais inválidas" });

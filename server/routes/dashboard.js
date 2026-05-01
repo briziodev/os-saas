@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const { authRequired, loadUser } = require("../middlewares/auth");
+const { requireRole } = require("../middlewares/requireRole");
+
+
+
+
 
 router.use(authRequired, loadUser);
 
@@ -80,7 +85,7 @@ function parsePeriodRange(query) {
 }
 
 // Dashboard
-router.get("/", async (req, res) => {
+router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const companyId = req.user.company_id;
     const range = parsePeriodRange(req.query);

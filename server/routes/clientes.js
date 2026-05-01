@@ -49,7 +49,7 @@ function validarCliente({ nome, email, telefone }) {
 }
 
 // GET (por empresa)
-router.get("/", async (req, res) => {
+router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM clientes WHERE company_id = $1 ORDER BY id ASC",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
 
 const STATUS_LABEL = {
@@ -34,6 +34,12 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState("");
   const user = getUser();
   const isTecnico = user?.role === "tecnico";
+  if (user?.role !== "admin" && user?.role !== "atendimento") {
+  return <Navigate to="/os" replace />;
+}
+
+
+
 
   useEffect(() => {
     const timer = setInterval(() => {

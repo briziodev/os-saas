@@ -189,11 +189,22 @@ export default function OSList() {
                 </Link>
               )}
 
-              <Link to="/dashboard">
-                <button className="btn btn--ghost-dark" type="button">
-                  Dashboard
-                </button>
-              </Link>
+
+
+
+              {!isTecnico && (
+  <Link to="/dashboard">
+    <button className="btn btn--ghost-dark" type="button">
+      Dashboard
+    </button>
+  </Link>
+)}
+
+
+
+
+
+
 
               <button onClick={logout} className="btn btn--ghost-dark" type="button">
                 Sair
@@ -243,15 +254,24 @@ export default function OSList() {
               </>
             )}
 
-           <div className="filter-bar-action filter-bar-action--spaced">
+
+
+
+           <div className="filter-bar-action" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
   <button onClick={applyFilters} className="btn btn--primary" type="button">
     Aplicar filtros
   </button>
+
+  <div className="soft-box filter-bar-total">
+    Total: {osFiltradas.length}
+  </div>
 </div>
 
-           <div className="soft-box filter-bar-total filter-bar-total--spaced">
-  Total: {osFiltradas.length}
-</div>
+
+
+
+
+
           </div>
         </div>
 
