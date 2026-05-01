@@ -15,10 +15,23 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-const allowedOrigin = process.env.CORS_ORIGIN;
+const allowedOrigins = String(process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const corsOptions = {
-  origin: allowedOrigin,
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origem não permitida pelo CORS."));
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -50,11 +63,16 @@ app.use((req, res) => {
     error: "Rota não encontrada.",
   });
 });
-
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
     return res.status(400).json({
       error: "JSON inválido.",
+    });
+  }
+
+  if (err.message === "Origem não permitida pelo CORS.") {
+    return res.status(403).json({
+      error: "Origem não permitida pelo CORS.",
     });
   }
 
@@ -68,7 +86,6 @@ app.use((err, req, res, next) => {
     error: "Erro interno do servidor.",
   });
 });
-
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
