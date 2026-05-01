@@ -1,54 +1,18 @@
-const { requireRole } = require("../middlewares/requireRole");
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
 const { authRequired, loadUser } = require("../middlewares/auth");
+const { requireRole } = require("../middlewares/requireRole");
+const validate = require("../middlewares/validate");
+const {
+  clienteIdParamSchema,
+  clienteSchema,
+} = require("../validators/clienteSchemas");
+
 router.use(authRequired, loadUser);
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function limparTexto(value) {
-  return String(value || "").trim();
-}
-
-function limparTelefone(value) {
-  return String(value || "").replace(/\D/g, "");
-}
-
-function normalizarEmail(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function validarCliente({ nome, email, telefone }) {
-  const nomeLimpo = limparTexto(nome);
-  const emailLimpo = normalizarEmail(email);
-  const telefoneLimpo = limparTelefone(telefone);
-
-  if (!nomeLimpo) {
-    return { error: "nome é obrigatório" };
-  }
-
-  if (!telefoneLimpo) {
-    return { error: "telefone é obrigatório" };
-  }
-
-  if (telefoneLimpo.length < 10) {
-    return { error: "telefone inválido" };
-  }
-
-  if (emailLimpo && !EMAIL_REGEX.test(emailLimpo)) {
-    return { error: "email inválido" };
-  }
-
-  return {
-    nomeLimpo,
-    emailLimpo: emailLimpo || null,
-    telefoneLimpo,
-  };
-}
-
-// GET (por empresa)
+// GET /clientes
 router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
   try {
     const result = await pool.query(
@@ -56,114 +20,109 @@ router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
       [req.user.company_id]
     );
 
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
-// CREATE (por empresa)
-router.post("/", requireRole("admin", "atendimento"), async (req, res) => {
-  const validacao = validarCliente(req.body);
+// POST /clientes
+router.post(
+  "/",
+  requireRole("admin", "atendimento"),
+  validate(clienteSchema),
+  async (req, res) => {
+    try {
+      const { nome, email, telefone } = req.body;
 
-  if (validacao.error) {
-    return res.status(400).json({ error: validacao.error });
-  }
+      const result = await pool.query(
+        `
+        INSERT INTO clientes (nome, email, telefone, user_id, company_id)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+        `,
+        [
+          nome,
+          email,
+          telefone,
+          req.user.id,
+          req.user.company_id,
+        ]
+      );
 
-  const { nomeLimpo, emailLimpo, telefoneLimpo } = validacao;
-
-  try {
-    const result = await pool.query(
-      `
-      INSERT INTO clientes (nome, email, telefone, user_id, company_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-      `,
-      [
-        nomeLimpo,
-        emailLimpo,
-        telefoneLimpo,
-        req.user.id,
-        req.user.company_id,
-      ]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// UPDATE (só se for da empresa)
-router.put("/:id", requireRole("admin", "atendimento"), async (req, res) => {
-  const id = Number(req.params.id);
-
-  if (!Number.isFinite(id)) {
-    return res.status(400).json({ error: "id inválido" });
-  }
-
-  const validacao = validarCliente(req.body);
-
-  if (validacao.error) {
-    return res.status(400).json({ error: validacao.error });
-  }
-
-  const { nomeLimpo, emailLimpo, telefoneLimpo } = validacao;
-
-  try {
-    const result = await pool.query(
-      `
-      UPDATE clientes
-      SET nome = $1, email = $2, telefone = $3
-      WHERE id = $4 AND company_id = $5
-      RETURNING *
-      `,
-      [nomeLimpo, emailLimpo, telefoneLimpo, id, req.user.company_id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        error: "Cliente não encontrado (ou não pertence à sua empresa)",
-      });
+      return res.status(201).json(result.rows[0]);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
-// DELETE (só se for da empresa)
-router.delete("/:id", requireRole("admin"), async (req, res) => {
-  const id = Number(req.params.id);
+// PUT /clientes/:id
+router.put(
+  "/:id",
+  requireRole("admin", "atendimento"),
+  validate(clienteIdParamSchema, "params"),
+  validate(clienteSchema),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { nome, email, telefone } = req.body;
 
-  if (!Number.isFinite(id)) {
-    return res.status(400).json({ error: "id inválido" });
-  }
+      const result = await pool.query(
+        `
+        UPDATE clientes
+        SET nome = $1, email = $2, telefone = $3
+        WHERE id = $4 AND company_id = $5
+        RETURNING *
+        `,
+        [nome, email, telefone, id, req.user.company_id]
+      );
 
-  try {
-    const result = await pool.query(
-      "DELETE FROM clientes WHERE id = $1 AND company_id = $2 RETURNING *",
-      [id, req.user.company_id]
-    );
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          error: "Cliente não encontrado (ou não pertence à sua empresa)",
+        });
+      }
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        error: "Cliente não encontrado (ou não pertence à sua empresa)",
-      });
+      return res.json(result.rows[0]);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
-
-    res.json({ deleted: result.rows[0] });
-  } catch (err) {
-    if (err.code === "23503") {
-      return res.status(409).json({
-        error:
-          "Não é possível excluir este cliente porque ele possui ordens de serviço vinculadas.",
-      });
-    }
-
-    res.status(500).json({ error: err.message });
   }
-});
+);
+
+// DELETE /clientes/:id
+router.delete(
+  "/:id",
+  requireRole("admin"),
+  validate(clienteIdParamSchema, "params"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const result = await pool.query(
+        "DELETE FROM clientes WHERE id = $1 AND company_id = $2 RETURNING *",
+        [id, req.user.company_id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          error: "Cliente não encontrado (ou não pertence à sua empresa)",
+        });
+      }
+
+      return res.json({ deleted: result.rows[0] });
+    } catch (err) {
+      if (err.code === "23503") {
+        return res.status(409).json({
+          error:
+            "Não é possível excluir este cliente porque ele possui ordens de serviço vinculadas.",
+        });
+      }
+
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 module.exports = router;
