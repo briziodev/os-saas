@@ -1,3 +1,4 @@
+const { loginLimiter } = require("../middlewares/rateLimiters");
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
@@ -26,7 +27,7 @@ router.post("/register", async (req, res) => {
 });
 
 // LOGIN
-router.post("/login", validate(loginSchema), async (req, res) => {
+router.post("/login", loginLimiter, validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
 
