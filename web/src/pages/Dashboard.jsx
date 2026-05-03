@@ -32,14 +32,13 @@ export default function Dashboard() {
   const [period, setPeriod] = useState("month");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
   const user = getUser();
   const isTecnico = user?.role === "tecnico";
+
   if (user?.role !== "admin" && user?.role !== "atendimento") {
-  return <Navigate to="/os" replace />;
-}
-
-
-
+    return <Navigate to="/os" replace />;
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -54,7 +53,11 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadDashboard(nextPeriod = period, nextStart = startDate, nextEnd = endDate) {
+  async function loadDashboard(
+    nextPeriod = period,
+    nextStart = startDate,
+    nextEnd = endDate
+  ) {
     try {
       setLoading(true);
       setError("");
@@ -64,10 +67,19 @@ export default function Dashboard() {
 
       if (nextPeriod === "custom") {
         if (!nextStart || !nextEnd) {
-          setError("Informe data inicial e final para o período personalizado.");
+          setError(
+            "Informe a data inicial e a data final para aplicar o período personalizado."
+          );
           setLoading(false);
           return;
         }
+
+        if (nextStart > nextEnd) {
+          setError("A data inicial não pode ser maior que a data final.");
+          setLoading(false);
+          return;
+        }
+
         params.set("start_date", nextStart);
         params.set("end_date", nextEnd);
       }
@@ -128,7 +140,7 @@ export default function Dashboard() {
         <PageHeader
           eyebrow="Painel da oficina"
           title="Dashboard"
-          description="Visão rápida da operação, orçamentos e últimas ordens de serviço."
+          description="Visão por período da operação, orçamentos, OS encerradas e resultado financeiro."
           right={
             <>
               {!isTecnico && (
@@ -163,24 +175,32 @@ export default function Dashboard() {
             </>
           }
           footer={
-            <div className="page-header-footer" style={{ gap: 10, flexWrap: "wrap" }}>
-              <div className="info-chip info-chip--dark">São Paulo agora: {agoraSP}</div>
-              <div className="info-chip">Período: {periodInfo?.label || "-"}</div>
+            <div
+              className="page-header-footer"
+              style={{ gap: 10, flexWrap: "wrap" }}
+            >
+              <div className="info-chip info-chip--dark">
+                São Paulo agora: {agoraSP}
+              </div>
+              <div className="info-chip">
+                Período aplicado: {periodInfo?.label || "-"}
+              </div>
             </div>
           }
         />
 
         {error ? (
-          <div className="card alert alert--error section">
-            Erro: {error}
-          </div>
+          <div className="card alert alert--error section">Erro: {error}</div>
         ) : null}
 
         <div className="card section filter-panel">
           <div className="filter-bar">
             <div className="filter-bar-field">
               <label className="label">Período do dashboard</label>
-              <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
                 {PERIOD_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
@@ -212,7 +232,11 @@ export default function Dashboard() {
             )}
 
             <div className="filter-bar-action filter-bar-action--spaced">
-              <button className="btn btn--primary" type="button" onClick={applyFilters}>
+              <button
+                className="btn btn--primary"
+                type="button"
+                onClick={applyFilters}
+              >
                 Aplicar período
               </button>
             </div>
@@ -220,6 +244,13 @@ export default function Dashboard() {
         </div>
 
         <div className="section grid-4">
+          <StatCard
+            title="OS abertas no período"
+            value={cards?.abertas_periodo ?? 0}
+            hint="Total de OS criadas dentro do período selecionado"
+            kpiClass="kpi--blue"
+          />
+
           <StatCard
             title="Em andamento"
             value={cards?.em_andamento ?? 0}
@@ -259,7 +290,9 @@ export default function Dashboard() {
 
           {ultimas_os?.length === 0 ? (
             <div className="card">
-              <div className="muted">Nenhuma OS encontrada para este período.</div>
+              <div className="muted">
+                Nenhuma OS encontrada para este período.
+              </div>
 
               <div className="page-header-footer">
                 {!isTecnico && (

@@ -32,6 +32,8 @@ function parsePeriodRange(query) {
   if (period === "today") {
     return {
       period,
+      startDate: null,
+      endDate: null,
       createdClause:
         "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo')::date = (now() AT TIME ZONE 'America/Sao_Paulo')::date",
       closedClause:
@@ -44,6 +46,8 @@ function parsePeriodRange(query) {
   if (period === "7d") {
     return {
       period,
+      startDate: null,
+      endDate: null,
       createdClause:
         "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo')::date >= ((now() AT TIME ZONE 'America/Sao_Paulo')::date - 6)",
       closedClause:
@@ -56,6 +60,8 @@ function parsePeriodRange(query) {
   if (period === "all") {
     return {
       period,
+      startDate: null,
+      endDate: null,
       createdClause: "",
       closedClause: "",
       params: (companyId) => [companyId],
@@ -65,6 +71,8 @@ function parsePeriodRange(query) {
 
   return {
     period: "month",
+    startDate: null,
+    endDate: null,
     createdClause:
       "AND (os.created_at AT TIME ZONE 'America/Sao_Paulo') >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') AND (os.created_at AT TIME ZONE 'America/Sao_Paulo') < (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') + interval '1 month')",
     closedClause:
@@ -79,11 +87,19 @@ router.get(
   "/",
   requireRole("admin", "atendimento"),
   validate(dashboardQuerySchema, "query"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const companyId = req.user.company_id;
       const range = parsePeriodRange(req.query);
       const baseParams = range.params(companyId);
+
+      const abertasPeriodoQ = pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM ordens_servico os
+         WHERE os.company_id = $1
+         ${range.createdClause}`,
+        baseParams
+      );
 
       const emAndamentoQ = pool.query(
         `SELECT COUNT(*)::int AS total
@@ -124,7 +140,7 @@ router.get(
       );
 
       const faturamentoPeriodoQ = pool.query(
-        `SELECT COALESCE(SUM(os.valor_total),0)::numeric(12,2) AS total
+        `SELECT COALESCE(SUM(os.valor_total), 0)::numeric(12,2) AS total
          FROM ordens_servico os
          WHERE os.company_id = $1
          AND os.status IN ('encerrado', 'finalizado')
@@ -164,6 +180,7 @@ router.get(
       );
 
       const [
+        abertasPeriodo,
         emAndamento,
         orcPendentes,
         finalizadosPeriodo,
@@ -171,6 +188,7 @@ router.get(
         porStatus,
         ultimasOS,
       ] = await Promise.all([
+        abertasPeriodoQ,
         emAndamentoQ,
         orcPendentesQ,
         finalizadosPeriodoQ,
@@ -185,10 +203,11 @@ router.get(
         period: {
           key: range.period,
           label: range.label,
-          start_date: range.startDate || null,
-          end_date: range.endDate || null,
+          start_date: range.startDate,
+          end_date: range.endDate,
         },
         cards: {
+          abertas_periodo: abertasPeriodo.rows[0].total,
           em_andamento: emAndamento.rows[0].total,
           orcamentos_pendentes: orcPendentes.rows[0].total,
           finalizados_no_periodo: finalizadosPeriodo.rows[0].total,
@@ -198,7 +217,7 @@ router.get(
         ultimas_os: ultimasOS.rows,
       });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );

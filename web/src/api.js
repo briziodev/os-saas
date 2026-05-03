@@ -38,7 +38,9 @@ export async function apiFetch(path, options = {}, config = {}) {
     .get("content-type")
     ?.includes("application/json");
 
-  const data = isJson ? await response.json().catch(() => ({})) : await response.text();
+  const data = isJson
+    ? await response.json().catch(() => ({}))
+    : await response.text();
 
   if (response.status === 401) {
     clearToken();
@@ -46,16 +48,35 @@ export async function apiFetch(path, options = {}, config = {}) {
   }
 
   if (!response.ok) {
-    const message =
+    let message =
       (typeof data === "object" && data?.error) ||
       (typeof data === "string" && data) ||
       "Erro na requisição";
+
+    if (
+      typeof data === "object" &&
+      Array.isArray(data?.details) &&
+      data.details.length > 0
+    ) {
+      const detailMessages = data.details
+        .map((item) => item?.message)
+        .filter(Boolean)
+        .join(" ");
+
+      if (detailMessages) {
+        message = `${message}: ${detailMessages}`;
+      }
+    }
+
+    if (typeof data === "object" && data?.requestId) {
+      message = `${message} Código: ${data.requestId}`;
+    }
+
     throw new Error(message);
   }
 
   return data;
 }
-
 
 export function getUser() {
   try {
