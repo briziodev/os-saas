@@ -94,18 +94,20 @@ export default function OSDetail() {
     try {
       setLoading(true);
       if (!preserveMessage) setMsg("");
+const osData = await apiFetch(`/os/${id}`);
 
-      const [osData, pecasData] = await Promise.all([
-        apiFetch(`/os/${id}`),
-        apiFetch(`/os/${id}/pecas`),
-      ]);
+let pecasData = [];
 
-      const nextForm = buildFormState(osData);
+if (!isTecnico) {
+  pecasData = await apiFetch(`/os/${id}/pecas`);
+}
 
-      setOs(osData);
-      setPecas(Array.isArray(pecasData) ? pecasData : []);
-      setForm(nextForm);
-      setInitialForm(nextForm);
+const nextForm = buildFormState(osData);
+
+setOs(osData);
+setPecas(Array.isArray(pecasData) ? pecasData : []);
+setForm(nextForm);
+setInitialForm(nextForm);
     } catch (error) {
       setMsg(error.message);
     } finally {
@@ -192,16 +194,23 @@ export default function OSDetail() {
       setSaving(true);
       setMsg("");
 
-      await apiFetch(`/os/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          problema_relatado: problemaRelatado,
-          modelo: form.modelo.trim(),
-          placa: form.placa.trim(),
-          mao_obra: parseMoneyInput(form.mao_obra),
-          status: form.status,
-        }),
-      });
+const payload = isTecnico
+  ? {
+      problema_relatado: problemaRelatado,
+      status: form.status,
+    }
+  : {
+      problema_relatado: problemaRelatado,
+      modelo: form.modelo.trim(),
+      placa: form.placa.trim(),
+      mao_obra: parseMoneyInput(form.mao_obra),
+      status: form.status,
+    };
+
+await apiFetch(`/os/${id}`, {
+  method: "PUT",
+  body: JSON.stringify(payload),
+});
 
       await loadOS({ preserveMessage: true });
       setMsg(`OS #${id} salva com sucesso.`);
@@ -639,9 +648,13 @@ export default function OSDetail() {
         <div className="section">
           <div className="card">
             <SectionTitle
-              title="Editar OS"
-              subtitle="Atualize dados, valores e andamento do serviço."
-            />
+  title="Editar OS"
+  subtitle={
+    isTecnico
+      ? "Atualize a descrição técnica e o status do serviço."
+      : "Atualize dados, valores e andamento do serviço."
+  }
+/>
 
             <div className="form-group">
              <label className="label">Descrição do serviço</label>
