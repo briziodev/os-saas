@@ -6,11 +6,12 @@ export default function Usuarios() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-const [name, setName] = useState("");
-const [email, setEmail] = useState("");
-const [phone, setPhone] = useState("");
-const [role, setRole] = useState("atendimento");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState("atendimento");
 
   const [inviteResult, setInviteResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -52,20 +53,30 @@ const [role, setRole] = useState("atendimento");
     try {
       setSubmitting(true);
       setError("");
+      setNotice("");
       setInviteResult(null);
       setCopiedTopLink(false);
 
       const data = await apiFetch("/users/invite", {
         method: "POST",
-        body: JSON.stringify({ name, email, phone, role }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          role,
+        }),
       });
 
-      setInviteResult(data);
+      setInviteResult({
+        ...data,
+        type: "created",
+      });
 
+      setNotice("Convite criado com sucesso. Copie o link ou envie pelo WhatsApp.");
       setName("");
-setEmail("");
-setPhone("");
-setRole("atendimento");
+      setEmail("");
+      setPhone("");
+      setRole("atendimento");
 
       await loadUsers();
     } catch (err) {
@@ -88,11 +99,13 @@ setRole("atendimento");
 
   async function copyTopInviteLink() {
     const ok = await copyText(inviteResult?.invite_link);
+
     if (!ok) {
-      setError("Não foi possível copiar o link.");
+      setError("Não foi possível copiar automaticamente. Selecione o link e copie manualmente.");
       return;
     }
 
+    setError("");
     setCopiedTopLink(true);
     setTimeout(() => setCopiedTopLink(false), 2000);
   }
@@ -100,10 +113,14 @@ setRole("atendimento");
   async function changeRole(id, newRole) {
     try {
       setError("");
+      setNotice("");
+
       await apiFetch(`/users/${id}/role`, {
         method: "PATCH",
         body: JSON.stringify({ role: newRole }),
       });
+
+      setNotice("Perfil atualizado com sucesso.");
       await loadUsers();
     } catch (err) {
       setError(err.message || "Erro ao trocar perfil");
@@ -113,9 +130,13 @@ setRole("atendimento");
   async function toggleActive(id) {
     try {
       setError("");
+      setNotice("");
+
       await apiFetch(`/users/${id}/toggle-active`, {
         method: "PATCH",
       });
+
+      setNotice("Status do usuário atualizado com sucesso.");
       await loadUsers();
     } catch (err) {
       setError(err.message || "Erro ao alterar status do usuário");
@@ -125,23 +146,47 @@ setRole("atendimento");
   async function resendInvite(id) {
     try {
       setError("");
+      setNotice("");
+      setCopiedTopLink(false);
+
       const data = await apiFetch(`/users/${id}/resend-invite`, {
         method: "POST",
       });
 
-      const ok = await copyText(data?.invite_link);
-      if (!ok) {
-        setError("Link gerado, mas não foi possível copiar automaticamente.");
-        return;
-      }
+      setInviteResult({
+        ...data,
+        type: "resent",
+      });
 
-      setCopiedUserId(id);
-      setTimeout(() => setCopiedUserId(null), 2000);
+      const ok = await copyText(data?.invite_link);
+
+      if (ok) {
+        setCopiedUserId(id);
+        setCopiedTopLink(true);
+        setNotice("Convite reenviado e link copiado.");
+        setTimeout(() => setCopiedUserId(null), 2000);
+        setTimeout(() => setCopiedTopLink(false), 2000);
+      } else {
+        setNotice("Convite reenviado. Não foi possível copiar automaticamente, mas o link está visível acima.");
+      }
 
       await loadUsers();
     } catch (err) {
       setError(err.message || "Erro ao reenviar convite");
     }
+  }
+
+  function getInviteTitle() {
+    if (inviteResult?.type === "resent") return "Convite reenviado";
+    return "Convite criado";
+  }
+
+  function getInviteDescription() {
+    if (inviteResult?.type === "resent") {
+      return "Um novo link foi gerado. O link antigo deixa de ser o link recomendado.";
+    }
+
+    return "Link de ativação criado agora. Envie este link para o usuário definir a senha.";
   }
 
   return (
@@ -163,6 +208,9 @@ setRole("atendimento");
           </div>
         </div>
 
+        {error && <div className="alert--error">Erro: {error}</div>}
+        {notice && <div className="soft-box">{notice}</div>}
+
         <div className="card stack">
           <h2>Convidar usuário</h2>
 
@@ -172,6 +220,7 @@ setRole("atendimento");
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Nome do usuário"
                 required
               />
             </div>
@@ -179,24 +228,22 @@ setRole("atendimento");
             <div className="form-group">
               <label className="label">Email</label>
               <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="usuario@oficina.com"
                 required
               />
             </div>
 
             <div className="form-group">
-  <label className="label">Telefone (opcional)</label>
-  <input
-    value={phone}
-    onChange={(e) => setPhone(e.target.value)}
-    placeholder="Ex.: 44999887766"
-  />
-</div>
-
-
-
-
+              <label className="label">Telefone para WhatsApp (opcional)</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Ex.: 44999887766"
+              />
+            </div>
 
             <div className="form-group">
               <label className="label">Perfil</label>
@@ -215,11 +262,9 @@ setRole("atendimento");
 
           {inviteResult && (
             <div className="soft-box stack">
-              <strong>Convite criado</strong>
+              <strong>{getInviteTitle()}</strong>
 
-              <div className="muted">
-                Link de ativação do usuário criado agora:
-              </div>
+              <div className="muted">{getInviteDescription()}</div>
 
               <textarea
                 readOnly
@@ -258,6 +303,10 @@ setRole("atendimento");
                   </a>
                 )}
               </div>
+
+              <div className="muted">
+                Este link é sensível. Envie somente para o usuário convidado.
+              </div>
             </div>
           )}
         </div>
@@ -266,7 +315,6 @@ setRole("atendimento");
           <h2>Usuários da empresa</h2>
 
           {loading && <div>Carregando...</div>}
-          {error && <div className="alert--error">Erro: {error}</div>}
 
           {!loading && users.length === 0 && (
             <div className="muted">Nenhum usuário encontrado</div>
@@ -293,6 +341,12 @@ setRole("atendimento");
                       <span className="badge badge--warning">Convite pendente</span>
                     )}
                   </div>
+
+                  {u.invite_expires_at && !u.is_active ? (
+                    <div className="muted" style={{ marginTop: 6 }}>
+                      Convite válido até: {formatarDataHora(u.invite_expires_at)}
+                    </div>
+                  ) : null}
 
                   <div
                     className="row"
@@ -336,7 +390,7 @@ setRole("atendimento");
                         </button>
 
                         <div className="muted" style={{ width: "100%", marginTop: 4 }}>
-                          Ao reenviar, o novo link já é copiado automaticamente.
+                          Ao reenviar, um novo link será gerado e exibido acima.
                         </div>
                       </>
                     )}
@@ -362,4 +416,16 @@ function formatRoleLabel(role) {
   if (role === "atendimento") return "Atendimento";
   if (role === "tecnico") return "Técnico";
   return role || "-";
+}
+
+function formatarDataHora(valor) {
+  if (!valor) return "Não informado";
+
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return valor;
+
+  return data.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }

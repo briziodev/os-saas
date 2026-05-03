@@ -16,7 +16,7 @@ function formatarDataHora(valor) {
 export default function AtivarConta() {
   const [token, setToken] = useState("");
   const [invite, setInvite] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [inviteStatus, setInviteStatus] = useState("loading");
   const [submitting, setSubmitting] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,10 +28,11 @@ export default function AtivarConta() {
     const tokenFromUrl = String(params.get("token") || "").trim();
 
     setToken(tokenFromUrl);
+    clearToken();
 
     if (!tokenFromUrl) {
-      setError("Link de ativação inválido.");
-      setLoading(false);
+      setInviteStatus("invalid");
+      setError("Link de ativação inválido. Peça um novo convite para a oficina.");
       return;
     }
 
@@ -40,6 +41,7 @@ export default function AtivarConta() {
     async function validarConvite() {
       try {
         setError("");
+        setInviteStatus("loading");
 
         const data = await apiFetch(
           `/auth/invite/${tokenFromUrl}`,
@@ -48,12 +50,15 @@ export default function AtivarConta() {
         );
 
         if (!ativo) return;
+
         setInvite(data);
+        setInviteStatus("valid");
       } catch (err) {
         if (!ativo) return;
+
+        setInvite(null);
+        setInviteStatus("invalid");
         setError(err.message || "Não foi possível validar o convite.");
-      } finally {
-        if (ativo) setLoading(false);
       }
     }
 
@@ -67,13 +72,18 @@ export default function AtivarConta() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (inviteStatus !== "valid") {
+      setError("Este convite não está válido para ativação.");
+      return;
+    }
+
     if (!token) {
       setError("Token obrigatório.");
       return;
     }
 
     if (!password || password.length < 6) {
-      setError("Senha mínimo 6 caracteres.");
+      setError("A senha precisa ter no mínimo 6 caracteres.");
       return;
     }
 
@@ -100,6 +110,7 @@ export default function AtivarConta() {
       );
 
       setSuccess(data.message || "Conta ativada com sucesso.");
+      setInviteStatus("activated");
       setPassword("");
       setConfirmPassword("");
       clearToken();
@@ -154,7 +165,7 @@ export default function AtivarConta() {
         </section>
 
         <section className="auth-card">
-          {loading ? (
+          {inviteStatus === "loading" ? (
             <>
               <div className="auth-card-head">
                 <h2 className="auth-card-title">Validando convite</h2>
@@ -163,7 +174,7 @@ export default function AtivarConta() {
                 </p>
               </div>
             </>
-          ) : success ? (
+          ) : inviteStatus === "activated" || success ? (
             <>
               <div className="auth-card-head">
                 <h2 className="auth-card-title">Conta ativada</h2>
@@ -178,6 +189,33 @@ export default function AtivarConta() {
                 <p className="section-gap-sm muted">
                   {invite?.user?.email || "Email não informado"}
                 </p>
+              </div>
+
+              <div className="section-gap-md">
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={irParaLogin}
+                >
+                  Ir para o login
+                </button>
+              </div>
+            </>
+          ) : inviteStatus === "invalid" ? (
+            <>
+              <div className="auth-card-head">
+                <h2 className="auth-card-title">Convite inválido ou expirado</h2>
+                <p className="auth-card-text">
+                  Este link não pode ser usado para ativar uma conta.
+                </p>
+              </div>
+
+              {error ? (
+                <div className="auth-error section-gap-md">{error}</div>
+              ) : null}
+
+              <div className="auth-footer auth-note section-gap-md">
+                Peça para o administrador da oficina reenviar um novo convite.
               </div>
 
               <div className="section-gap-md">
@@ -213,6 +251,13 @@ export default function AtivarConta() {
                     </div>
 
                     <div>
+                      <strong>Perfil</strong>
+                      <p className="section-gap-sm muted">
+                        {formatRoleLabel(invite.user.role)}
+                      </p>
+                    </div>
+
+                    <div>
                       <strong>Validade do convite</strong>
                       <p className="section-gap-sm muted">
                         {formatarDataHora(invite.expires_at)}
@@ -222,7 +267,9 @@ export default function AtivarConta() {
                 </div>
               ) : null}
 
-              {error ? <div className="auth-error section-gap-md">{error}</div> : null}
+              {error ? (
+                <div className="auth-error section-gap-md">{error}</div>
+              ) : null}
 
               <form className="auth-form section-gap-md" onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -252,7 +299,7 @@ export default function AtivarConta() {
                 <button
                   type="submit"
                   className="btn btn--primary"
-                  disabled={submitting || loading}
+                  disabled={submitting}
                 >
                   {submitting ? "Ativando..." : "Ativar conta"}
                 </button>
@@ -267,4 +314,11 @@ export default function AtivarConta() {
       </div>
     </div>
   );
+}
+
+function formatRoleLabel(role) {
+  if (role === "admin") return "Admin";
+  if (role === "atendimento") return "Atendimento";
+  if (role === "tecnico") return "Técnico";
+  return role || "-";
 }

@@ -35,6 +35,18 @@ function montarInviteLink(token) {
   return `${baseUrl.replace(/\/$/, "")}/ativar-conta?token=${token}`;
 }
 
+function normalizarTelefoneBrasil(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+
+  if (!digits) return null;
+
+  if (digits.startsWith("55")) {
+    return digits;
+  }
+
+  return `55${digits}`;
+}
+
 function getTargetId(req) {
   return Number(req.params.id);
 }
@@ -154,8 +166,9 @@ router.post(
           `Este link é válido por 72 horas.`
       );
 
-      const whatsappLink = phone
-        ? `https://wa.me/55${phone}?text=${whatsappText}`
+      const phoneNormalized = normalizarTelefoneBrasil(phone);
+      const whatsappLink = phoneNormalized
+        ? `https://wa.me/${phoneNormalized}?text=${whatsappText}`
         : null;
 
       logger.info("USER_INVITE_CREATED", "Convite de usuário criado", {
