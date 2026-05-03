@@ -322,7 +322,13 @@ export default function Usuarios() {
 
           <div className="list">
             {users.map((u) => {
-              const isSelf = currentUser?.id === u.id;
+  const isSelf = currentUser?.id === u.id;
+
+  const isPendingInvite =
+    !u.is_active && !u.activated_at && Boolean(u.invite_expires_at);
+
+  const canToggleActive = !isSelf && (u.is_active || !isPendingInvite);
+  const canResendInvite = !isSelf && isPendingInvite;
 
               return (
                 <div key={u.id} className="table-like-row">
@@ -336,17 +342,19 @@ export default function Usuarios() {
                     </span>
 
                     {u.is_active ? (
-                      <span className="badge badge--success">Ativo</span>
-                    ) : (
-                      <span className="badge badge--warning">Convite pendente</span>
-                    )}
+  <span className="badge badge--success">Ativo</span>
+) : isPendingInvite ? (
+  <span className="badge badge--warning">Convite pendente</span>
+) : (
+  <span className="badge badge--default">Inativo</span>
+)}
                   </div>
 
-                  {u.invite_expires_at && !u.is_active ? (
-                    <div className="muted" style={{ marginTop: 6 }}>
-                      Convite válido até: {formatarDataHora(u.invite_expires_at)}
-                    </div>
-                  ) : null}
+                  {isPendingInvite ? (
+  <div className="muted" style={{ marginTop: 6 }}>
+    Convite válido até: {formatarDataHora(u.invite_expires_at)}
+  </div>
+) : null}
 
                   <div
                     className="row"
@@ -367,17 +375,17 @@ export default function Usuarios() {
                       </button>
                     )}
 
-                    {!isSelf && (
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => toggleActive(u.id)}
-                      >
-                        {u.is_active ? "Desativar" : "Ativar"}
-                      </button>
-                    )}
+                    {canToggleActive && (
+  <button
+    type="button"
+    className="btn btn--ghost"
+    onClick={() => toggleActive(u.id)}
+  >
+    {u.is_active ? "Desativar" : "Ativar"}
+  </button>
+)}
 
-                    {!isSelf && !u.is_active && (
+                    {canResendInvite && (
                       <>
                         <button
                           type="button"

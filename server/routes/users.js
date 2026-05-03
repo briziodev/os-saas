@@ -273,7 +273,6 @@ router.patch(
     }
   }
 );
-
 // PATCH /users/:id/toggle-active
 router.patch(
   "/:id/toggle-active",
@@ -298,7 +297,13 @@ router.patch(
       }
 
       const user = await pool.query(
-        `SELECT id, email, role, is_active
+        `SELECT
+           id,
+           email,
+           role,
+           is_active,
+           activated_at,
+           invite_expires_at
          FROM users
          WHERE id = $1 AND company_id = $2`,
         [targetId, req.user.company_id]
@@ -322,6 +327,29 @@ router.patch(
       const targetUser = user.rows[0];
       const oldStatus = targetUser.is_active;
       const newStatus = !targetUser.is_active;
+
+      const isPendingInvite =
+        !targetUser.is_active &&
+        !targetUser.activated_at &&
+        Boolean(targetUser.invite_expires_at);
+
+      if (newStatus === true && isPendingInvite) {
+        logger.warn("USER_STATUS_CHANGE_BLOCKED_PENDING_INVITE", "Admin tentou ativar manualmente usuário com convite pendente", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetUser.id,
+          targetEmail: maskEmail(targetUser.email),
+          targetRole: targetUser.role,
+          inviteExpiresAt: targetUser.invite_expires_at,
+          ip: req.ip,
+        });
+
+        return res.status(400).json({
+          error: "Usuário com convite pendente deve ativar a conta pelo link de convite. Reenvie o convite em vez de ativar manualmente.",
+          requestId: req.requestId,
+        });
+      }
 
       await pool.query(
         `UPDATE users
@@ -351,7 +379,6 @@ router.patch(
     }
   }
 );
-
 // POST /users/:id/resend-invite
 router.post(
   "/:id/resend-invite",
