@@ -34,11 +34,9 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState("");
 
   const user = getUser();
-  const isTecnico = user?.role === "tecnico";
-
-  if (user?.role !== "admin" && user?.role !== "atendimento") {
-    return <Navigate to="/os" replace />;
-  }
+  const isAdmin = user?.role === "admin";
+  const isAtendimento = user?.role === "atendimento";
+  const canAccessDashboard = isAdmin || isAtendimento;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -49,9 +47,11 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (!canAccessDashboard) return;
+
     loadDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canAccessDashboard]);
 
   async function loadDashboard(
     nextPeriod = period,
@@ -108,11 +108,15 @@ export default function Dashboard() {
     window.location.href = "/login";
   }
 
+  if (!canAccessDashboard) {
+    return <Navigate to="/os" replace />;
+  }
+
   if (loading) {
     return (
-      <div className="page">
-        <div className="container">
-          <div className="card">
+      <div className="page dashboard-page">
+        <div className="container dashboard-container">
+          <div className="card dashboard-state-card">
             <div className="muted">Carregando dashboard...</div>
           </div>
         </div>
@@ -122,9 +126,9 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="page">
-        <div className="container">
-          <div className="card">
+      <div className="page dashboard-page">
+        <div className="container dashboard-container">
+          <div className="card dashboard-state-card">
             <div className="muted">Sem dados para exibir.</div>
           </div>
         </div>
@@ -135,19 +139,17 @@ export default function Dashboard() {
   const { cards, ultimas_os, period: periodInfo } = data;
 
   return (
-    <div className="page">
-      <div className="container">
+    <div className="page dashboard-page">
+      <div className="container dashboard-container">
         <PageHeader
           eyebrow="Painel da oficina"
           title="Dashboard"
           description="Visão por período da operação, orçamentos, OS encerradas e resultado financeiro."
           right={
             <>
-              {!isTecnico && (
-                <Link to="/os/new">
-                  <button className="btn btn--solid">Nova OS</button>
-                </Link>
-              )}
+              <Link to="/os/new" className="header-action--main">
+                <button className="btn btn--solid">Nova OS</button>
+              </Link>
 
               <Link to="/os">
                 <button className="btn btn--ghost-dark">OS</button>
@@ -157,13 +159,11 @@ export default function Dashboard() {
                 <button className="btn btn--ghost-dark">Quadro de OS</button>
               </Link>
 
-              {!isTecnico && (
-                <Link to="/clientes">
-                  <button className="btn btn--ghost-dark">Clientes</button>
-                </Link>
-              )}
+              <Link to="/clientes">
+                <button className="btn btn--ghost-dark">Clientes</button>
+              </Link>
 
-              {user?.role === "admin" && (
+              {isAdmin && (
                 <Link to="/usuarios">
                   <button className="btn btn--ghost-dark">Usuários</button>
                 </Link>
@@ -175,14 +175,11 @@ export default function Dashboard() {
             </>
           }
           footer={
-            <div
-              className="page-header-footer"
-              style={{ gap: 10, flexWrap: "wrap" }}
-            >
-              <div className="info-chip info-chip--dark">
+            <div className="page-header-footer dashboard-header-footer">
+              <div className="info-chip info-chip--dark dashboard-info-chip">
                 São Paulo agora: {agoraSP}
               </div>
-              <div className="info-chip">
+              <div className="info-chip info-chip--dark dashboard-info-chip">
                 Período aplicado: {periodInfo?.label || "-"}
               </div>
             </div>
@@ -193,9 +190,9 @@ export default function Dashboard() {
           <div className="card alert alert--error section">Erro: {error}</div>
         ) : null}
 
-        <div className="card section filter-panel">
-          <div className="filter-bar">
-            <div className="filter-bar-field">
+        <div className="card section filter-panel dashboard-filter-panel">
+          <div className="filter-bar dashboard-filter-bar">
+            <div className="filter-bar-field dashboard-period-field">
               <label className="label">Período do dashboard</label>
               <select
                 value={period}
@@ -211,7 +208,7 @@ export default function Dashboard() {
 
             {period === "custom" && (
               <>
-                <div className="filter-bar-field">
+                <div className="filter-bar-field dashboard-date-field">
                   <label className="label">Data inicial</label>
                   <input
                     type="date"
@@ -220,7 +217,7 @@ export default function Dashboard() {
                   />
                 </div>
 
-                <div className="filter-bar-field">
+                <div className="filter-bar-field dashboard-date-field">
                   <label className="label">Data final</label>
                   <input
                     type="date"
@@ -231,7 +228,7 @@ export default function Dashboard() {
               </>
             )}
 
-            <div className="filter-bar-action filter-bar-action--spaced">
+            <div className="filter-bar-action dashboard-filter-action">
               <button
                 className="btn btn--primary"
                 type="button"
@@ -243,7 +240,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="section grid-4">
+        <div className="section grid-4 dashboard-stat-grid">
           <StatCard
             title="OS abertas no período"
             value={cards?.abertas_periodo ?? 0}
@@ -272,42 +269,48 @@ export default function Dashboard() {
             kpiClass="kpi--green"
           />
 
-          {user?.role === "admin" && (
+          {isAdmin && (
             <StatCard
               title="Faturamento do período"
               value={money(cards?.faturamento_periodo ?? 0)}
               hint="Somente OS encerradas/finalizadas"
-              kpiClass="kpi--dark"
+              kpiClass="kpi--dark kpi--currency"
+              cardClassName="stat-card--revenue"
             />
           )}
         </div>
 
-        <div className="section">
+        <div className="section dashboard-section">
           <SectionTitle
             title="Últimas OS do período"
             subtitle="As ordens mais recentes dentro do filtro selecionado."
           />
 
           {ultimas_os?.length === 0 ? (
-            <div className="card">
-              <div className="muted">
-                Nenhuma OS encontrada para este período.
+            <div className="card dashboard-empty-card">
+              <div>
+                <strong>Nenhuma OS encontrada para este período.</strong>
+                <div className="section-subtitle">
+                  Altere o filtro ou crie uma nova ordem de serviço.
+                </div>
               </div>
 
-              <div className="page-header-footer">
-                {!isTecnico && (
-                  <Link to="/os/new">
-                    <button className="btn btn--solid">Criar nova OS</button>
-                  </Link>
-                )}
+              <div className="page-header-footer dashboard-empty-actions">
+                <Link to="/os/new">
+                  <button className="btn btn--solid">Criar nova OS</button>
+                </Link>
               </div>
             </div>
           ) : (
-            <div className="card">
+            <div className="card dashboard-os-card">
               <div className="list">
                 {ultimas_os.map((os) => (
-                  <DashboardOsRow key={os.id} os={os} isTecnico={isTecnico} />
-                ))}
+  <DashboardOsRow
+    key={os.id}
+    os={os}
+    canShowFinancials={isAdmin}
+  />
+))}
               </div>
             </div>
           )}
@@ -317,12 +320,12 @@ export default function Dashboard() {
   );
 }
 
-function DashboardOsRow({ os, isTecnico }) {
+function DashboardOsRow({ os, canShowFinancials }) {
   const toneClass = statusToneClass(os.status);
 
   return (
     <div className={`table-like-row table-like-row--status ${toneClass}`}>
-      <div className="os-row">
+      <div className="os-row dashboard-os-row">
         <div className="os-row-main">
           <div className="os-row-head">
             <Link to={`/os/${os.id}`} className="os-row-title-link">
@@ -343,15 +346,17 @@ function DashboardOsRow({ os, isTecnico }) {
           </div>
         </div>
 
-        <div className="os-row-side">
-          <div className="meta-label">Criada em</div>
-          <div className="meta-value">{formatDateBR(os.created_at)}</div>
+        <div className="os-row-side dashboard-os-row-side">
+          <div>
+            <div className="meta-label">Criada em</div>
+            <div className="meta-value">{formatDateBR(os.created_at)}</div>
+          </div>
 
-          {!isTecnico ? (
-            <>
-              <div className="meta-label page-header-footer">Valor total</div>
+          {canShowFinancials ? (
+            <div>
+              <div className="meta-label">Valor total</div>
               <div className="meta-value-strong">{money(os.valor_total)}</div>
-            </>
+            </div>
           ) : null}
         </div>
       </div>
@@ -359,9 +364,9 @@ function DashboardOsRow({ os, isTecnico }) {
   );
 }
 
-function StatCard({ title, value, hint, kpiClass = "kpi--dark" }) {
+function StatCard({ title, value, hint, kpiClass = "kpi--dark", cardClassName = "" }) {
   return (
-    <div className="card">
+    <div className={`card stat-card ${cardClassName}`.trim()}>
       <div className="stat-card-title">{title}</div>
       <div className={`kpi ${kpiClass}`}>{value}</div>
       <div className="stat-card-hint">{hint}</div>
@@ -371,7 +376,7 @@ function StatCard({ title, value, hint, kpiClass = "kpi--dark" }) {
 
 function PageHeader({ eyebrow, title, description, right, footer }) {
   return (
-    <div className="topbar">
+    <div className="topbar dashboard-topbar">
       <div className="page-header-meta">
         <div className="page-eyebrow">{eyebrow}</div>
         <h1 className="page-title">{title}</h1>
@@ -379,7 +384,9 @@ function PageHeader({ eyebrow, title, description, right, footer }) {
         {footer || null}
       </div>
 
-      <div className="form-actions header-actions">{right}</div>
+      <div className="form-actions header-actions dashboard-header-actions">
+        {right}
+      </div>
     </div>
   );
 }

@@ -1916,6 +1916,7 @@ textarea:focus {
     font-size: 14px;
   }
 
+}
 
 
 
@@ -2101,6 +2102,8 @@ textarea:focus {
 
 
 
+
+}
 
 
   
@@ -2634,5 +2637,515 @@ textarea:focus {
   .card .piece-form-actions,
   .section .piece-form-actions {
     grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* =========================
+   SEMANA 7 - DASHBOARD UX
+   Escopo: apenas dashboard. Não altera regras de permissão/backend.
+   ========================= */
+
+.dashboard-page {
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+
+.dashboard-container {
+  max-width: 1180px;
+}
+
+.dashboard-topbar {
+  padding: 18px;
+  gap: 22px;
+}
+
+.dashboard-header-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dashboard-info-chip {
+  white-space: nowrap;
+}
+
+.dashboard-header-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 380px;
+  flex-basis: 380px;
+}
+
+.dashboard-header-actions a,
+.dashboard-header-actions button {
+  width: 100%;
+}
+
+.dashboard-header-actions .btn {
+  min-height: 42px;
+  padding-inline: 12px;
+}
+
+.dashboard-filter-panel {
+  padding: 18px;
+}
+
+.dashboard-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) minmax(180px, auto);
+  gap: 14px;
+  align-items: end;
+}
+
+.dashboard-filter-bar:has(.dashboard-date-field) {
+  grid-template-columns: minmax(220px, 320px) minmax(160px, 1fr) minmax(160px, 1fr) minmax(180px, auto);
+}
+
+.dashboard-filter-action .btn {
+  width: 100%;
+  min-height: 46px;
+  padding-inline: 28px;
+}
+
+.dashboard-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.dashboard-stat-grid .stat-card {
+  min-height: 138px;
+  display: grid;
+  align-content: space-between;
+}
+
+.stat-card--revenue {
+  grid-column: span 2;
+}
+
+.stat-card--revenue .kpi,
+.kpi--currency {
+  font-size: clamp(28px, 2.8vw, 36px);
+  line-height: 1.05;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.dashboard-section {
+  margin-top: 20px;
+}
+
+.dashboard-os-card {
+  padding: 14px;
+}
+
+.dashboard-os-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 24px;
+  align-items: center;
+}
+
+.dashboard-os-row-side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dashboard-empty-card {
+  display: grid;
+  gap: 14px;
+}
+
+.dashboard-empty-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-container {
+    max-width: 100%;
+  }
+
+  .dashboard-topbar {
+    flex-direction: column;
+  }
+
+  .dashboard-header-actions {
+    width: 100%;
+    max-width: 100%;
+    flex-basis: auto;
+  }
+
+  .dashboard-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card--revenue {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 8px;
+  }
+
+  .dashboard-topbar {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .dashboard-header-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-info-chip {
+    width: 100%;
+    white-space: normal;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .dashboard-header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dashboard-header-actions .header-action--main {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-filter-panel {
+    padding: 14px;
+  }
+
+  .dashboard-filter-bar,
+  .dashboard-filter-bar:has(.dashboard-date-field) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .dashboard-stat-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .dashboard-stat-grid .stat-card {
+    min-height: 120px;
+  }
+
+  .stat-card--revenue {
+    grid-column: auto;
+  }
+
+  .stat-card--revenue .kpi,
+  .kpi--currency {
+    font-size: clamp(30px, 8vw, 38px);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-os-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-os-row-side {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-topbar {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .dashboard-header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header-actions .header-action--main {
+    grid-column: auto;
+  }
+
+  .dashboard-header-actions .btn {
+    min-height: 40px;
+  }
+
+  .dashboard-filter-action .btn {
+    min-height: 44px;
+  }
+
+  .dashboard-os-card {
+    padding: 12px;
+  }
+}
+/* =========================
+   SEMANA 7 - REFINO 02 DASHBOARD
+   ========================= */
+
+.dashboard-page .container {
+  max-width: 1200px;
+}
+
+.dashboard-page .topbar {
+  padding: 22px;
+  gap: 24px;
+}
+
+.dashboard-page .page-title {
+  font-size: clamp(34px, 4vw, 46px);
+}
+
+.dashboard-page .page-description {
+  max-width: 760px;
+}
+
+.dashboard-page .page-header-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dashboard-page .header-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 430px;
+  max-width: 430px;
+  flex: 0 0 430px;
+}
+
+.dashboard-page .header-actions .btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.dashboard-page .header-actions .header-action--main {
+  grid-column: auto;
+}
+
+.dashboard-page .filter-panel {
+  padding: 20px;
+}
+
+.dashboard-page .filter-bar {
+  display: grid;
+  grid-template-columns: minmax(260px, 430px) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.dashboard-page .filter-bar-field {
+  min-width: 0;
+}
+
+.dashboard-page .filter-bar-action .btn {
+  min-width: 260px;
+  min-height: 48px;
+}
+
+.dashboard-page .dashboard-stat-grid {
+  align-items: stretch;
+}
+
+.dashboard-page .dashboard-stat-card {
+  min-height: 132px;
+}
+
+.dashboard-page .dashboard-money-card {
+  max-width: 460px;
+  min-height: 126px;
+}
+
+.dashboard-page .dashboard-money-card .kpi {
+  font-size: clamp(30px, 3.2vw, 42px);
+  white-space: normal;
+}
+
+.dashboard-page .dashboard-os-list {
+  padding: 18px;
+}
+
+.dashboard-page .os-row {
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .dashboard-page .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-page .header-actions {
+    width: 100%;
+    max-width: none;
+    flex: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dashboard-page .filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-page .filter-bar-action .btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page .topbar {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .dashboard-page .page-title {
+    font-size: clamp(30px, 9vw, 38px);
+  }
+
+  .dashboard-page .page-description {
+    font-size: 14px;
+  }
+
+  .dashboard-page .page-header-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-page .info-chip,
+  .dashboard-page .info-chip--dark {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .dashboard-page .header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dashboard-page .header-actions .header-action--main {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-page .header-actions .btn {
+    min-height: 42px;
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .dashboard-page .filter-panel {
+    padding: 14px;
+  }
+
+  .dashboard-page .dashboard-stat-card {
+    min-height: 108px;
+  }
+
+  .dashboard-page .dashboard-money-card {
+    max-width: 100%;
+  }
+
+  .dashboard-page .section-header h2 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-page {
+    padding: 8px;
+  }
+
+  .dashboard-page .topbar {
+    padding: 14px;
+  }
+
+  .dashboard-page .header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-page .header-actions .header-action--main {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-page .header-actions a:last-child,
+  .dashboard-page .header-actions button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-page .header-actions .btn {
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .dashboard-page .dashboard-stat-card .kpi {
+    font-size: 2rem;
+  }
+
+  .dashboard-page .dashboard-money-card .kpi {
+    font-size: 2rem;
+  }
+
+  .dashboard-page .os-row {
+    align-items: flex-start;
+  }
+}
+
+/* =========================
+   SEMANA 7 - REFINO 03 DASHBOARD
+   Ajuste final do filtro no desktop
+   ========================= */
+
+@media (min-width: 769px) {
+  .dashboard-page .filter-bar {
+    display: grid !important;
+    grid-template-columns: minmax(320px, 1fr) 260px !important;
+    gap: 16px !important;
+    align-items: end !important;
+  }
+
+  .dashboard-page .filter-bar-field,
+  .dashboard-page .filter-bar-field:first-child,
+  .dashboard-page .filter-bar-action,
+  .dashboard-page .filter-bar-total {
+    grid-column: auto !important;
+  }
+
+  .dashboard-page .filter-bar-action {
+    width: 100% !important;
+  }
+
+  .dashboard-page .filter-bar-action .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page .filter-bar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-page .filter-bar-field,
+  .dashboard-page .filter-bar-field:first-child,
+  .dashboard-page .filter-bar-action,
+  .dashboard-page .filter-bar-total {
+    grid-column: auto !important;
+  }
+
+  .dashboard-page .filter-bar-action .btn {
+    width: 100% !important;
   }
 }
