@@ -34,6 +34,35 @@ function sanitizePhoneBR(phone) {
   return clean;
 }
 
+
+const OS_STATUS_FILTERS = new Set([
+  "triagem",
+  "em_analise",
+  "aguardando_aprovacao",
+  "aprovado",
+  "em_execucao",
+  "aguardando_peca",
+  "pronto_retirada",
+  "encerrado",
+  "cancelado",
+  "orcamento_enviado",
+  "finalizado",
+]);
+
+function parseOSStatusFilter(value) {
+  const status = String(value || "all").trim();
+
+  if (!status || status === "all" || status === "todos") {
+    return { status: "all", clause: "" };
+  }
+
+  if (!OS_STATUS_FILTERS.has(status)) {
+    return { error: "Status inválido para filtro de OS." };
+  }
+
+  return { status, clause: "status" };
+}
+
 function parseOSDateFilter(query) {
   const period = String(query.period || "all").trim();
   const startDate = String(query.start_date || "").trim();
@@ -276,7 +305,22 @@ router.get("/", async (req, res, next) => {
       });
     }
 
+    const statusFilter = parseOSStatusFilter(req.query.status);
+
+    if (statusFilter.error) {
+      return res.status(400).json({
+        error: statusFilter.error,
+        requestId: req.requestId,
+      });
+    }
+
     const params = filter.params(req.user.company_id);
+    let statusClause = "";
+
+    if (statusFilter.status !== "all") {
+      params.push(statusFilter.status);
+      statusClause = `AND os.status = $${params.length}`;
+    }
 
     const result = await pool.query(
       `SELECT os.id,
@@ -303,6 +347,7 @@ router.get("/", async (req, res, next) => {
         AND u.company_id = os.company_id
        WHERE os.company_id = $1
        ${filter.clause}
+       ${statusClause}
        ORDER BY os.id DESC`,
       params
     );

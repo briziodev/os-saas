@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
 
 const STATUS = [
@@ -36,30 +36,75 @@ const PERIOD_OPTIONS = [
   { value: "custom", label: "Personalizado" },
 ];
 
+const VALID_STATUS = new Set(["todos", ...STATUS]);
+const VALID_PERIODS = new Set(PERIOD_OPTIONS.map((item) => item.value));
+
+function normalizeStatusParam(value) {
+  const status = String(value || "todos").trim();
+  return VALID_STATUS.has(status) ? status : "todos";
+}
+
+function normalizePeriodParam(value) {
+  const periodo = String(value || "all").trim();
+  return VALID_PERIODS.has(periodo) ? periodo : "all";
+}
+
+function buildOSSearchParams(status, period, startDate, endDate) {
+  const params = new URLSearchParams();
+  params.set("period", period || "all");
+
+  if (status && status !== "todos") {
+    params.set("status", status);
+  }
+
+  if (period === "custom") {
+    if (startDate) params.set("start_date", startDate);
+    if (endDate) params.set("end_date", endDate);
+  }
+
+  return params;
+}
+
 export default function OSList() {
   const token = useMemo(() => localStorage.getItem("token"), []);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [osList, setOsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [statusFiltro, setStatusFiltro] = useState("todos");
-  const [period, setPeriod] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [statusFiltro, setStatusFiltro] = useState(() => normalizeStatusParam(searchParams.get("status")));
+  const [period, setPeriod] = useState(() => normalizePeriodParam(searchParams.get("period")));
+  const [startDate, setStartDate] = useState(() => searchParams.get("start_date") || "");
+  const [endDate, setEndDate] = useState(() => searchParams.get("end_date") || "");
   const [detalhesAbertos, setDetalhesAbertos] = useState({});
   const user = getUser();
   const isTecnico = user?.role === "tecnico";
 
   useEffect(() => {
-    loadOS();
-  }, []);
+    const urlStatus = normalizeStatusParam(searchParams.get("status"));
+    const urlPeriod = normalizePeriodParam(searchParams.get("period"));
+    const urlStartDate = searchParams.get("start_date") || "";
+    const urlEndDate = searchParams.get("end_date") || "";
 
-  async function loadOS(nextPeriod = period, nextStart = startDate, nextEnd = endDate) {
+    setStatusFiltro(urlStatus);
+    setPeriod(urlPeriod);
+    setStartDate(urlStartDate);
+    setEndDate(urlEndDate);
+
+    loadOS(urlStatus, urlPeriod, urlStartDate, urlEndDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function loadOS(
+    nextStatus = statusFiltro,
+    nextPeriod = period,
+    nextStart = startDate,
+    nextEnd = endDate
+  ) {
     setLoading(true);
     setMsg("");
 
     try {
-      const params = new URLSearchParams();
-      params.set("period", nextPeriod);
+      const params = buildOSSearchParams(nextStatus, nextPeriod, nextStart, nextEnd);
 
       if (nextPeriod === "custom") {
         if (!nextStart || !nextEnd) {
@@ -67,9 +112,6 @@ export default function OSList() {
           setLoading(false);
           return;
         }
-
-        params.set("start_date", nextStart);
-        params.set("end_date", nextEnd);
       }
 
       const data = await apiFetch(`/os?${params.toString()}`);
@@ -103,7 +145,7 @@ export default function OSList() {
         body: JSON.stringify({ status: novoStatus }),
       });
 
-      await loadOS();
+      await loadOS(statusFiltro, period, startDate, endDate);
       setMsg(`OS #${id} atualizada para ${statusLabel(novoStatus)}.`);
     } catch (e) {
       if (e.message === "Sessão expirada. Faça login novamente.") {
@@ -144,7 +186,26 @@ export default function OSList() {
   }
 
   function applyFilters() {
-    loadOS(period, startDate, endDate);
+    if (period === "custom") {
+      if (!startDate || !endDate) {
+        setMsg("Informe data inicial e final para o período personalizado.");
+        return;
+      }
+
+      if (startDate > endDate) {
+        setMsg("A data inicial não pode ser maior que a data final.");
+        return;
+      }
+    }
+
+    const nextParams = buildOSSearchParams(statusFiltro, period, startDate, endDate);
+
+    if (searchParams.toString() === nextParams.toString()) {
+      loadOS(statusFiltro, period, startDate, endDate);
+      return;
+    }
+
+    setSearchParams(nextParams);
   }
 
   const osFiltradas =
