@@ -1,6 +1,65 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+
+
+const ICON_PATHS = {
+  home: ["M3 11.5 12 4l9 7.5", "M5 10.5V20h14v-9.5", "M9 20v-6h6v6"],
+  list: ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"],
+  board: ["M4 5h16v14H4z", "M9 5v14", "M15 5v14", "M4 11h16"],
+  users: ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M9 7a4 4 0 1 0 0 8", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  user: [
+    "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z",
+    "M4 21v-1.5c0-3.05 3.58-5.5 8-5.5s8 2.45 8 5.5V21",
+  ],
+  clipboard: ["M9 4h6l1 2h3v16H5V6h3z", "M9 4a3 3 0 0 1 6 0", "M8 11h8", "M8 15h8"],
+  car: [
+    "M5 13l1.6-4.2A3 3 0 0 1 9.4 7h5.2a3 3 0 0 1 2.8 1.8L19 13",
+    "M4 13h16v5H4z",
+    "M7 18v2",
+    "M17 18v2",
+    "M7.5 16h.01",
+    "M16.5 16h.01",
+  ],
+  plate: ["M4 7h16v10H4z", "M7 11h4", "M13 11h4", "M7 14h10"],
+  clock: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 6v6l4 2"],
+  calendar: ["M7 3v4", "M17 3v4", "M4 8h16", "M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1"],
+  dollar: ["M12 2v20", "M17 7.5A4 4 0 0 0 9.5 6c-2.2.5-3.5 2.7-2 4.3 1.1 1.2 2.9 1.5 5 1.9 2.7.5 4.3 1.4 4.3 3.5 0 2-1.7 3.5-4.5 3.5-2.2 0-4.2-.8-5.5-2.1"],
+  file: ["M6 3h8l4 4v14H6z", "M14 3v5h5", "M9 13h6", "M9 17h6"],
+  trend: ["M4 17l6-6 4 4 6-8", "M14 7h6v6"],
+  parts: [
+    "M14.7 6.3a4 4 0 0 0-5 5L4 17.1 6.9 20l5.8-5.7a4 4 0 0 0 5-5",
+    "M15 5l4 4",
+    "M16.5 3.5l4 4",
+  ],
+  edit: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"],
+  box: ["M21 16V8l-9-5-9 5v8l9 5z", "M3.3 7.8 12 13l8.7-5.2", "M12 22V13"],
+  filter: ["M4 5h16l-6 7v5l-4 2v-7z"],
+  save: ["M5 3h12l2 2v16H5z", "M8 3v6h8V3", "M8 21v-7h8v7"],
+  arrowLeft: ["M19 12H5", "M12 19l-7-7 7-7"],
+  grid: ["M4 4h7v7H4z", "M13 4h7v7h-7z", "M4 13h7v7H4z", "M13 13h7v7h-7z"],
+  phone: ["M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.4 2.1L8.1 9.6a16 16 0 0 0 6.3 6.3l1.2-1.2a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"],
+  logOut: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
+  check: ["M20 6 9 17l-5-5"],
+};
+
+function Icon({ name, className = "" }) {
+  const paths = ICON_PATHS[name] || ICON_PATHS.file;
+
+  return (
+    <svg
+      className={`osdetail-premium-svg-icon ${className}`.trim()}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {paths.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
 
 const STATUS = [
   "triagem",
@@ -32,6 +91,9 @@ export default function OSDetail() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const user = getUser();
   const isTecnico = user?.role === "tecnico";
+  const canSeeDashboard = !isTecnico;
+  const canSeeClientes = !isTecnico;
+  const canSeeUsers = user?.role === "admin";
 
   const [os, setOs] = useState(null);
   const [pecas, setPecas] = useState([]);
@@ -94,20 +156,20 @@ export default function OSDetail() {
     try {
       setLoading(true);
       if (!preserveMessage) setMsg("");
-const osData = await apiFetch(`/os/${id}`);
 
-let pecasData = [];
+      const osData = await apiFetch(`/os/${id}`);
+      let pecasData = [];
 
-if (!isTecnico) {
-  pecasData = await apiFetch(`/os/${id}/pecas`);
-}
+      if (!isTecnico) {
+        pecasData = await apiFetch(`/os/${id}/pecas`);
+      }
 
-const nextForm = buildFormState(osData);
+      const nextForm = buildFormState(osData);
 
-setOs(osData);
-setPecas(Array.isArray(pecasData) ? pecasData : []);
-setForm(nextForm);
-setInitialForm(nextForm);
+      setOs(osData);
+      setPecas(Array.isArray(pecasData) ? pecasData : []);
+      setForm(nextForm);
+      setInitialForm(nextForm);
     } catch (error) {
       setMsg(error.message);
     } finally {
@@ -150,17 +212,14 @@ setInitialForm(nextForm);
   function handlePieceFieldChange(field, value) {
     setPieceForm((prev) => ({
       ...prev,
-      [field]:
-        field === "valor_unitario" ? sanitizeMoneyInput(value) : value,
+      [field]: field === "valor_unitario" ? sanitizeMoneyInput(value) : value,
     }));
   }
 
   function handlePieceMoneyBlur() {
     setPieceForm((prev) => ({
       ...prev,
-      valor_unitario: prev.valor_unitario
-        ? formatMoneyInput(prev.valor_unitario)
-        : "",
+      valor_unitario: prev.valor_unitario ? formatMoneyInput(prev.valor_unitario) : "",
     }));
   }
 
@@ -194,23 +253,23 @@ setInitialForm(nextForm);
       setSaving(true);
       setMsg("");
 
-const payload = isTecnico
-  ? {
-      problema_relatado: problemaRelatado,
-      status: form.status,
-    }
-  : {
-      problema_relatado: problemaRelatado,
-      modelo: form.modelo.trim(),
-      placa: form.placa.trim(),
-      mao_obra: parseMoneyInput(form.mao_obra),
-      status: form.status,
-    };
+      const payload = isTecnico
+        ? {
+            problema_relatado: problemaRelatado,
+            status: form.status,
+          }
+        : {
+            problema_relatado: problemaRelatado,
+            modelo: form.modelo.trim(),
+            placa: form.placa.trim(),
+            mao_obra: parseMoneyInput(form.mao_obra),
+            status: form.status,
+          };
 
-await apiFetch(`/os/${id}`, {
-  method: "PUT",
-  body: JSON.stringify(payload),
-});
+      await apiFetch(`/os/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
 
       await loadOS({ preserveMessage: true });
       setMsg(`OS #${id} salva com sucesso.`);
@@ -314,501 +373,601 @@ await apiFetch(`/os/${id}`, {
   }
 
   if (!token) {
-    return (
-      <div className="page">
-        <div className="container">
-          <div className="card">Sem sessão. Faça login novamente.</div>
-        </div>
-      </div>
-    );
+    return <StatePage message="Sem sessão. Faça login novamente." />;
   }
 
   if (loading) {
-    return (
-      <div className="page">
-        <div className="container">
-          <div className="card">Carregando detalhes da OS...</div>
-        </div>
-      </div>
-    );
+    return <StatePage message="Carregando detalhes da OS..." />;
   }
 
   if (!os) {
-    return (
-      <div className="page">
-        <div className="container">
-          {msg ? <AlertMessage message={msg} /> : <div className="card">OS não encontrada.</div>}
-        </div>
-      </div>
-    );
+    return <StatePage message={msg || "OS não encontrada."} isError />;
   }
 
   return (
-    <div className="page">
-      <div className="container">
-        <PageHeader
-          eyebrow="Detalhes da ordem de serviço"
-          title={`OS #${os.id}`}
-          clientName={os.cliente_nome || "-"}
-          footer={
-            <span
-              className={`info-chip ${
-                hasUnsavedChanges ? "info-chip--unsaved" : "info-chip--saved"
-              }`}
-            >
-              {hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo"}
-            </span>
-          }
-          right={
-            <>
-              <button
-                className="btn btn--header-main header-action--main"
-                type="button"
-                onClick={() => goTo("/os")}
-              >
-                Voltar para lista
-              </button>
+    <div className="osdetail-premium-page">
+      <DesktopSidebar
+        user={user}
+        canSeeDashboard={canSeeDashboard}
+        canSeeClientes={canSeeClientes}
+        canSeeUsers={canSeeUsers}
+        onLogout={logout}
+      />
 
-
-
-
-
-              {!isTecnico ? (
-  <button
-    className="btn btn--header-secondary"
-    type="button"
-    onClick={() => goTo("/dashboard")}
-  >
-    Dashboard
-  </button>
-) : null}
-
-
-
-
-
-
-
-
-              <button
-                onClick={logout}
-                className="btn btn--header-danger"
-                type="button"
-              >
-                Sair
-              </button>
-            </>
-          }
+      <main className="osdetail-premium-main">
+        <MobileHero
+          os={os}
+          form={form}
+          hasUnsavedChanges={hasUnsavedChanges}
+          canSeeDashboard={canSeeDashboard}
+          onBack={() => goTo("/os")}
+          onDashboard={() => goTo("/dashboard")}
+          onLogout={logout}
         />
 
-        {msg ? <AlertMessage message={msg} /> : null}
+        <div className="osdetail-premium-container">
+          <DesktopHeader
+            os={os}
+            form={form}
+            total={total}
+            isTecnico={isTecnico}
+            hasUnsavedChanges={hasUnsavedChanges}
+            canSeeDashboard={canSeeDashboard}
+            whatsappDisabled={whatsappDisabled}
+            onBack={() => goTo("/os")}
+            onDashboard={() => goTo("/dashboard")}
+            onWhatsapp={abrirWhatsapp}
+          />
 
-        <div className="section grid-2">
-          <div className="card">
-            <SectionTitle
-              title="Resumo da OS"
-              subtitle="Informações principais para leitura rápida."
+          {msg ? <AlertMessage message={msg} /> : null}
+
+          <DesktopMetaStrip os={os} form={form} total={total} isTecnico={isTecnico} />
+
+          <section className="osdetail-premium-grid-main">
+            <ResumoCard os={os} form={form} />
+            <SituacaoCard
+              os={os}
+              form={form}
+              total={total}
+              isTecnico={isTecnico}
+              whatsappDisabled={whatsappDisabled}
+              onWhatsapp={abrirWhatsapp}
             />
+          </section>
 
-            <div className="soft-box detail-box">
-              <div className="label detail-label-tight">Cliente</div>
-              <div className="detail-value-lg">{os.cliente_nome || "-"}</div>
-            </div>
-
-            <div className="grid-2 section-gap-sm">
-              <div className="soft-box">
-                <div className="label detail-label-tight">Veículo</div>
-                <div className="detail-value-md">{form.modelo || "-"}</div>
-              </div>
-
-              <div className="soft-box">
-                <div className="label detail-label-tight">Placa</div>
-                <div className="detail-value-md">{form.placa || "-"}</div>
-              </div>
-            </div>
-
-            <div className="soft-box detail-box">
-              <div className="label detail-label-tight">Descrição do serviço</div>
-              <div className="detail-text">{form.problema_relatado || "Sem descrição"}</div>
-            </div>
-          </div>
-
-          <div className="card">
-            <SectionTitle
-              title="Situação da OS"
-              subtitle="Acompanhe datas, status e orçamento."
-            />
-
-            <div className="detail-status-row">
-              <div className="status-pill-wrap">
-                <div className="label detail-status-label">Status atual</div>
-                <span className={`badge badge--status ${statusBadgeClass(form.status)}`}>
-                  {statusLabel(form.status)}
-                </span>
-              </div>
-
-              {!isTecnico ? (
-                <button
-                  onClick={abrirWhatsapp}
-                  className="btn btn--primary whatsapp-btn"
-                  type="button"
-                  disabled={whatsappDisabled}
-                  title={
-                    whatsappDisabled
-                      ? "Envio indisponível para OS encerrada ou cancelada."
-                      : "Enviar orçamento no WhatsApp"
-                  }
-                >
-                  Enviar orçamento no WhatsApp
-                </button>
-              ) : null}
-            </div>
-
-            <div className="grid-2">
-              <div className="soft-box">
-                <div className="label detail-label-tight">Criada em</div>
-                <div className="detail-date-value">{formatDateBR(os.created_at)}</div>
-              </div>
-
-              <div className="soft-box">
-                <div className="label detail-label-tight">Atualizada em</div>
-                <div className="detail-date-value">{formatDateBR(os.updated_at)}</div>
-              </div>
-            </div>
-
-            {!isTecnico ? (
-              <div className="soft-box detail-box">
-                <div className="label detail-label-tight">Total atual</div>
-                <div className="kpi kpi--dark detail-kpi-compact">{money(total)}</div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {!isTecnico ? (
-          <div className="section">
-            <div className="card">
-              <SectionTitle
-                title="Peças da OS"
-                subtitle="Adicione peças para montar o orçamento completo."
+          {!isTecnico ? (
+            <section className="osdetail-premium-grid-secondary">
+              <PecasCard
+                pecas={pecas}
+                form={form}
+                total={total}
+                pieceForm={pieceForm}
+                pieceSubtotal={pieceSubtotal}
+                addingPiece={addingPiece}
+                removingPieceId={removingPieceId}
+                onPieceChange={handlePieceFieldChange}
+                onPieceMoneyBlur={handlePieceMoneyBlur}
+                onAddPiece={adicionarPeca}
+                onRemovePiece={removerPeca}
               />
 
-              <div className="grid-3 section-gap-sm">
-                <div className="form-group">
-                  <label className="label">Nome da peça</label>
-                  <input
-                    type="text"
-                    value={pieceForm.nome}
-                    onChange={(event) => handlePieceFieldChange("nome", event.target.value)}
-                    placeholder="Ex.: Filtro de óleo"
-                  />
-                </div>
+              <EditarCard
+                form={form}
+                total={total}
+                saving={saving}
+                isTecnico={isTecnico}
+                onChange={handleChange}
+                onMoneyChange={handleMoneyChange}
+                onMoneyBlur={handleMoneyBlur}
+                onSave={salvarAlteracoes}
+                onBack={() => goTo("/os")}
+              />
+            </section>
+          ) : (
+            <section className="osdetail-premium-grid-secondary osdetail-premium-grid-secondary--single">
+              <EditarCard
+                form={form}
+                total={total}
+                saving={saving}
+                isTecnico={isTecnico}
+                onChange={handleChange}
+                onMoneyChange={handleMoneyChange}
+                onMoneyBlur={handleMoneyBlur}
+                onSave={salvarAlteracoes}
+                onBack={() => goTo("/os")}
+              />
+            </section>
+          )}
 
-                <div className="form-group">
-                  <label className="label">Quantidade</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={pieceForm.quantidade}
-                    onChange={(event) => handlePieceFieldChange("quantidade", event.target.value)}
-                    placeholder="1"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">Valor unitário (R$)</label>
-                  <input
-                    className="input--money"
-                    value={pieceForm.valor_unitario}
-                    onChange={(event) => handlePieceFieldChange("valor_unitario", event.target.value)}
-                    onBlur={handlePieceMoneyBlur}
-                    inputMode="decimal"
-                    placeholder="0,00"
-                  />
-                </div>
-              </div>
-
-              <div
-                className="piece-form-actions section-gap-sm"
-                style={{
-                  marginTop: 16,
-                  marginBottom: 18,
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: 14,
-                  alignItems: "end",
-                }}
-              >
-                <div className="soft-box piece-subtotal-box">
-                  <div className="label detail-label-tight">Subtotal da peça</div>
-                  <div className="piece-subtotal-value">{money(pieceSubtotal)}</div>
-                </div>
-
-                <button
-                  onClick={adicionarPeca}
-                  className="btn btn--primary"
-                  type="button"
-                  disabled={addingPiece}
-                  style={{ alignSelf: "end" }}
-                >
-                  {addingPiece ? "Adicionando..." : "Adicionar peça"}
-                </button>
-              </div>
-
-              {pecas.length === 0 ? (
-                <div className="empty-state-box section-gap-md">
-                  Nenhuma peça adicionada nesta OS ainda.
-                </div>
-              ) : (
-                <div
-                  className="piece-list section-gap-md"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr",
-                    gap: 14,
-                    marginTop: 18,
-                  }}
-                >
-                  {pecas.map((peca) => (
-                    <div
-                      key={peca.id}
-                      className="piece-item"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr",
-                        gap: 10,
-                        padding: 16,
-                        border: "1px solid #d9e3ee",
-                        borderRadius: 18,
-                        background: "linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)",
-                        boxShadow: "0 8px 18px rgba(15, 23, 42, 0.05)",
-                      }}
-                    >
-                      <div
-                        className="piece-item-main"
-                        style={{ display: "grid", gap: 6, minWidth: 0 }}
-                      >
-                        <div
-                          className="piece-item-name"
-                          style={{
-                            fontSize: 18,
-                            fontWeight: 900,
-                            lineHeight: 1.25,
-                            color: "var(--text)",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {peca.nome}
-                        </div>
-
-                        <div
-                          className="piece-item-meta"
-                          style={{
-                            fontSize: 15,
-                            lineHeight: 1.5,
-                            color: "var(--text-soft)",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {Number(peca.quantidade)}x {money(peca.valor_unitario)} ={" "}
-                          <strong>{money(peca.valor_total)}</strong>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => removerPeca(peca.id)}
-                        disabled={removingPieceId === peca.id}
-                        style={{ width: "100%" }}
-                      >
-                        {removingPieceId === peca.id ? "Removendo..." : "Remover"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid-2 section-gap-md">
-                <div className="soft-box total-box">
-                  <div className="label detail-label-tight">Total das peças</div>
-                  <div className="total-box-value">{money(parseMoneyInput(form.valor_pecas))}</div>
-                </div>
-
-                <div className="soft-box total-box">
-                  <div className="label detail-label-tight">Total geral da OS</div>
-                  <div className="total-box-value">{money(total)}</div>
-                </div>
-              </div>
-            </div>
+          <div className="osdetail-premium-footer-note">
+            OS criada em {formatDateBR(os.created_at)} · Última atualização em {formatDateBR(os.updated_at)}
           </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function StatePage({ message, isError = false }) {
+  return (
+    <div className="osdetail-premium-state-page">
+      <div className={`osdetail-premium-state-card ${isError ? "is-error" : ""}`}>
+        {message}
+      </div>
+    </div>
+  );
+}
+
+function DesktopSidebar({ user, canSeeDashboard, canSeeClientes, canSeeUsers, onLogout }) {
+  return (
+    <aside className="osdetail-premium-sidebar">
+      <div className="osdetail-premium-brand">
+        <div className="osdetail-premium-logo">OP</div>
+        <div>
+          <strong>OficinaPro</strong>
+          <span>Gestão de oficina</span>
+        </div>
+      </div>
+
+      <nav className="osdetail-premium-menu" aria-label="Menu principal">
+        {canSeeDashboard ? (
+          <Link to="/dashboard" className="osdetail-premium-menu-item">
+            <span><Icon name="home" /></span> Dashboard
+          </Link>
         ) : null}
 
-        <div className="section">
-          <div className="card">
-            <SectionTitle
-  title="Editar OS"
-  subtitle={
-    isTecnico
-      ? "Atualize a descrição técnica e o status do serviço."
-      : "Atualize dados, valores e andamento do serviço."
-  }
-/>
+        <Link to="/os" className="osdetail-premium-menu-item is-active">
+          <span><Icon name="clipboard" /></span> OS
+        </Link>
 
-            <div className="form-group">
-             <label className="label">Descrição do serviço</label>
-              <textarea
-                rows={5}
-                value={form.problema_relatado}
-                onChange={(event) => handleChange("problema_relatado", event.target.value)}
-                placeholder="Descreva o serviço, diagnóstico ou observações técnicas..."
-              />
-            </div>
+        <Link to="/kanban" className="osdetail-premium-menu-item">
+          <span><Icon name="board" /></span> Quadro de OS
+        </Link>
 
+        {canSeeClientes ? (
+          <Link to="/clientes" className="osdetail-premium-menu-item">
+            <span><Icon name="users" /></span> Clientes
+          </Link>
+        ) : null}
 
+        {canSeeUsers ? (
+          <Link to="/usuarios" className="osdetail-premium-menu-item">
+            <span><Icon name="user" /></span> Usuários
+          </Link>
+        ) : null}
+      </nav>
 
-
-
-            {!isTecnico ? (
-  <div className="grid-2 section-gap-sm">
-    <div className="form-group">
-      <label className="label">Modelo</label>
-      <input
-        type="text"
-        value={form.modelo}
-        onChange={(event) => handleChange("modelo", event.target.value)}
-        placeholder="Ex.: Gol, Uno, Civic..."
-      />
-    </div>
-
-    <div className="form-group">
-      <label className="label">Placa</label>
-      <input
-        type="text"
-        value={form.placa}
-        onChange={(event) => handleChange("placa", event.target.value)}
-        placeholder="ABC1D23"
-        maxLength={8}
-      />
-    </div>
-  </div>
-) : null}
-
-
-
-            
-
-            {!isTecnico ? (
-              <div className="grid-2 section-gap-sm">
-                <div className="form-group">
-                  <label className="label">Mão de obra (R$)</label>
-                  <input
-                    className="input--money"
-                    value={form.mao_obra}
-                    onChange={(event) => handleMoneyChange("mao_obra", event.target.value)}
-                    onBlur={() => handleMoneyBlur("mao_obra")}
-                    inputMode="decimal"
-                    placeholder="0,00"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">Peças (R$)</label>
-                  <input
-                    className="input--money"
-                    value={form.valor_pecas}
-                    inputMode="decimal"
-                    placeholder="0,00"
-                    disabled
-                    readOnly
-                  />
-                  <div className="help">
-                    Total calculado automaticamente pelas peças adicionadas.
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-
-
-
-
-
-
-            <div className="grid-2 section-gap-sm">
-              <div className="form-group">
-                <label className="label">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(event) => handleChange("status", event.target.value)}
-                >
-                  {STATUS.map((status) => (
-                    <option key={status} value={status}>
-                      {statusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {!isTecnico ? (
-                <div className="soft-box total-box">
-                  <div className="label detail-label-tight">Total calculado</div>
-                  <div className="total-box-value">{money(total)}</div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="form-actions section-gap-md">
-              <button
-                onClick={salvarAlteracoes}
-                className="btn btn--primary"
-                type="button"
-                disabled={saving}
-              >
-                {saving ? "Salvando..." : "Salvar alterações"}
-              </button>
-
-              <button
-                className="btn btn--ghost"
-                type="button"
-                onClick={() => goTo("/os")}
-              >
-                Voltar para lista
-              </button>
-            </div>
+      <div className="osdetail-premium-sidebar-footer">
+        <div className="osdetail-premium-user-card">
+          <div className="osdetail-premium-user-avatar">{initials(user?.name || user?.email || "U")}</div>
+          <div>
+            <strong>{firstName(user?.name || user?.email || "Usuário")}</strong>
+            <span>{roleLabel(user?.role)}</span>
           </div>
         </div>
+
+        <button type="button" className="osdetail-premium-logout" onClick={onLogout}>
+          <Icon name="logOut" /> Sair
+        </button>
       </div>
-    </div>
+    </aside>
   );
 }
 
-function PageHeader({ eyebrow, title, clientName, footer, right }) {
+function DesktopHeader({
+  os,
+  form,
+  total,
+  isTecnico,
+  hasUnsavedChanges,
+  canSeeDashboard,
+  whatsappDisabled,
+  onBack,
+  onDashboard,
+  onWhatsapp,
+}) {
   return (
-    <div className="topbar">
-      <div className="page-header-meta">
-        <div className="page-eyebrow">{eyebrow}</div>
-        <h1 className="page-title">{title}</h1>
+    <header className="osdetail-premium-header">
+      <div>
+        <div className="osdetail-premium-eyebrow">Detalhes da ordem de serviço</div>
+        <div className="osdetail-premium-title-row">
+          <h1>OS #{os.id}</h1>
+          <span className={`osdetail-premium-save-pill ${hasUnsavedChanges ? "is-unsaved" : "is-saved"}`}>
+            {hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo"}
+          </span>
+        </div>
+      </div>
 
-        <div className="os-detail-header-client">
-          <div className="os-detail-client-label">Cliente</div>
-          <div className="os-detail-client-name">{clientName || "-"}</div>
+      <div className="osdetail-premium-header-actions">
+        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--ghost" onClick={onBack}>
+          <Icon name="arrowLeft" /> Voltar para lista
+        </button>
+
+        {canSeeDashboard ? (
+          <button type="button" className="osdetail-premium-btn osdetail-premium-btn--ghost" onClick={onDashboard}>
+            <Icon name="grid" /> Dashboard
+          </button>
+        ) : null}
+
+        {!isTecnico ? (
+          <button
+            type="button"
+            className="osdetail-premium-btn osdetail-premium-btn--primary"
+            onClick={onWhatsapp}
+            disabled={whatsappDisabled}
+          >
+            <Icon name="phone" /> Enviar orçamento no WhatsApp
+          </button>
+        ) : null}
+      </div>
+
+      {!isTecnico ? (
+        <div className="osdetail-premium-total-floating">
+          <span>Total atual</span>
+          <strong>{money(total)}</strong>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function MobileHero({ os, form, hasUnsavedChanges, canSeeDashboard, onBack, onDashboard, onLogout }) {
+  return (
+    <header className="osdetail-premium-mobile-hero">
+      <div className="osdetail-premium-mobile-topline">
+        <button type="button" onClick={onBack} aria-label="Voltar"><Icon name="arrowLeft" /></button>
+        <span>Detalhes da ordem de serviço</span>
+        <button type="button" onClick={onLogout} aria-label="Sair">⋮</button>
+      </div>
+
+      <h1>OS #{os.id}</h1>
+
+      <div className="osdetail-premium-mobile-client-label">Cliente</div>
+      <strong className="osdetail-premium-mobile-client">{os.cliente_nome || "-"}</strong>
+
+      <span className={`osdetail-premium-save-pill ${hasUnsavedChanges ? "is-unsaved" : "is-saved"}`}>
+        {hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo"}
+      </span>
+
+      <div className="osdetail-premium-mobile-actions">
+        <button type="button" className="osdetail-premium-mobile-main-action" onClick={onBack}>
+          <Icon name="arrowLeft" /> Voltar para lista
+        </button>
+
+        {canSeeDashboard ? (
+          <button type="button" onClick={onDashboard}><Icon name="grid" /> Dashboard</button>
+        ) : null}
+
+        <button type="button" onClick={onLogout}><Icon name="logOut" /> Sair</button>
+      </div>
+
+      <div className="osdetail-premium-mobile-status-mini">
+        <span>Status atual</span>
+        <strong>{statusLabel(form.status)}</strong>
+      </div>
+    </header>
+  );
+}
+
+function DesktopMetaStrip({ os, form, total, isTecnico }) {
+  const items = [
+    { icon: "user", label: "Cliente", value: os.cliente_nome || "-" },
+    { icon: "car", label: "Veículo", value: form.modelo || "-" },
+    { icon: "plate", label: "Placa", value: form.placa || "-" },
+    { icon: "clock", label: "Status atual", value: statusLabel(form.status), badge: true },
+    { icon: "calendar", label: "Criada em", value: formatDateShort(os.created_at) },
+    { icon: "calendar", label: "Atualizada em", value: formatDateShort(os.updated_at) },
+  ];
+
+  if (!isTecnico) {
+    items.push({ icon: "dollar", label: "Total atual", value: money(total), money: true });
+  }
+
+  return (
+    <section className={`osdetail-premium-meta-strip ${isTecnico ? "is-tecnico" : ""}`}>
+      {items.map((item) => (
+        <div key={item.label} className={`osdetail-premium-meta-item ${item.money ? "is-money" : ""}`}>
+          <span className="osdetail-premium-meta-icon"><Icon name={item.icon} /></span>
+          <div>
+            <small>{item.label}</small>
+            {item.badge ? (
+              <b className={`osdetail-premium-status-badge ${statusTone(form.status)}`}>{item.value}</b>
+            ) : (
+              <strong>{item.value}</strong>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function ResumoCard({ os, form }) {
+  return (
+    <section className="osdetail-premium-card osdetail-premium-card--summary">
+      <CardTitle icon="file" title="Resumo da OS" subtitle="Informações principais para leitura rápida." />
+
+      <div className="osdetail-premium-description-block">
+        <small>Descrição do serviço</small>
+        <p>{form.problema_relatado || "Sem descrição"}</p>
+      </div>
+
+      <div className="osdetail-premium-summary-grid">
+        <InfoTile label="Cliente" value={os.cliente_nome || "-"} />
+        <InfoTile label="Veículo" value={form.modelo || "-"} />
+        <InfoTile label="Placa" value={form.placa || "-"} />
+      </div>
+    </section>
+  );
+}
+
+function SituacaoCard({ os, form, total, isTecnico, whatsappDisabled, onWhatsapp }) {
+  return (
+    <section className="osdetail-premium-card osdetail-premium-card--situation">
+      <CardTitle icon="trend" title="Situação da OS" subtitle="Acompanhe datas, status e orçamento." />
+
+      <div className={`osdetail-premium-situation-grid ${isTecnico ? "is-tecnico" : ""}`}>
+        <InfoTile label="Status atual" value={statusLabel(form.status)} badgeClass={`osdetail-premium-status-badge ${statusTone(form.status)}`} />
+        <InfoTile label="Criada em" value={formatDateShort(os.created_at)} />
+        <InfoTile label="Atualizada em" value={formatDateShort(os.updated_at)} />
+        {!isTecnico ? <InfoTile label="Total atual" value={money(total)} isMoney /> : null}
+      </div>
+
+      {!isTecnico ? (
+        <button
+          type="button"
+          className="osdetail-premium-whatsapp-wide"
+          onClick={onWhatsapp}
+          disabled={whatsappDisabled}
+          title={whatsappDisabled ? "Envio indisponível para OS encerrada ou cancelada." : "Enviar orçamento no WhatsApp"}
+        >
+          <Icon name="phone" /> Enviar orçamento no WhatsApp
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function PecasCard({
+  pecas,
+  form,
+  total,
+  pieceForm,
+  pieceSubtotal,
+  addingPiece,
+  removingPieceId,
+  onPieceChange,
+  onPieceMoneyBlur,
+  onAddPiece,
+  onRemovePiece,
+}) {
+  return (
+    <section className="osdetail-premium-card osdetail-premium-card--pieces">
+      <CardTitle icon="parts" title="Peças da OS" subtitle="Adicione peças para montar o orçamento completo." />
+
+      <div className="osdetail-premium-piece-form">
+        <div className="osdetail-premium-form-field">
+          <label>Nome da peça</label>
+          <input
+            type="text"
+            value={pieceForm.nome}
+            onChange={(event) => onPieceChange("nome", event.target.value)}
+            placeholder="Ex.: Filtro de óleo"
+          />
         </div>
 
-        {footer ? <div className="page-header-footer">{footer}</div> : null}
+        <div className="osdetail-premium-form-field">
+          <label>Quantidade</label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={pieceForm.quantidade}
+            onChange={(event) => onPieceChange("quantidade", event.target.value)}
+            placeholder="1"
+          />
+        </div>
+
+        <div className="osdetail-premium-form-field">
+          <label>Valor unitário (R$)</label>
+          <input
+            className="input--money"
+            value={pieceForm.valor_unitario}
+            onChange={(event) => onPieceChange("valor_unitario", event.target.value)}
+            onBlur={onPieceMoneyBlur}
+            inputMode="decimal"
+            placeholder="0,00"
+          />
+        </div>
+
+        <div className="osdetail-premium-form-field osdetail-premium-form-field--subtotal">
+          <label>Subtotal (R$)</label>
+          <strong>{money(pieceSubtotal)}</strong>
+        </div>
+
+        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--primary" onClick={onAddPiece} disabled={addingPiece}>
+          {addingPiece ? "Adicionando..." : (<><Icon name="parts" /> Adicionar peça</>)}
+        </button>
       </div>
 
-      <div className="form-actions header-actions">{right}</div>
+      {pecas.length === 0 ? (
+        <div className="osdetail-premium-empty">Nenhuma peça adicionada nesta OS ainda.</div>
+      ) : (
+        <div className="osdetail-premium-piece-table">
+          <div className="osdetail-premium-piece-head">
+            <span>Nome da peça</span>
+            <span>Quantidade</span>
+            <span>Valor unitário (R$)</span>
+            <span>Subtotal (R$)</span>
+            <span>Ações</span>
+          </div>
+
+          {pecas.map((peca) => (
+            <div key={peca.id} className="osdetail-premium-piece-row">
+              <strong>{peca.nome}</strong>
+              <span>{Number(peca.quantidade)}</span>
+              <span>{money(peca.valor_unitario)}</span>
+              <b>{money(peca.valor_total)}</b>
+              <button type="button" onClick={() => onRemovePiece(peca.id)} disabled={removingPieceId === peca.id}>
+                {removingPieceId === peca.id ? "Removendo..." : "Remover"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="osdetail-premium-piece-mobile-list">
+        <InfoLine icon="box" label="Subtotal da peça" value={money(pieceSubtotal)} />
+        {pecas.map((peca) => (
+          <InfoLine
+            key={peca.id}
+            icon="filter"
+            label={peca.nome}
+            value={`${Number(peca.quantidade)}x ${money(peca.valor_unitario)} = ${money(peca.valor_total)}`}
+            action={() => onRemovePiece(peca.id)}
+            actionLabel={removingPieceId === peca.id ? "..." : "Remover"}
+          />
+        ))}
+      </div>
+
+      <div className="osdetail-premium-total-grid">
+        <InfoTile label="Total das peças" value={money(parseMoneyInput(form.valor_pecas))} isMoney />
+        <InfoTile label="Total geral da OS" value={money(total)} isMoney accent />
+      </div>
+    </section>
+  );
+}
+
+function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
+  return (
+    <section className="osdetail-premium-card osdetail-premium-card--edit">
+      <CardTitle
+        icon="edit"
+        title="Editar OS"
+        subtitle={isTecnico ? "Atualize a descrição técnica e o status do serviço." : "Atualize dados, valores e andamento do serviço."}
+      />
+
+      <div className="osdetail-premium-form-field">
+        <label>Descrição do serviço</label>
+        <textarea
+          rows={5}
+          value={form.problema_relatado}
+          onChange={(event) => onChange("problema_relatado", event.target.value)}
+          placeholder="Descreva o serviço, diagnóstico ou observações técnicas..."
+        />
+      </div>
+
+      {!isTecnico ? (
+        <div className="osdetail-premium-form-grid-2">
+          <div className="osdetail-premium-form-field">
+            <label>Modelo</label>
+            <input
+              type="text"
+              value={form.modelo}
+              onChange={(event) => onChange("modelo", event.target.value)}
+              placeholder="Ex.: Gol, Uno, Civic..."
+            />
+          </div>
+
+          <div className="osdetail-premium-form-field">
+            <label>Placa</label>
+            <input
+              type="text"
+              value={form.placa}
+              onChange={(event) => onChange("placa", event.target.value)}
+              placeholder="ABC1D23"
+              maxLength={8}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {!isTecnico ? (
+        <div className="osdetail-premium-form-grid-2">
+          <div className="osdetail-premium-form-field">
+            <label>Mão de obra (R$)</label>
+            <input
+              className="input--money"
+              value={form.mao_obra}
+              onChange={(event) => onMoneyChange("mao_obra", event.target.value)}
+              onBlur={() => onMoneyBlur("mao_obra")}
+              inputMode="decimal"
+              placeholder="0,00"
+            />
+          </div>
+
+          <div className="osdetail-premium-form-field">
+            <label>Peças (R$)</label>
+            <input className="input--money" value={form.valor_pecas} inputMode="decimal" placeholder="0,00" disabled readOnly />
+            <small>Total calculado automaticamente pelas peças adicionadas.</small>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="osdetail-premium-form-grid-2">
+        <div className="osdetail-premium-form-field">
+          <label>Status</label>
+          <select value={form.status} onChange={(event) => onChange("status", event.target.value)}>
+            {STATUS.map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!isTecnico ? <InfoTile label="Total calculado" value={money(total)} isMoney accent /> : null}
+      </div>
+
+      <div className="osdetail-premium-edit-actions">
+        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--primary" onClick={onSave} disabled={saving}>
+          <Icon name="save" /> {saving ? "Salvando..." : "Salvar alterações"}
+        </button>
+
+        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--ghost" onClick={onBack}>
+          Voltar para lista
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function CardTitle({ icon, title, subtitle }) {
+  return (
+    <div className="osdetail-premium-card-title">
+      <span><Icon name={icon} /></span>
+      <div>
+        <h2>{title}</h2>
+        {subtitle ? <p>{subtitle}</p> : null}
+      </div>
     </div>
   );
 }
 
-function SectionTitle({ title, subtitle }) {
+function InfoTile({ label, value, isMoney = false, accent = false, badgeClass = "" }) {
   return (
-    <div className="section-header">
-      <h2>{title}</h2>
-      {subtitle ? <div className="section-subtitle">{subtitle}</div> : null}
+    <div className={`osdetail-premium-info-tile ${isMoney ? "is-money" : ""} ${accent ? "is-accent" : ""}`}>
+      <small>{label}</small>
+      {badgeClass ? <b className={badgeClass}>{value}</b> : <strong>{value}</strong>}
+    </div>
+  );
+}
+
+function InfoLine({ icon, label, value, action, actionLabel }) {
+  return (
+    <div className="osdetail-premium-info-line">
+      <span><Icon name={icon} /></span>
+      <div>
+        <strong>{label}</strong>
+        <small>{value}</small>
+      </div>
+      {action ? (
+        <button type="button" onClick={action}>
+          {actionLabel || "Abrir"}
+        </button>
+      ) : (
+        <span aria-hidden="true">›</span>
+      )}
     </div>
   );
 }
@@ -825,7 +984,7 @@ function AlertMessage({ message }) {
     text.includes("não");
 
   return (
-    <div className={`card section alert ${isError ? "alert--error" : "alert--success"}`}>
+    <div className={`osdetail-premium-alert ${isError ? "is-error" : "is-success"}`}>
       {message}
     </div>
   );
@@ -900,14 +1059,12 @@ function statusLabel(status) {
   return STATUS_LABEL[status] || status || "-";
 }
 
-function statusBadgeClass(status) {
-  if (status === "encerrado") return "badge--success";
-  if (status === "cancelado") return "badge--danger";
-  if (status === "aguardando_aprovacao") return "badge--warning";
-  if (status === "aprovado" || status === "em_execucao" || status === "aguardando_peca") {
-    return "badge--default";
-  }
-  return "badge--gray";
+function statusTone(status) {
+  if (status === "encerrado") return "is-success";
+  if (status === "cancelado") return "is-danger";
+  if (status === "aguardando_aprovacao" || status === "aguardando_peca") return "is-warning";
+  if (status === "aprovado" || status === "em_execucao" || status === "em_analise") return "is-info";
+  return "is-gray";
 }
 
 function money(value) {
@@ -920,4 +1077,39 @@ function money(value) {
 function formatDateBR(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString("pt-BR");
+}
+
+function formatDateShort(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hour}:${minute}`;
+}
+
+function initials(value) {
+  return String(value || "U")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function firstName(value) {
+  return String(value || "Usuário").trim().split(/\s+/)[0] || "Usuário";
+}
+
+function roleLabel(role) {
+  if (role === "admin") return "Administrador";
+  if (role === "atendimento") return "Atendimento";
+  if (role === "tecnico") return "Técnico";
+  return "Usuário";
 }
