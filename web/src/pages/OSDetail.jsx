@@ -97,6 +97,8 @@ export default function OSDetail() {
 
   const [os, setOs] = useState(null);
   const [pecas, setPecas] = useState([]);
+  const [eventos, setEventos] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [addingPiece, setAddingPiece] = useState(false);
@@ -159,21 +161,44 @@ export default function OSDetail() {
 
       const osData = await apiFetch(`/os/${id}`);
       let pecasData = [];
+      let eventosData = [];
 
       if (!isTecnico) {
         pecasData = await apiFetch(`/os/${id}/pecas`);
+      }
+
+      try {
+        setEventsLoading(true);
+        eventosData = await apiFetch(`/os/${id}/events`);
+      } catch (eventError) {
+        eventosData = [];
+      } finally {
+        setEventsLoading(false);
       }
 
       const nextForm = buildFormState(osData);
 
       setOs(osData);
       setPecas(Array.isArray(pecasData) ? pecasData : []);
+      setEventos(Array.isArray(eventosData) ? eventosData : []);
       setForm(nextForm);
       setInitialForm(nextForm);
     } catch (error) {
       setMsg(error.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadEventos() {
+    try {
+      setEventsLoading(true);
+      const eventosData = await apiFetch(`/os/${id}/events`);
+      setEventos(Array.isArray(eventosData) ? eventosData : []);
+    } catch (error) {
+      setEventos([]);
+    } finally {
+      setEventsLoading(false);
     }
   }
 
@@ -361,6 +386,7 @@ export default function OSDetail() {
       setMsg("");
       const data = await apiFetch(`/os/${id}/whatsapp-link`);
       window.open(data.whatsapp_url, "_blank");
+      await loadEventos();
     } catch (error) {
       setMsg(error.message);
     }
@@ -478,6 +504,8 @@ export default function OSDetail() {
               />
             </section>
           )}
+
+          <HistoricoCard eventos={eventos} loading={eventsLoading} isTecnico={isTecnico} />
 
           <div className="osdetail-premium-footer-note">
             OS criada em {formatDateBR(os.created_at)} · Última atualização em {formatDateBR(os.updated_at)}
@@ -838,6 +866,52 @@ function PecasCard({
   );
 }
 
+function HistoricoCard({ eventos, loading, isTecnico }) {
+  return (
+    <section className="osdetail-premium-card osdetail-premium-card--history">
+      <div className="osdetail-premium-history-head">
+        <CardTitle
+          icon="clock"
+          title="Histórico da OS"
+          subtitle="Últimas movimentações registradas nesta ordem."
+        />
+        <span>{loading ? "Atualizando..." : `${eventos.length} registro(s)`}</span>
+      </div>
+
+      {eventos.length === 0 ? (
+        <div className="osdetail-premium-history-empty">
+          Nenhuma movimentação registrada ainda. Alterações feitas a partir de agora aparecerão aqui.
+        </div>
+      ) : (
+        <div className="osdetail-premium-history-list">
+          {eventos.map((evento) => (
+            <article key={evento.id} className={`osdetail-premium-history-item ${eventTone(evento.event_type)}`}>
+              <div className="osdetail-premium-history-icon">
+                <Icon name={eventIcon(evento.event_type)} />
+              </div>
+
+              <div className="osdetail-premium-history-content">
+                <div className="osdetail-premium-history-title-row">
+                  <strong>{evento.title || eventTitle(evento.event_type)}</strong>
+                  <time>{formatDateShort(evento.created_at)}</time>
+                </div>
+
+                {evento.description ? <p>{evento.description}</p> : null}
+
+                <div className="osdetail-premium-history-meta">
+                  <span>{evento.user_name || "Sistema"}</span>
+                  <span>{roleLabel(evento.user_role)}</span>
+                  {!isTecnico && evento.metadata?.part_name ? <span>Peça: {evento.metadata.part_name}</span> : null}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
   return (
     <section className="osdetail-premium-card osdetail-premium-card--edit">
@@ -1077,6 +1151,42 @@ function money(value) {
 function formatDateBR(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString("pt-BR");
+}
+
+function eventIcon(eventType) {
+  if (eventType === "status_changed") return "trend";
+  if (eventType === "description_updated" || eventType === "os_updated") return "edit";
+  if (eventType === "vehicle_updated") return "car";
+  if (eventType === "piece_added" || eventType === "piece_updated" || eventType === "piece_removed") return "parts";
+  if (eventType === "whatsapp_quote_generated") return "phone";
+  if (eventType === "financial_updated") return "dollar";
+  return "clock";
+}
+
+function eventTone(eventType) {
+  if (eventType === "piece_removed") return "is-danger";
+  if (eventType === "piece_added" || eventType === "piece_updated") return "is-blue";
+  if (eventType === "whatsapp_quote_generated") return "is-green";
+  if (eventType === "financial_updated") return "is-warning";
+  if (eventType === "status_changed") return "is-purple";
+  return "is-gray";
+}
+
+function eventTitle(eventType) {
+  const titles = {
+    os_created: "OS criada",
+    os_updated: "OS atualizada",
+    status_changed: "Status alterado",
+    description_updated: "Descrição atualizada",
+    vehicle_updated: "Dados do veículo atualizados",
+    financial_updated: "Valor atualizado",
+    piece_added: "Peça adicionada",
+    piece_updated: "Peça atualizada",
+    piece_removed: "Peça removida",
+    whatsapp_quote_generated: "Orçamento WhatsApp gerado",
+  };
+
+  return titles[eventType] || "Movimentação registrada";
 }
 
 function formatDateShort(value) {

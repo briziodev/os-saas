@@ -10295,3 +10295,423 @@ textarea:focus {
     white-space: nowrap !important;
   }
 }
+
+/* =========================
+   SEMANA 8 - OSDETAIL HISTÓRICO DA OS
+   Escopo: seção Histórico da OS no OSDetail.
+   Cole no FINAL do web/src/index.css.
+   ========================= */
+
+.osdetail-premium-card--history {
+  margin-top: 18px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.osdetail-premium-history-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.osdetail-premium-history-head > span {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d7e3f0 !important;
+  border-radius: 999px !important;
+  background: #f8fbff !important;
+  color: #536780 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.osdetail-premium-history-list {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.osdetail-premium-history-empty {
+  padding: 18px !important;
+  border: 1px dashed #cbd8e6 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+}
+
+.osdetail-premium-history-item {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  border: 1px solid #dce6f2 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035) !important;
+  overflow: hidden !important;
+}
+
+.osdetail-premium-history-item::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 5px !important;
+  background: #94a3b8 !important;
+}
+
+.osdetail-premium-history-item.is-blue::before {
+  background: #1764ff !important;
+}
+
+.osdetail-premium-history-item.is-green::before {
+  background: #16a34a !important;
+}
+
+.osdetail-premium-history-item.is-warning::before {
+  background: #f06416 !important;
+}
+
+.osdetail-premium-history-item.is-danger::before {
+  background: #dc2626 !important;
+}
+
+.osdetail-premium-history-item.is-purple::before {
+  background: #7c3aed !important;
+}
+
+.osdetail-premium-history-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #eef5ff !important;
+  color: #0757e7 !important;
+  border: 1px solid #d7e6ff !important;
+  flex: 0 0 auto !important;
+}
+
+.osdetail-premium-history-icon .osdetail-premium-svg-icon {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+.osdetail-premium-history-content {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 7px !important;
+}
+
+.osdetail-premium-history-title-row {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.osdetail-premium-history-title-row strong {
+  min-width: 0 !important;
+  color: #0f172a !important;
+  font-size: 16px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-history-title-row time {
+  flex: 0 0 auto !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.osdetail-premium-history-content p {
+  margin: 0 !important;
+  color: #334155 !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-history-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.osdetail-premium-history-meta span {
+  min-height: 26px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  color: #536780 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-card--history {
+    margin-top: 14px !important;
+  }
+
+  .osdetail-premium-history-head {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-head > span {
+    width: fit-content !important;
+  }
+
+  .osdetail-premium-history-item {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 15px !important;
+  }
+
+  .osdetail-premium-history-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+  }
+
+  .osdetail-premium-history-title-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
+  .osdetail-premium-history-title-row time {
+    white-space: normal !important;
+  }
+
+  .osdetail-premium-history-content p {
+    font-size: 13px !important;
+  }
+}
+
+
+/* =========================
+   SEMANA 8 - OSDETAIL FIX 05 MOBILE RESPONSIVO
+   Corrige quebra da faixa superior no mobile:
+   - Cliente/Veículo/Placa/Status/Data/Total deixam de ficar espremidos
+   - Cards ficam em coluna única no celular
+   - Mantém desktop como está
+   Cole no FINAL do web/src/index.css
+   ========================= */
+
+@media (max-width: 767px) {
+  .osdetail-premium-page,
+  .osdetail-premium-main,
+  .osdetail-premium-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .osdetail-premium-container {
+    padding: 12px !important;
+  }
+
+  /* Faixa superior quebrada no mobile */
+  .osdetail-premium-meta-strip {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+
+    padding: 12px !important;
+    border-radius: 18px !important;
+    overflow: visible !important;
+  }
+
+  .osdetail-premium-meta-item,
+  .osdetail-premium-meta-item.is-money {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: auto !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+
+    padding: 12px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-meta-icon {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    flex: 0 0 34px !important;
+  }
+
+  .osdetail-premium-meta-item > div {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .osdetail-premium-meta-item small {
+    display: block !important;
+    width: 100% !important;
+
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    text-align: left !important;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+
+  .osdetail-premium-meta-item strong {
+    display: block !important;
+    width: 100% !important;
+
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    text-align: left !important;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .osdetail-premium-meta-item.is-money strong {
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  /* Cards principais no mobile */
+  .osdetail-premium-grid-primary,
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .osdetail-premium-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px !important;
+    padding: 16px !important;
+    overflow: hidden !important;
+  }
+
+  /* Situação da OS */
+  .osdetail-premium-situation-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile.is-money {
+    grid-column: auto !important;
+  }
+
+  /* Resumo */
+  .osdetail-premium-summary-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Peças */
+  .osdetail-premium-piece-form {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .osdetail-premium-piece-row {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "nome"
+      "qtd"
+      "unitario"
+      "subtotal"
+      "acao" !important;
+  }
+
+  .osdetail-premium-piece-row > button {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+  }
+
+  .osdetail-premium-total-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Editar OS */
+  .osdetail-premium-edit-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-actions {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-actions .osdetail-premium-btn {
+    width: 100% !important;
+  }
+
+  /* Histórico */
+  .osdetail-premium-history-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-item {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-date {
+    position: static !important;
+    text-align: left !important;
+    margin-top: 6px !important;
+  }
+}
