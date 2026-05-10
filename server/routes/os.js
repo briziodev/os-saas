@@ -6,6 +6,7 @@ const pool = require("../db");
 const { authRequired, loadUser } = require("../middlewares/auth");
 const validate = require("../middlewares/validate");
 const { logger } = require("../utils/logger");
+const { sensitiveActionLimiter } = require("../middlewares/rateLimiters");
 const {
   osIdParamSchema,
   osPecaParamSchema,
@@ -147,46 +148,80 @@ async function getPecasOS(osId, companyId) {
   return result.rows;
 }
 
+const BUDGET_VALIDITY_DAYS = 5;
+
+function cleanWhatsappText(value, fallback = "Não informado") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function formatQuantityBR(value) {
+  const number = Number(value || 0);
+
+  if (Number.isInteger(number)) {
+    return String(number);
+  }
+
+  return number.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 function buildWhatsappMessage(osData, pecas = []) {
+  const clienteNome = cleanWhatsappText(osData.nome, "cliente");
+  const oficinaNome = cleanWhatsappText(osData.oficina_nome, "nossa oficina");
+  const modelo = cleanWhatsappText(osData.modelo);
+  const placa = cleanWhatsappText(osData.placa);
+  const problemaRelatado = cleanWhatsappText(osData.problema_relatado);
+
   const linhas = [
-    `Olá, ${osData.nome}.`,
+    `Olá, ${clienteNome}, tudo bem?`,
     "",
-    "Segue o orçamento da sua ordem de serviço.",
+    `Aqui é da ${oficinaNome}.`,
+    `Segue o orçamento referente à sua Ordem de Serviço #${osData.id}.`,
     "",
-    `Oficina: ${osData.oficina_nome || "Sua oficina"}`,
-    `OS: #${osData.id}`,
-    `Veículo: ${osData.modelo || "Não informado"}`,
-    `Placa: ${osData.placa || "Não informada"}`,
+    "DADOS DO VEÍCULO",
+    `• Veículo: ${modelo}`,
+    `• Placa: ${placa}`,
     "",
-    "Problema relatado:",
-    `${osData.problema_relatado || "Não informado"}`,
+    "PROBLEMA RELATADO",
+    problemaRelatado,
     "",
+    "PEÇAS E MATERIAIS",
   ];
 
   if (pecas.length > 0) {
-    linhas.push("Peças:");
-
     for (const peca of pecas) {
+      const nomePeca = cleanWhatsappText(peca.nome, "Item");
+      const quantidade = formatQuantityBR(peca.quantidade);
+
       linhas.push(
-        `- ${peca.nome} — ${Number(peca.quantidade)}x ${formatMoneyBR(peca.valor_unitario)} = ${formatMoneyBR(peca.valor_total)}`
+        `• ${quantidade}x ${nomePeca} — ${formatMoneyBR(peca.valor_unitario)} un. = ${formatMoneyBR(peca.valor_total)}`
       );
     }
 
-    linhas.push("");
-    linhas.push(`Total de peças: ${formatMoneyBR(osData.valor_pecas)}`);
+    linhas.push(`Subtotal de peças: ${formatMoneyBR(osData.valor_pecas)}`);
   } else {
-    linhas.push("Peças: não informadas");
+    linhas.push("• Nenhuma peça/material lançado neste orçamento.");
   }
 
-  linhas.push(`Mão de obra: ${formatMoneyBR(osData.mao_obra)}`);
   linhas.push("");
-  linhas.push(`Valor total: ${formatMoneyBR(osData.valor_total)}`);
+  linhas.push("MÃO DE OBRA");
+  linhas.push(`• ${formatMoneyBR(osData.mao_obra)}`);
   linhas.push("");
-  linhas.push("Este orçamento é válido por 5 dias.");
+  linhas.push("TOTAL DO ORÇAMENTO");
+  linhas.push(`• ${formatMoneyBR(osData.valor_total)}`);
   linhas.push("");
-  linhas.push("Para responder:");
-  linhas.push("1 - Aprovo o serviço");
-  linhas.push("2 - Quero falar com a oficina");
+  linhas.push("VALIDADE");
+  linhas.push(
+    `• Este orçamento é válido por ${BUDGET_VALIDITY_DAYS} dias, sujeito à disponibilidade de peças e à manutenção das condições informadas.`
+  );
+  linhas.push("");
+  linhas.push("PARA APROVAR");
+  linhas.push(`Responda: APROVO O ORÇAMENTO #${osData.id}`);
+  linhas.push("");
+  linhas.push("Se tiver qualquer dúvida, é só responder esta mensagem.");
 
   return linhas.join("\n");
 }
@@ -551,6 +586,7 @@ router.get(
 
 router.get(
   "/:id/whatsapp-link",
+  sensitiveActionLimiter,
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
   async (req, res, next) => {
@@ -926,6 +962,7 @@ router.delete(
 
 router.post(
   "/:id/enviar-orcamento",
+  sensitiveActionLimiter,
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
   async (req, res, next) => {
