@@ -294,6 +294,79 @@ function logOSNotFound(req, event, message, osId) {
   });
 }
 
+const STATUS_LABELS = {
+  triagem: "Triagem",
+  em_analise: "Em análise",
+  aguardando_aprovacao: "Aguardando aprovação",
+  aprovado: "Aprovado",
+  em_execucao: "Em execução",
+  aguardando_peca: "Aguardando peça",
+  pronto_retirada: "Pronto para retirada",
+  encerrado: "Encerrado",
+  cancelado: "Cancelado",
+  orcamento_enviado: "Orçamento enviado",
+  finalizado: "Finalizado",
+};
+
+function formatStatusLabel(status) {
+  return STATUS_LABELS[status] || String(status || "Não informado").replace(/_/g, " ");
+}
+
+function normalizeNullableText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function stripSensitiveEventMetadata(metadata, role) {
+  if (role !== "tecnico" || !metadata || typeof metadata !== "object") {
+    return metadata || null;
+  }
+
+  const {
+    mao_obra,
+    old_mao_obra,
+    new_mao_obra,
+    valor_pecas,
+    valor_total,
+    valor_unitario,
+    part_value,
+    total,
+    ...safeMetadata
+  } = metadata;
+
+  return safeMetadata;
+}
+
+async function createOsEvent(req, { osId, eventType, title, description = null, metadata = null }) {
+  try {
+    await pool.query(
+      `INSERT INTO os_events
+       (company_id, os_id, user_id, event_type, title, description, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        req.user.company_id,
+        osId,
+        req.user.id,
+        eventType,
+        title,
+        description,
+        metadata ? JSON.stringify(metadata) : null,
+      ]
+    );
+  } catch (err) {
+    logger.warn("OS_EVENT_CREATE_FAILED", "Falha ao registrar evento da OS", {
+      requestId: req.requestId,
+      userId: req.user?.id,
+      companyId: req.user?.company_id,
+      role: req.user?.role,
+      osId: Number(osId),
+      eventType,
+      error: err.message,
+      ip: req.ip,
+    });
+  }
+}
+
 router.get("/", async (req, res, next) => {
   try {
     const filter = parseOSDateFilter(req.query);
@@ -407,6 +480,76 @@ router.get(
 );
 
 router.get(
+  "/:id/events",
+  requireRole("admin", "atendimento", "tecnico"),
+  validate(osIdParamSchema, "params"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      const osCheck = await pool.query(
+        "SELECT id FROM ordens_servico WHERE id = $1 AND company_id = $2",
+        [id, req.user.company_id]
+      );
+
+      if (osCheck.rowCount === 0) {
+        logOSNotFound(req, "OS_EVENTS_NOT_FOUND", "Tentativa de listar eventos de OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
+      }
+
+      const params = [id, req.user.company_id];
+      const tecnicoAllowedEvents = [
+        "os_created",
+        "os_updated",
+        "status_changed",
+        "description_updated",
+        "vehicle_updated",
+      ];
+      let eventFilter = "";
+
+      if (req.user.role === "tecnico") {
+        params.push(tecnicoAllowedEvents);
+        eventFilter = `AND e.event_type = ANY($${params.length}::text[])`;
+      }
+
+      const result = await pool.query(
+        `SELECT e.id,
+                e.event_type,
+                e.title,
+                e.description,
+                e.metadata,
+                e.created_at,
+                COALESCE(u.name, u.email, 'Sistema') AS user_name,
+                u.role AS user_role
+         FROM os_events e
+         LEFT JOIN users u
+           ON u.id = e.user_id
+          AND u.company_id = e.company_id
+         WHERE e.os_id = $1
+           AND e.company_id = $2
+           ${eventFilter}
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT 10`,
+        params
+      );
+
+      const events = result.rows.map((event) => ({
+        ...event,
+        metadata: stripSensitiveEventMetadata(event.metadata, req.user.role),
+      }));
+
+      return res.json(events);
+    } catch (err) {
+      return next(err);
+    }
+  }
+);
+
+router.get(
   "/:id/whatsapp-link",
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
@@ -457,6 +600,17 @@ router.get(
         osStatus: osData.status,
         partsCount: pecas.length,
         ip: req.ip,
+      });
+
+      await createOsEvent(req, {
+        osId: Number(id),
+        eventType: "whatsapp_quote_generated",
+        title: "Orçamento WhatsApp gerado",
+        description: "Link de orçamento da OS gerado para envio ao cliente.",
+        metadata: {
+          status: osData.status,
+          parts_count: pecas.length,
+        },
       });
 
       return res.json({ whatsapp_url: url });
@@ -537,6 +691,17 @@ router.post(
         ip: req.ip,
       });
 
+      await createOsEvent(req, {
+        osId: createdOS.id,
+        eventType: "os_created",
+        title: "OS criada",
+        description: `OS #${createdOS.id} criada em ${formatStatusLabel(createdOS.status)}.`,
+        metadata: {
+          status: createdOS.status,
+          cliente_id: createdOS.cliente_id,
+        },
+      });
+
       return res.status(201).json(createdOS);
     } catch (err) {
       return next(err);
@@ -578,7 +743,7 @@ router.put(
       }
 
       const current = await pool.query(
-        `SELECT mao_obra, valor_pecas, status
+        `SELECT mao_obra, valor_pecas, status, problema_relatado, modelo, placa
          FROM ordens_servico
          WHERE id = $1 AND company_id = $2`,
         [id, req.user.company_id]
@@ -658,6 +823,55 @@ router.put(
           oldStatus: cur.status,
           newStatus: updatedOS.status,
           ip: req.ip,
+        });
+
+        await createOsEvent(req, {
+          osId: updatedOS.id,
+          eventType: "status_changed",
+          title: "Status alterado",
+          description: `De ${formatStatusLabel(cur.status)} para ${formatStatusLabel(updatedOS.status)}.`,
+          metadata: {
+            old_status: cur.status,
+            new_status: updatedOS.status,
+          },
+        });
+      }
+
+      if (normalizeNullableText(cur.problema_relatado) !== normalizeNullableText(updatedOS.problema_relatado)) {
+        await createOsEvent(req, {
+          osId: updatedOS.id,
+          eventType: "description_updated",
+          title: "Problema relatado atualizado",
+          description: "A descrição/problema relatado da OS foi atualizado.",
+        });
+      }
+
+      if (normalizeNullableText(cur.modelo) !== normalizeNullableText(updatedOS.modelo) || normalizeNullableText(cur.placa) !== normalizeNullableText(updatedOS.placa)) {
+        await createOsEvent(req, {
+          osId: updatedOS.id,
+          eventType: "vehicle_updated",
+          title: "Dados do veículo atualizados",
+          description: "Modelo ou placa da OS foram atualizados.",
+          metadata: {
+            old_modelo: cur.modelo,
+            new_modelo: updatedOS.modelo,
+            old_placa: cur.placa,
+            new_placa: updatedOS.placa,
+          },
+        });
+      }
+
+      if (req.user.role !== "tecnico" && Number(cur.mao_obra || 0) !== Number(updatedOS.mao_obra || 0)) {
+        await createOsEvent(req, {
+          osId: updatedOS.id,
+          eventType: "financial_updated",
+          title: "Valor de mão de obra atualizado",
+          description: "O valor de mão de obra da OS foi atualizado.",
+          metadata: {
+            old_mao_obra: Number(cur.mao_obra || 0),
+            new_mao_obra: Number(updatedOS.mao_obra || 0),
+            valor_total: Number(updatedOS.valor_total || 0),
+          },
         });
       }
 
@@ -770,6 +984,18 @@ router.post(
           newStatus: targetStatus,
           ip: req.ip,
         });
+
+        await createOsEvent(req, {
+          osId: Number(id),
+          eventType: "status_changed",
+          title: "Status alterado pelo orçamento",
+          description: `De ${formatStatusLabel(oldStatus)} para ${formatStatusLabel(targetStatus)}.`,
+          metadata: {
+            old_status: oldStatus,
+            new_status: targetStatus,
+            source: "budget_send",
+          },
+        });
       }
 
       const pecas = await getPecasOS(id, req.user.company_id);
@@ -787,6 +1013,18 @@ router.post(
         partsCount: pecas.length,
         changedStatus: oldStatus !== osData.status,
         ip: req.ip,
+      });
+
+      await createOsEvent(req, {
+        osId: Number(id),
+        eventType: "whatsapp_quote_generated",
+        title: "Orçamento WhatsApp preparado",
+        description: "Orçamento da OS preparado para envio ao cliente pelo WhatsApp.",
+        metadata: {
+          status: osData.status,
+          parts_count: pecas.length,
+          changed_status: oldStatus !== osData.status,
+        },
       });
 
       return res.json({ whatsapp_url: url });
@@ -877,6 +1115,20 @@ router.post(
         ip: req.ip,
       });
 
+      await createOsEvent(req, {
+        osId: Number(id),
+        eventType: "piece_added",
+        title: "Peça adicionada",
+        description: `Peça adicionada: ${createdPart.nome} (${Number(createdPart.quantidade)}x).`,
+        metadata: {
+          part_id: createdPart.id,
+          part_name: createdPart.nome,
+          quantity: Number(createdPart.quantidade),
+          valor_unitario: Number(createdPart.valor_unitario || 0),
+          valor_total: Number(createdPart.valor_total || 0),
+        },
+      });
+
       return res.status(201).json(createdPart);
     } catch (err) {
       return next(err);
@@ -936,6 +1188,20 @@ router.put(
         ip: req.ip,
       });
 
+      await createOsEvent(req, {
+        osId: Number(id),
+        eventType: "piece_updated",
+        title: "Peça atualizada",
+        description: `Peça atualizada: ${updatedPart.nome} (${Number(updatedPart.quantidade)}x).`,
+        metadata: {
+          part_id: updatedPart.id,
+          part_name: updatedPart.nome,
+          quantity: Number(updatedPart.quantidade),
+          valor_unitario: Number(updatedPart.valor_unitario || 0),
+          valor_total: Number(updatedPart.valor_total || 0),
+        },
+      });
+
       return res.json(updatedPart);
     } catch (err) {
       return next(err);
@@ -988,6 +1254,18 @@ router.delete(
         partId: deletedPart.id,
         quantity: Number(deletedPart.quantidade),
         ip: req.ip,
+      });
+
+      await createOsEvent(req, {
+        osId: Number(id),
+        eventType: "piece_removed",
+        title: "Peça removida",
+        description: `Peça removida: ${deletedPart.nome} (${Number(deletedPart.quantidade)}x).`,
+        metadata: {
+          part_id: deletedPart.id,
+          part_name: deletedPart.nome,
+          quantity: Number(deletedPart.quantidade),
+        },
       });
 
       return res.json({ deleted: deletedPart, requestId: req.requestId });
