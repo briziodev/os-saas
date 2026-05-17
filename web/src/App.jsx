@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { getToken, getUser } from "./api";
+import AppShell from "./layouts/AppShell";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -21,9 +22,21 @@ function PrivateRoute({ children }) {
   return children;
 }
 
+function PrivateShell({ children }) {
+  return (
+    <PrivateRoute>
+      <AppShell>{children}</AppShell>
+    </PrivateRoute>
+  );
+}
+
 export default function App() {
-  const rawUser = getUser();
-const role = rawUser?.role;
+  const user = getUser();
+  const role = user?.role;
+  const canAccessDashboard = role === "admin" || role === "atendimento";
+  const canAccessClientes = role === "admin" || role === "atendimento";
+  const canAccessUsuarios = role === "admin";
+  const canCreateOS = role === "admin" || role === "atendimento";
 
   return (
     <Routes>
@@ -33,79 +46,87 @@ const role = rawUser?.role;
       <Route
         path="/dashboard"
         element={
-          <PrivateRoute>
-            {role === "admin" || role === "atendimento" ? (
-  <Dashboard />
-) : (
-  <Navigate to="/os" replace />
-)}
-
-
-
-
-          </PrivateRoute>
+          canAccessDashboard ? (
+            <PrivateShell>
+              <Dashboard />
+            </PrivateShell>
+          ) : (
+            <PrivateRoute>
+              <Navigate to="/os" replace />
+            </PrivateRoute>
+          )
         }
       />
 
       <Route
         path="/os"
         element={
-          <PrivateRoute>
+          <PrivateShell>
             <OSList />
-          </PrivateRoute>
+          </PrivateShell>
         }
       />
 
       <Route
         path="/os/new"
         element={
-          <PrivateRoute>
-            <OSNew />
-          </PrivateRoute>
+          canCreateOS ? (
+            <PrivateShell>
+              <OSNew />
+            </PrivateShell>
+          ) : (
+            <PrivateRoute>
+              <Navigate to="/os" replace />
+            </PrivateRoute>
+          )
         }
       />
 
       <Route
         path="/os/:id"
         element={
-          <PrivateRoute>
+          <PrivateShell>
             <OSDetail />
-          </PrivateRoute>
+          </PrivateShell>
         }
       />
 
       <Route
         path="/clientes"
         element={
-          <PrivateRoute>
-            {user?.role === "admin" || user?.role === "atendimento" ? (
+          canAccessClientes ? (
+            <PrivateShell>
               <Clientes />
-            ) : (
+            </PrivateShell>
+          ) : (
+            <PrivateRoute>
               <Navigate to="/os" replace />
-            )}
-          </PrivateRoute>
+            </PrivateRoute>
+          )
         }
       />
 
       <Route
         path="/usuarios"
         element={
-          <PrivateRoute>
-            {user?.role === "admin" ? (
+          canAccessUsuarios ? (
+            <PrivateShell>
               <Usuarios />
-            ) : (
+            </PrivateShell>
+          ) : (
+            <PrivateRoute>
               <Navigate to="/os" replace />
-            )}
-          </PrivateRoute>
+            </PrivateRoute>
+          )
         }
       />
 
       <Route
         path="/kanban"
         element={
-          <PrivateRoute>
+          <PrivateShell>
             <Kanban />
-          </PrivateRoute>
+          </PrivateShell>
         }
       />
 

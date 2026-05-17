@@ -1,0 +1,35 @@
+APP_SHELL_NOTES.txt
+
+Objetivo desta etapa:
+- Criar um layout autenticado único para o OS SaaS.
+- Padronizar sidebar desktop, header mobile, bottom navigation mobile, ícones e usuário logado.
+- Usar a tela Usuários como principal referência visual.
+
+Arquivos criados:
+- src/layouts/AppShell.jsx
+- src/layouts/AppShell.css
+- src/APP_SHELL_NOTES.txt
+
+Arquivos alterados:
+- src/App.jsx
+
+Decisão técnica:
+- As páginas internas foram envolvidas pelo AppShell via rotas protegidas em App.jsx.
+- As páginas ainda mantêm seus CSS próprios.
+- O AppShell.css neutraliza sidebars, headers e bottom navs antigos das telas já existentes para evitar menu duplicado.
+- Essa abordagem é incremental e reduz risco, sem reescrever todas as páginas agora.
+
+Regras preservadas:
+- Login não usa AppShell.
+- AtivarConta não usa AppShell.
+- Dashboard continua bloqueado para técnico.
+- Clientes continua bloqueado para técnico.
+- Usuários continua permitido apenas para admin.
+- Nova OS continua permitida apenas para admin e atendimento.
+- Backend, banco e regras de negócio não foram alterados.
+
+Próximo passo recomendado:
+1. Rodar npm run build.
+2. Validar visualmente Login, Dashboard, Usuários, OSList, Kanban, Clientes, OSNew e OSDetail.
+3. Se o shell estiver consistente, fazer commit.
+4. Depois iniciar modernização específica da tela Clientes.

@@ -1,0 +1,218 @@
+import { Link, useLocation } from "react-router-dom";
+import {
+  BarChart3,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Plus,
+  ShieldCheck,
+  UserCog,
+  Users,
+  Wrench,
+} from "lucide-react";
+import { clearToken, getUser } from "../api";
+import "./AppShell.css";
+
+const PAGE_META = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    description: "Indicadores e visão gerencial da oficina.",
+    to: "/dashboard",
+    icon: LayoutDashboard,
+    roles: ["admin", "atendimento"],
+    match: (path) => path.startsWith("/dashboard"),
+  },
+  {
+    key: "os",
+    label: "OS",
+    description: "Ordens de serviço e atendimento operacional.",
+    to: "/os",
+    icon: ClipboardList,
+    roles: ["admin", "atendimento", "tecnico"],
+    match: (path) => path === "/os" || path.startsWith("/os/"),
+  },
+  {
+    key: "kanban",
+    label: "Quadro de OS",
+    description: "Acompanhamento visual do andamento da oficina.",
+    to: "/kanban",
+    icon: BarChart3,
+    roles: ["admin", "atendimento", "tecnico"],
+    match: (path) => path.startsWith("/kanban"),
+  },
+  {
+    key: "clientes",
+    label: "Clientes",
+    description: "Cadastro e consulta da base de clientes.",
+    to: "/clientes",
+    icon: Users,
+    roles: ["admin", "atendimento"],
+    match: (path) => path.startsWith("/clientes"),
+  },
+  {
+    key: "usuarios",
+    label: "Usuários",
+    description: "Equipe, convites e permissões.",
+    to: "/usuarios",
+    icon: UserCog,
+    roles: ["admin"],
+    match: (path) => path.startsWith("/usuarios"),
+  },
+];
+
+function getInitials(value) {
+  const clean = String(value || "U").trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  return clean.slice(0, 2).toUpperCase();
+}
+
+function roleLabel(role) {
+  const labels = {
+    admin: "Administrador",
+    atendimento: "Atendimento",
+    tecnico: "Técnico",
+    member: "Member antigo",
+  };
+
+  return labels[role] || "Usuário";
+}
+
+function canSeeItem(item, role) {
+  return item.roles.includes(role);
+}
+
+export default function AppShell({ children }) {
+  const location = useLocation();
+  const user = getUser();
+  const role = user?.role || "";
+  const path = location.pathname;
+
+  const navItems = PAGE_META.filter((item) => canSeeItem(item, role));
+  const activeItem = navItems.find((item) => item.match(path)) || navItems[0];
+  const canCreateOS = role === "admin" || role === "atendimento";
+  const bottomItems = navItems.filter((item) => {
+    if (role === "admin") {
+      return ["dashboard", "os", "clientes", "usuarios"].includes(item.key);
+    }
+
+    if (role === "atendimento") {
+      return ["dashboard", "os", "kanban", "clientes"].includes(item.key);
+    }
+
+    return ["os", "kanban"].includes(item.key);
+  });
+
+  function logout() {
+    clearToken();
+    window.location.href = "/login";
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="app-shell-sidebar" aria-label="Menu principal">
+        <Link to={role === "tecnico" ? "/os" : "/dashboard"} className="app-shell-brand" aria-label="Ir para início">
+          <div className="app-shell-logo">OS</div>
+          <div>
+            <strong>OS SaaS</strong>
+            <span>Oficina mecânica</span>
+          </div>
+        </Link>
+
+        <nav className="app-shell-menu" aria-label="Navegação principal">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = item.match(path);
+
+            return (
+              <Link key={item.key} to={item.to} className={`app-shell-menu-item ${active ? "is-active" : ""}`}>
+                <Icon size={19} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="app-shell-sidebar-footer">
+          <div className="app-shell-context-card">
+            <ShieldCheck size={18} />
+            <div>
+              <strong>{activeItem?.label || "Operação"}</strong>
+              <span>{activeItem?.description || "Gestão da oficina"}</span>
+            </div>
+          </div>
+
+          <div className="app-shell-user-card">
+            <div className="app-shell-avatar">{getInitials(user?.name || user?.email || "Usuário")}</div>
+            <div>
+              <strong>{user?.name || user?.email || "Usuário logado"}</strong>
+              <span>{roleLabel(role)}</span>
+            </div>
+          </div>
+
+          <button type="button" className="app-shell-logout" onClick={logout}>
+            <LogOut size={17} />
+            <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="app-shell-main">
+        <header className="app-shell-mobile-header">
+          <Link to={role === "tecnico" ? "/os" : "/dashboard"} className="app-shell-mobile-brand" aria-label="Ir para início">
+            <div className="app-shell-logo">OS</div>
+            <div>
+              <strong>OS SaaS</strong>
+              <span>{activeItem?.label || "Operação"}</span>
+            </div>
+          </Link>
+
+          {canCreateOS ? (
+            <Link to="/os/new" className="app-shell-mobile-new-os">
+              <Plus size={18} />
+              Nova OS
+            </Link>
+          ) : (
+            <div className="app-shell-mobile-role-pill">
+              <Wrench size={17} />
+              Técnico
+            </div>
+          )}
+        </header>
+
+        <div className="app-shell-content">{children}</div>
+
+        <nav className="app-shell-bottom-nav" aria-label="Navegação mobile">
+          {bottomItems.map((item) => {
+            const Icon = item.icon;
+            const active = item.match(path);
+
+            return (
+              <Link key={item.key} to={item.to} className={active ? "is-active" : ""}>
+                <Icon size={21} />
+                <span>{item.label === "Quadro de OS" ? "Quadro" : item.label}</span>
+              </Link>
+            );
+          })}
+
+          {canCreateOS ? (
+            <Link to="/os/new" className={path === "/os/new" ? "app-shell-bottom-plus is-active" : "app-shell-bottom-plus"}>
+              <Plus size={23} />
+              <span>Nova</span>
+            </Link>
+          ) : (
+            <button type="button" onClick={logout}>
+              <LogOut size={21} />
+              <span>Sair</span>
+            </button>
+          )}
+        </nav>
+      </main>
+    </div>
+  );
+}
