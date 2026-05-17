@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import "./Kanban.css";
 
 const INITIAL_VISIBLE_PER_COLUMN = 4;
 

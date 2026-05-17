@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import "./OSNew.css";
 
 const MAX_RESULTADOS = 5;
 

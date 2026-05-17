@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import "./OSList.css";
 
 const STATUS = [
   "triagem",

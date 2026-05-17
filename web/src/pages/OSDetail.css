@@ -1,0 +1,2635 @@
+/* =========================
+   PEÇAS DA OS
+   ========================= */
+
+.os-detail-header-client {
+  margin-top: 8px;
+}
+
+.os-detail-client-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.os-detail-client-name {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.info-chip--saved {
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(187, 247, 208, 0.4);
+  color: #ecfdf5;
+}
+
+.info-chip--unsaved {
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(253, 230, 138, 0.38);
+  color: #fff7ed;
+}
+
+.piece-form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.piece-subtotal-box {
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+
+.piece-subtotal-value {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.piece-list {
+  display: grid;
+  gap: 12px;
+}
+
+.piece-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.piece-item-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.piece-item-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.piece-item-meta {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .piece-form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .piece-subtotal-box {
+    min-width: 0;
+  }
+
+  .piece-item {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================
+   OVERRIDE FINAL - PEÇAS DA OS
+   ========================= */
+
+.piece-form-actions,
+.card .piece-form-actions,
+.section .piece-form-actions {
+  margin-top: 16px !important;
+  margin-bottom: 18px !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 14px !important;
+  align-items: end !important;
+}
+
+.piece-form-actions .btn,
+.card .piece-form-actions .btn,
+.section .piece-form-actions .btn {
+  align-self: end !important;
+}
+
+.piece-list,
+.card .piece-list,
+.section .piece-list {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+  margin-top: 18px !important;
+}
+
+.piece-list > .piece-item,
+.card .piece-list > .piece-item,
+.section .piece-list > .piece-item {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  padding: 16px !important;
+  border: 1px solid #d7e2ee !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #f3f7fc 0%, #edf3f9 100%) !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05) !important;
+  align-items: stretch !important;
+  justify-items: stretch !important;
+}
+
+.piece-list > .piece-item .piece-item-main,
+.card .piece-list > .piece-item .piece-item-main,
+.section .piece-list > .piece-item .piece-item-main {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.piece-list > .piece-item .piece-item-name,
+.card .piece-list > .piece-item .piece-item-name,
+.section .piece-list > .piece-item .piece-item-name {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  color: var(--text) !important;
+  word-break: break-word !important;
+}
+
+.piece-list > .piece-item .piece-item-meta,
+.card .piece-list > .piece-item .piece-item-meta,
+.section .piece-list > .piece-item .piece-item-meta {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  color: var(--text-soft) !important;
+  word-break: break-word !important;
+}
+
+.piece-list > .piece-item button,
+.piece-list > .piece-item .btn,
+.card .piece-list > .piece-item button,
+.card .piece-list > .piece-item .btn,
+.section .piece-list > .piece-item button,
+.section .piece-list > .piece-item .btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-top: 2px !important;
+  background: #fff5f5 !important;
+  color: #b42318 !important;
+  border: 1px solid #f3c7c7 !important;
+  box-shadow: none !important;
+}
+
+.piece-list > .piece-item button:hover,
+.piece-list > .piece-item .btn:hover,
+.card .piece-list > .piece-item button:hover,
+.card .piece-list > .piece-item .btn:hover,
+.section .piece-list > .piece-item button:hover,
+.section .piece-list > .piece-item .btn:hover {
+  background: #fdecec !important;
+  border-color: #e7b2b2 !important;
+}
+
+@media (max-width: 768px) {
+  .piece-form-actions,
+  .card .piece-form-actions,
+  .section .piece-form-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+
+/* =========================
+   SEMANA 8 - OSDETAIL PREMIUM
+   Escopo: web/src/pages/OSDetail.jsx
+   Não altera backend nem regras de permissão.
+   ========================= */
+
+.osdetail-premium-page {
+  min-height: 100vh;
+  width: 100%;
+  color: #081225;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 26%),
+    linear-gradient(180deg, #eef5fc 0%, #e8f0f8 100%);
+}
+
+.osdetail-premium-main {
+  min-width: 0;
+}
+
+.osdetail-premium-container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.osdetail-premium-sidebar,
+.osdetail-premium-mobile-hero {
+  display: none;
+}
+
+.osdetail-premium-state-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #eef5fc;
+}
+
+.osdetail-premium-state-card {
+  width: min(520px, 100%);
+  border: 1px solid #dce6f2;
+  border-radius: 24px;
+  background: #ffffff;
+  padding: 24px;
+  color: #65748b;
+  font-weight: 850;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.osdetail-premium-state-card.is-error {
+  color: #9a3412;
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.osdetail-premium-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 8px 28px;
+}
+
+.osdetail-premium-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.osdetail-premium-brand strong,
+.osdetail-premium-user-card strong {
+  display: block;
+  color: #ffffff;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.osdetail-premium-brand span,
+.osdetail-premium-user-card span {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.osdetail-premium-menu {
+  display: grid;
+  gap: 9px;
+}
+
+.osdetail-premium-menu-item {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  padding: 0 13px;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 850;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.osdetail-premium-menu-item span {
+  width: 24px;
+  min-width: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.osdetail-premium-menu-item:hover,
+.osdetail-premium-menu-item.is-active {
+  background: linear-gradient(135deg, #1764ff 0%, #0d4fce 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(23, 100, 255, 0.22);
+}
+
+.osdetail-premium-sidebar-footer {
+  margin-top: auto;
+  display: grid;
+  gap: 16px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.osdetail-premium-user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.osdetail-premium-user-card > div:last-child {
+  min-width: 0;
+}
+
+.osdetail-premium-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: #e8f0ff;
+  color: #173c66;
+  font-weight: 950;
+}
+
+.osdetail-premium-logout {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 850;
+  text-align: left;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.osdetail-premium-logout:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.osdetail-premium-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.osdetail-premium-eyebrow {
+  color: #66758b;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.osdetail-premium-title-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.osdetail-premium-title-row h1 {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  color: #081225;
+}
+
+.osdetail-premium-save-pill {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 950;
+  border: 1px solid transparent;
+}
+
+.osdetail-premium-save-pill::before {
+  content: "✓";
+}
+
+.osdetail-premium-save-pill.is-saved {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.osdetail-premium-save-pill.is-unsaved {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.osdetail-premium-save-pill.is-unsaved::before {
+  content: "!";
+}
+
+.osdetail-premium-header-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  max-width: 720px;
+}
+
+.osdetail-premium-btn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 950;
+  text-align: center;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+
+.osdetail-premium-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.osdetail-premium-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.osdetail-premium-btn--ghost {
+  background: #ffffff;
+  color: #14233c;
+  border-color: #d9e4f1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.osdetail-premium-btn--primary,
+.osdetail-premium-whatsapp-wide {
+  background: linear-gradient(135deg, #1d73ff 0%, #0757e7 100%);
+  color: #ffffff;
+  border-color: #0757e7;
+  box-shadow: 0 16px 32px rgba(29, 115, 255, 0.24);
+}
+
+.osdetail-premium-total-floating {
+  display: none;
+}
+
+.osdetail-premium-meta-strip {
+  display: grid;
+  grid-template-columns: 1.3fr repeat(5, minmax(140px, 1fr)) 220px;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 28px;
+  padding: 18px;
+  border: 1px solid #dbe7f4;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07);
+  backdrop-filter: blur(8px);
+}
+
+.osdetail-premium-meta-strip.is-tecnico {
+  grid-template-columns: 1.3fr repeat(5, minmax(130px, 1fr));
+}
+
+.osdetail-premium-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 0 18px;
+  border-right: 1px solid #e2eaf4;
+}
+
+.osdetail-premium-meta-item:last-child {
+  border-right: 0;
+}
+
+.osdetail-premium-meta-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: #e9f1ff;
+  color: #1764ff;
+  font-weight: 950;
+}
+
+.osdetail-premium-meta-item small,
+.osdetail-premium-info-tile small,
+.osdetail-premium-description-block small {
+  display: block;
+  color: #687990;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.osdetail-premium-meta-item strong,
+.osdetail-premium-info-tile strong {
+  display: block;
+  margin-top: 6px;
+  color: #14233c;
+  font-weight: 950;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.osdetail-premium-meta-item.is-money {
+  border: 1px solid #dbe7f4;
+  border-radius: 18px;
+  background: #f7fbff;
+}
+
+.osdetail-premium-meta-item.is-money strong {
+  color: #0757e7;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.osdetail-premium-grid-main,
+.osdetail-premium-grid-secondary {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+.osdetail-premium-grid-main {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  margin-bottom: 24px;
+}
+
+.osdetail-premium-grid-secondary {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+}
+
+.osdetail-premium-grid-secondary--single {
+  grid-template-columns: minmax(0, 720px);
+}
+
+.osdetail-premium-card {
+  min-width: 0;
+  border: 1px solid #dbe7f4;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.90);
+  padding: 24px;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07);
+  backdrop-filter: blur(8px);
+}
+
+.osdetail-premium-card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.osdetail-premium-card-title > span {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: #e9f1ff;
+  color: #1764ff;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.osdetail-premium-card-title h2 {
+  margin: 0;
+  color: #081225;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.osdetail-premium-card-title p {
+  margin: 7px 0 0;
+  color: #66758b;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.osdetail-premium-description-block {
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e7eef7;
+  margin-bottom: 18px;
+}
+
+.osdetail-premium-description-block p {
+  margin: 8px 0 0;
+  color: #233653;
+  font-size: 17px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.osdetail-premium-summary-grid,
+.osdetail-premium-situation-grid,
+.osdetail-premium-total-grid,
+.osdetail-premium-form-grid-2 {
+  display: grid;
+  gap: 14px;
+}
+
+.osdetail-premium-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.osdetail-premium-situation-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.osdetail-premium-situation-grid.is-tecnico {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.osdetail-premium-total-grid,
+.osdetail-premium-form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.osdetail-premium-info-tile {
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  padding: 14px 16px;
+  border: 1px solid #dce6f2;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.osdetail-premium-info-tile.is-money strong {
+  color: #0757e7;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.osdetail-premium-info-tile.is-accent strong {
+  color: #07842b;
+}
+
+.osdetail-premium-status-badge {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.1;
+  font-weight: 950;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.osdetail-premium-status-badge.is-gray {
+  background: #edf1f6;
+  color: #334155;
+  border-color: #d9e1ea;
+}
+
+.osdetail-premium-status-badge.is-info {
+  background: #e4efff;
+  color: #0757e7;
+  border-color: #bfd9ff;
+}
+
+.osdetail-premium-status-badge.is-warning {
+  background: #fff0e4;
+  color: #d94f00;
+  border-color: #ffc692;
+}
+
+.osdetail-premium-status-badge.is-success {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.osdetail-premium-status-badge.is-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.osdetail-premium-whatsapp-wide {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.osdetail-premium-whatsapp-wide:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.osdetail-premium-piece-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(110px, 0.7fr) minmax(150px, 0.9fr) minmax(150px, 0.9fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 22px;
+}
+
+.osdetail-premium-form-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.osdetail-premium-form-field label {
+  margin: 0;
+  color: #536780;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.osdetail-premium-form-field input,
+.osdetail-premium-form-field select,
+.osdetail-premium-form-field textarea {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid #d7e3f0;
+  background: #ffffff;
+  color: #12213a;
+  padding: 10px 12px;
+  font-weight: 750;
+}
+
+.osdetail-premium-form-field textarea {
+  min-height: 128px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.osdetail-premium-form-field small {
+  color: #74869e;
+  line-height: 1.4;
+}
+
+.osdetail-premium-form-field--subtotal {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #dce6f2;
+  border-radius: 16px;
+  background: #f7fbff;
+}
+
+.osdetail-premium-form-field--subtotal strong {
+  color: #081225;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.osdetail-premium-piece-table {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.osdetail-premium-piece-head,
+.osdetail-premium-piece-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.9fr 0.9fr 120px;
+  gap: 14px;
+  align-items: center;
+}
+
+.osdetail-premium-piece-head {
+  padding: 0 14px 8px;
+  color: #687990;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.osdetail-premium-piece-row {
+  min-height: 62px;
+  padding: 14px;
+  border: 1px solid #dce6f2;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1a2940;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+}
+
+.osdetail-premium-piece-row > * {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.osdetail-premium-piece-row b {
+  color: #173c66;
+}
+
+.osdetail-premium-piece-row button {
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.osdetail-premium-piece-row button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.osdetail-premium-piece-mobile-list {
+  display: none;
+}
+
+.osdetail-premium-info-line {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e7eef7;
+}
+
+.osdetail-premium-info-line > span:first-child {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1764ff;
+  font-weight: 950;
+}
+
+.osdetail-premium-info-line strong {
+  display: block;
+  color: #1b2c47;
+  font-weight: 950;
+  word-break: break-word;
+}
+
+.osdetail-premium-info-line small {
+  display: block;
+  margin-top: 3px;
+  color: #66758b;
+  font-weight: 750;
+  word-break: break-word;
+}
+
+.osdetail-premium-info-line button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+  font-weight: 900;
+}
+
+.osdetail-premium-empty {
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  margin: 12px 0;
+  padding: 18px;
+  border: 1px dashed #cbd8e6;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #66758b;
+  font-weight: 800;
+  text-align: center;
+}
+
+.osdetail-premium-total-grid {
+  margin-top: 18px;
+}
+
+.osdetail-premium-card--edit {
+  display: grid;
+  gap: 16px;
+}
+
+.osdetail-premium-edit-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.osdetail-premium-alert {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  font-weight: 850;
+}
+
+.osdetail-premium-alert.is-error {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.osdetail-premium-alert.is-success {
+  background: #ecfdf5;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.osdetail-premium-footer-note {
+  margin: 28px 0 4px;
+  color: #7a8aa1;
+  text-align: center;
+  font-weight: 750;
+}
+
+@media (min-width: 768px) {
+  .osdetail-premium-page {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .osdetail-premium-sidebar {
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 18px;
+    background: linear-gradient(180deg, #07172f 0%, #082344 100%);
+    color: #ffffff;
+    box-shadow: 18px 0 44px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 1320px) {
+  .osdetail-premium-meta-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .osdetail-premium-meta-item,
+  .osdetail-premium-meta-item.is-money {
+    border: 1px solid #dbe7f4;
+    border-radius: 16px;
+    padding: 14px;
+    background: #ffffff;
+  }
+
+  .osdetail-premium-piece-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .osdetail-premium-piece-form .osdetail-premium-btn {
+    width: 100%;
+  }
+
+  .osdetail-premium-piece-head,
+  .osdetail-premium-piece-row {
+    grid-template-columns: 1.2fr 0.6fr 0.9fr 112px;
+  }
+
+  .osdetail-premium-piece-head span:nth-child(4),
+  .osdetail-premium-piece-row b:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .osdetail-premium-container {
+    padding: 24px;
+  }
+
+  .osdetail-premium-header {
+    display: grid;
+  }
+
+  .osdetail-premium-header-actions {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+
+  .osdetail-premium-grid-main,
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .osdetail-premium-summary-grid,
+  .osdetail-premium-situation-grid,
+  .osdetail-premium-situation-grid.is-tecnico {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-page {
+    display: block;
+    padding-bottom: 0;
+    background:
+      linear-gradient(180deg, #061a36 0, #061a36 330px, #eef5fc 330px, #e8f0f8 100%);
+  }
+
+  .osdetail-premium-container {
+    max-width: 100%;
+    padding: 0 12px 18px;
+  }
+
+  .osdetail-premium-sidebar,
+  .osdetail-premium-header,
+  .osdetail-premium-meta-strip,
+  .osdetail-premium-piece-table,
+  .osdetail-premium-footer-note {
+    display: none;
+  }
+
+  .osdetail-premium-mobile-hero {
+    display: block;
+    padding: 18px 18px 26px;
+    color: #ffffff;
+    background:
+      radial-gradient(circle at top right, rgba(37, 99, 235, 0.30), transparent 34%),
+      linear-gradient(135deg, #061a36 0%, #082344 100%);
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+  }
+
+  .osdetail-premium-mobile-topline {
+    display: grid;
+    grid-template-columns: 42px 1fr 42px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .osdetail-premium-mobile-topline button {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #ffffff;
+    font-size: 24px;
+    cursor: pointer;
+  }
+
+  .osdetail-premium-mobile-topline span {
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .osdetail-premium-mobile-hero h1 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 42px;
+    line-height: 0.95;
+    letter-spacing: -0.05em;
+  }
+
+  .osdetail-premium-mobile-client-label {
+    margin-top: 14px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .osdetail-premium-mobile-client {
+    display: block;
+    margin-top: 6px;
+    color: #ffffff;
+    font-size: 20px;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .osdetail-premium-mobile-hero .osdetail-premium-save-pill {
+    margin-top: 18px;
+    min-height: 40px;
+    padding-inline: 18px;
+  }
+
+  .osdetail-premium-mobile-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .osdetail-premium-mobile-actions button {
+    min-height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 950;
+    cursor: pointer;
+  }
+
+  .osdetail-premium-mobile-actions .osdetail-premium-mobile-main-action {
+    grid-column: 1 / -1;
+    min-height: 54px;
+    background: #ffffff;
+    color: #173c66;
+    box-shadow: 0 14px 26px rgba(15, 23, 42, 0.20);
+  }
+
+  .osdetail-premium-mobile-status-mini {
+    display: none;
+  }
+
+  .osdetail-premium-alert {
+    margin: 12px 0;
+    border-radius: 16px;
+  }
+
+  .osdetail-premium-grid-main,
+  .osdetail-premium-grid-secondary,
+  .osdetail-premium-grid-secondary--single {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 14px 0 0;
+  }
+
+  .osdetail-premium-card {
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .osdetail-premium-card-title {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .osdetail-premium-card-title > span {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .osdetail-premium-card-title h2 {
+    font-size: 22px;
+  }
+
+  .osdetail-premium-card-title p {
+    font-size: 14px;
+  }
+
+  .osdetail-premium-description-block {
+    margin-bottom: 10px;
+    padding-bottom: 14px;
+  }
+
+  .osdetail-premium-description-block p {
+    font-size: 16px;
+  }
+
+  .osdetail-premium-summary-grid,
+  .osdetail-premium-situation-grid,
+  .osdetail-premium-situation-grid.is-tecnico,
+  .osdetail-premium-total-grid,
+  .osdetail-premium-form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .osdetail-premium-summary-grid .osdetail-premium-info-tile,
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile {
+    min-height: 58px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    background: #ffffff;
+  }
+
+  .osdetail-premium-summary-grid .osdetail-premium-info-tile:first-child,
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile:first-child {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+  }
+
+  .osdetail-premium-summary-grid .osdetail-premium-info-tile:last-child,
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile:last-child {
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-bottom: 1px solid #dce6f2;
+  }
+
+  .osdetail-premium-info-tile.is-money strong {
+    font-size: 24px;
+  }
+
+  .osdetail-premium-whatsapp-wide {
+    min-height: 52px;
+    margin-top: 12px;
+    background: #061a36;
+    box-shadow: 0 12px 24px rgba(6, 26, 54, 0.18);
+  }
+
+  .osdetail-premium-piece-form {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .osdetail-premium-piece-mobile-list {
+    display: grid;
+    gap: 0;
+    margin-top: 8px;
+  }
+
+  .osdetail-premium-empty {
+    min-height: 60px;
+    margin: 8px 0;
+  }
+
+  .osdetail-premium-total-grid {
+    margin-top: 10px;
+    gap: 10px;
+  }
+
+  .osdetail-premium-card--edit {
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .osdetail-premium-form-field input,
+  .osdetail-premium-form-field select,
+  .osdetail-premium-form-field textarea {
+    min-height: 48px;
+    border-radius: 13px;
+    font-size: 14px;
+  }
+
+  .osdetail-premium-form-field textarea {
+    min-height: 118px;
+  }
+
+  .osdetail-premium-edit-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 8px -8px -8px;
+    padding: 10px 8px max(12px, env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 18px 18px 0 0;
+    backdrop-filter: blur(10px);
+  }
+
+  .osdetail-premium-edit-actions .osdetail-premium-btn {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .osdetail-premium-edit-actions .osdetail-premium-btn--primary {
+    background: #061a36;
+    border-color: #061a36;
+  }
+}
+
+@media (max-width: 420px) {
+  .osdetail-premium-container {
+    padding-inline: 8px;
+  }
+
+  .osdetail-premium-mobile-hero {
+    padding-inline: 14px;
+  }
+
+  .osdetail-premium-mobile-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .osdetail-premium-mobile-hero h1 {
+    font-size: 38px;
+  }
+}
+
+/* =========================
+   SEMANA 8 - OSDETAIL ICON FIX 01
+   Troca visual dos ícones simbólicos por SVGs limpos e consistentes.
+   Cole no FINAL do web/src/index.css.
+   ========================= */
+
+.osdetail-premium-svg-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.osdetail-premium-menu-item span,
+.osdetail-premium-card-title > span,
+.osdetail-premium-meta-icon,
+.osdetail-premium-info-line > span:first-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.osdetail-premium-menu-item span .osdetail-premium-svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.osdetail-premium-btn .osdetail-premium-svg-icon,
+.osdetail-premium-whatsapp-wide .osdetail-premium-svg-icon,
+.osdetail-premium-logout .osdetail-premium-svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.osdetail-premium-btn,
+.osdetail-premium-whatsapp-wide,
+.osdetail-premium-logout {
+  gap: 8px !important;
+}
+
+.osdetail-premium-card-title > span .osdetail-premium-svg-icon,
+.osdetail-premium-meta-icon .osdetail-premium-svg-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.osdetail-premium-info-line > span:first-child .osdetail-premium-svg-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.osdetail-premium-mobile-topline button .osdetail-premium-svg-icon {
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-card-title > span {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .osdetail-premium-card-title > span .osdetail-premium-svg-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .osdetail-premium-btn .osdetail-premium-svg-icon,
+  .osdetail-premium-whatsapp-wide .osdetail-premium-svg-icon {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+/* =========================
+   SEMANA 8 - OSDETAIL FIX 02
+   Corrige bugs visuais encontrados nos prints:
+   - ícones SVG mais legíveis
+   - botão Adicionar peça não sai do container
+   - Total atual não quebra/desproporciona
+   - datas não quebram feio
+   - layout desktop mais estável
+   Cole no FINAL do web/src/index.css.
+   ========================= */
+
+.osdetail-premium-page,
+.osdetail-premium-page * {
+  min-width: 0;
+}
+
+.osdetail-premium-svg-icon {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+}
+
+.osdetail-premium-meta-icon,
+.osdetail-premium-card-title > span,
+.osdetail-premium-menu-item span,
+.osdetail-premium-info-line > span:first-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.osdetail-premium-meta-icon .osdetail-premium-svg-icon,
+.osdetail-premium-card-title > span .osdetail-premium-svg-icon {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+.osdetail-premium-btn,
+.osdetail-premium-whatsapp-wide,
+.osdetail-premium-logout,
+.osdetail-premium-mobile-actions button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  line-height: 1.1 !important;
+}
+
+.osdetail-premium-btn .osdetail-premium-svg-icon,
+.osdetail-premium-whatsapp-wide .osdetail-premium-svg-icon,
+.osdetail-premium-logout .osdetail-premium-svg-icon {
+  width: 17px !important;
+  height: 17px !important;
+}
+
+.osdetail-premium-info-tile strong,
+.osdetail-premium-meta-item strong,
+.osdetail-premium-form-field--subtotal strong,
+.osdetail-premium-total-grid strong {
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-info-tile.is-money strong,
+.osdetail-premium-info-tile.is-accent strong,
+.osdetail-premium-meta-item.is-money strong,
+.osdetail-premium-form-field--subtotal strong {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+@media (min-width: 768px) {
+  .osdetail-premium-page {
+    grid-template-columns: 230px minmax(0, 1fr) !important;
+    overflow-x: hidden !important;
+  }
+
+  .osdetail-premium-main {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-container {
+    width: 100% !important;
+    max-width: 1540px !important;
+    margin: 0 auto !important;
+    padding: 28px !important;
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    gap: 18px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .osdetail-premium-header-actions {
+    max-width: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-header-actions .osdetail-premium-btn {
+    min-height: 46px !important;
+    padding: 0 16px !important;
+  }
+
+  .osdetail-premium-title-row h1 {
+    font-size: clamp(40px, 3.2vw, 56px) !important;
+  }
+
+  .osdetail-premium-meta-strip {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    padding: 14px !important;
+    margin-bottom: 24px !important;
+    border-radius: 22px !important;
+  }
+
+  .osdetail-premium-meta-strip.is-tecnico {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-meta-item,
+  .osdetail-premium-meta-item.is-money {
+    min-height: 86px !important;
+    border: 1px solid #dbe7f4 !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    background: #ffffff !important;
+    gap: 12px !important;
+  }
+
+  .osdetail-premium-meta-icon {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 14px !important;
+  }
+
+  .osdetail-premium-meta-item small {
+    font-size: 11px !important;
+  }
+
+  .osdetail-premium-meta-item strong {
+    margin-top: 5px !important;
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+  }
+
+  .osdetail-premium-meta-item.is-money strong {
+    font-size: 24px !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  .osdetail-premium-grid-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 20px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr) !important;
+    gap: 20px !important;
+  }
+
+  .osdetail-premium-card {
+    padding: 22px !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-card-title {
+    margin-bottom: 18px !important;
+  }
+
+  .osdetail-premium-piece-form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.4fr) minmax(86px, 0.55fr) minmax(122px, 0.75fr) minmax(128px, 0.8fr) !important;
+    gap: 12px !important;
+    align-items: end !important;
+    margin-bottom: 18px !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-form-field,
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    min-width: 0 !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    grid-column: 1 / -1 !important;
+    justify-self: end !important;
+    width: auto !important;
+    min-width: 190px !important;
+    max-width: 260px !important;
+    min-height: 46px !important;
+    padding: 0 18px !important;
+  }
+
+  .osdetail-premium-piece-head,
+  .osdetail-premium-piece-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.35fr) 90px 132px 132px 112px !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  .osdetail-premium-piece-head span:nth-child(4),
+  .osdetail-premium-piece-row b:nth-child(4) {
+    display: block !important;
+  }
+
+  .osdetail-premium-piece-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .osdetail-premium-form-grid-2 {
+    gap: 12px !important;
+  }
+
+  .osdetail-premium-edit-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .osdetail-premium-meta-strip {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-meta-strip.is-tecnico {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-meta-item {
+    min-height: 92px !important;
+    padding: 14px 12px !important;
+  }
+
+  .osdetail-premium-meta-item strong {
+    font-size: 14px !important;
+  }
+
+  .osdetail-premium-meta-item.is-money strong {
+    font-size: 22px !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .osdetail-premium-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-header-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .osdetail-premium-grid-main,
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-piece-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    max-width: none !important;
+    justify-self: stretch !important;
+  }
+
+  .osdetail-premium-piece-head,
+  .osdetail-premium-piece-row {
+    grid-template-columns: minmax(0, 1.3fr) 80px 120px 110px !important;
+  }
+
+  .osdetail-premium-piece-head span:nth-child(4),
+  .osdetail-premium-piece-row b:nth-child(4) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-mobile-hero {
+    padding-bottom: 24px !important;
+  }
+
+  .osdetail-premium-card-title > span {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 14px !important;
+  }
+
+  .osdetail-premium-card-title > span .osdetail-premium-svg-icon {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .osdetail-premium-info-tile.is-money strong,
+  .osdetail-premium-info-tile.is-accent strong {
+    font-size: 24px !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    min-height: 50px !important;
+  }
+
+  .osdetail-premium-piece-mobile-list {
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-info-line {
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+  }
+
+  .osdetail-premium-info-line > span:first-child .osdetail-premium-svg-icon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+/* =========================
+   SEMANA 8 - OSDETAIL FIX 03 DEFINITIVO
+   Corrige Peças da OS:
+   - nome da peça não quebra letra por letra
+   - remove tabela rígida em card estreito
+   - mantém botão Remover dentro do card
+   - mantém totais dentro do container
+   - evita Total atual/datas estourarem
+   Cole no FINAL do web/src/index.css
+   ========================= */
+
+/* Segurança geral contra estouro horizontal */
+.osdetail-premium-page,
+.osdetail-premium-page *,
+.osdetail-premium-card,
+.osdetail-premium-card * {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+/* Evita que cards cortem ou empurrem conteúdo de forma estranha */
+.osdetail-premium-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Datas e valores do topo: não deixar estourar visualmente */
+.osdetail-premium-meta-item strong,
+.osdetail-premium-info-tile strong {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-meta-item.is-money strong,
+.osdetail-premium-info-tile.is-money strong,
+.osdetail-premium-info-tile.is-accent strong {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  font-size: clamp(20px, 1.8vw, 28px) !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* Em desktop médio, empilha Peças e Editar OS para evitar card estreito */
+@media (min-width: 768px) and (max-width: 1500px) {
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-card--pieces,
+  .osdetail-premium-card--edit {
+    width: 100% !important;
+  }
+}
+
+/* Formulário de adicionar peça: nunca deixa botão sair do card */
+@media (min-width: 768px) {
+  .osdetail-premium-piece-form {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns:
+      minmax(220px, 1.5fr)
+      minmax(96px, 0.55fr)
+      minmax(140px, 0.8fr)
+      minmax(140px, 0.8fr) !important;
+    gap: 12px !important;
+    align-items: end !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    grid-column: 1 / -1 !important;
+    justify-self: end !important;
+    width: auto !important;
+    min-width: 210px !important;
+    max-width: 280px !important;
+    min-height: 48px !important;
+  }
+}
+
+/* Abaixo de 1200px, formulário em 2 colunas para respirar */
+@media (min-width: 768px) and (max-width: 1200px) {
+  .osdetail-premium-piece-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    max-width: none !important;
+    justify-self: stretch !important;
+  }
+}
+
+/* Lista de peças: trocar tabela rígida por card/linha legível no desktop */
+@media (min-width: 768px) {
+  .osdetail-premium-piece-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    gap: 12px !important;
+    overflow: visible !important;
+  }
+
+  .osdetail-premium-piece-head {
+    display: none !important;
+  }
+
+  .osdetail-premium-piece-row {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 126px !important;
+    grid-template-areas:
+      "nome acao"
+      "qtd acao"
+      "unitario acao"
+      "subtotal acao" !important;
+
+    gap: 6px 14px !important;
+    align-items: center !important;
+
+    padding: 16px !important;
+    border: 1px solid #dce6f2 !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035) !important;
+  }
+
+  .osdetail-premium-piece-row > strong:first-child {
+    grid-area: nome !important;
+    display: block !important;
+
+    color: #0f172a !important;
+    font-size: 17px !important;
+    font-weight: 950 !important;
+    line-height: 1.25 !important;
+
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .osdetail-premium-piece-row > span:nth-child(2) {
+    grid-area: qtd !important;
+    color: #334155 !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    word-break: normal !important;
+  }
+
+  .osdetail-premium-piece-row > span:nth-child(2)::before {
+    content: "Quantidade: ";
+    color: #64748b;
+    font-weight: 900;
+  }
+
+  .osdetail-premium-piece-row > span:nth-child(3) {
+    grid-area: unitario !important;
+    color: #334155 !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    word-break: normal !important;
+  }
+
+  .osdetail-premium-piece-row > span:nth-child(3)::before {
+    content: "Valor unitário: ";
+    color: #64748b;
+    font-weight: 900;
+  }
+
+  .osdetail-premium-piece-row > b:nth-child(4) {
+    grid-area: subtotal !important;
+    display: block !important;
+
+    color: #173c66 !important;
+    font-size: 15px !important;
+    font-weight: 950 !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+  }
+
+  .osdetail-premium-piece-row > b:nth-child(4)::before {
+    content: "Subtotal: ";
+    color: #64748b;
+    font-weight: 900;
+  }
+
+  .osdetail-premium-piece-row > button {
+    grid-area: acao !important;
+    align-self: center !important;
+
+    width: 126px !important;
+    min-width: 126px !important;
+    max-width: 126px !important;
+    min-height: 40px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    border-radius: 12px !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Totais das peças: sempre dentro do card */
+.osdetail-premium-total-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+  clear: both !important;
+}
+
+.osdetail-premium-total-grid .osdetail-premium-info-tile {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.osdetail-premium-total-grid .osdetail-premium-info-tile strong {
+  display: block !important;
+  max-width: 100% !important;
+  font-size: clamp(22px, 2vw, 30px) !important;
+  line-height: 1.05 !important;
+  white-space: nowrap !important;
+}
+
+/* Mobile: mantém layout vertical e seguro */
+@media (max-width: 767px) {
+  .osdetail-premium-piece-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .osdetail-premium-total-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-info-tile.is-money strong,
+  .osdetail-premium-info-tile.is-accent strong {
+    font-size: 24px !important;
+  }
+}
+
+/* =========================
+   SEMANA 8 - OSDETAIL FIX 04
+   Corrige Total atual do topo e da Situação:
+   - total não vaza visualmente
+   - datas não quebram feio
+   - meta-strip usa grid mais seguro
+   - card financeiro fica proporcional
+   Cole no FINAL do web/src/index.css
+   ========================= */
+
+/* Segurança geral do OSDetail */
+.osdetail-premium-page,
+.osdetail-premium-main,
+.osdetail-premium-container,
+.osdetail-premium-meta-strip,
+.osdetail-premium-meta-item,
+.osdetail-premium-card,
+.osdetail-premium-info-tile {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+/* Topo da OS: abandonar a linha apertada de 7 colunas */
+.osdetail-premium-meta-strip {
+  width: 100% !important;
+  max-width: 100% !important;
+
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+
+  padding: 16px !important;
+  overflow: hidden !important;
+}
+
+/* Todos os blocos do topo viram cards independentes */
+.osdetail-premium-meta-item,
+.osdetail-premium-meta-item.is-money {
+  width: 100% !important;
+  max-width: 100% !important;
+
+  min-height: 82px !important;
+  padding: 14px !important;
+
+  border: 1px solid #dbe7f4 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+
+  overflow: hidden !important;
+}
+
+/* Remove divisórias antigas que foram pensadas para linha única */
+.osdetail-premium-meta-item {
+  border-right: 1px solid #dbe7f4 !important;
+}
+
+.osdetail-premium-meta-icon {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  flex: 0 0 38px !important;
+}
+
+/* Textos dentro dos cards */
+.osdetail-premium-meta-item > div,
+.osdetail-premium-info-tile > div {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.osdetail-premium-meta-item small,
+.osdetail-premium-info-tile small {
+  max-width: 100% !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-meta-item strong,
+.osdetail-premium-info-tile strong {
+  max-width: 100% !important;
+  line-height: 1.15 !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Card financeiro do topo */
+.osdetail-premium-meta-item.is-money {
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%) !important;
+}
+
+.osdetail-premium-meta-item.is-money strong {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+
+  color: #0757e7 !important;
+  font-size: clamp(20px, 1.55vw, 26px) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.03em !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+/* Situação da OS: evitar 4 cards apertados */
+.osdetail-premium-situation-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+/* Total da Situação ocupa uma linha própria para respirar */
+.osdetail-premium-situation-grid .osdetail-premium-info-tile.is-money {
+  grid-column: 1 / -1 !important;
+  min-height: 76px !important;
+}
+
+/* Valor total dentro de Situação */
+.osdetail-premium-info-tile.is-money strong,
+.osdetail-premium-info-tile.is-accent strong {
+  display: block !important;
+  max-width: 100% !important;
+
+  font-size: clamp(22px, 2vw, 30px) !important;
+  line-height: 1 !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+/* Desktop médio: 3 colunas no topo */
+@media (min-width: 1024px) and (max-width: 1450px) {
+  .osdetail-premium-meta-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Tablet / desktop estreito: 2 colunas no topo */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .osdetail-premium-meta-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-situation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile.is-money {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Mobile mantém seguro */
+@media (max-width: 767px) {
+  .osdetail-premium-info-tile.is-money strong,
+  .osdetail-premium-info-tile.is-accent strong {
+    font-size: 24px !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* =========================
+   SEMANA 8 - OSDETAIL HISTÓRICO DA OS
+   Escopo: seção Histórico da OS no OSDetail.
+   Cole no FINAL do web/src/index.css.
+   ========================= */
+
+.osdetail-premium-card--history {
+  margin-top: 18px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.osdetail-premium-history-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.osdetail-premium-history-head > span {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d7e3f0 !important;
+  border-radius: 999px !important;
+  background: #f8fbff !important;
+  color: #536780 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+}
+
+.osdetail-premium-history-list {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.osdetail-premium-history-empty {
+  padding: 18px !important;
+  border: 1px dashed #cbd8e6 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+}
+
+.osdetail-premium-history-item {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  border: 1px solid #dce6f2 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035) !important;
+  overflow: hidden !important;
+}
+
+.osdetail-premium-history-item::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 5px !important;
+  background: #94a3b8 !important;
+}
+
+.osdetail-premium-history-item.is-blue::before {
+  background: #1764ff !important;
+}
+
+.osdetail-premium-history-item.is-green::before {
+  background: #16a34a !important;
+}
+
+.osdetail-premium-history-item.is-warning::before {
+  background: #f06416 !important;
+}
+
+.osdetail-premium-history-item.is-danger::before {
+  background: #dc2626 !important;
+}
+
+.osdetail-premium-history-item.is-purple::before {
+  background: #7c3aed !important;
+}
+
+.osdetail-premium-history-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #eef5ff !important;
+  color: #0757e7 !important;
+  border: 1px solid #d7e6ff !important;
+  flex: 0 0 auto !important;
+}
+
+.osdetail-premium-history-icon .osdetail-premium-svg-icon {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+.osdetail-premium-history-content {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 7px !important;
+}
+
+.osdetail-premium-history-title-row {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.osdetail-premium-history-title-row strong {
+  min-width: 0 !important;
+  color: #0f172a !important;
+  font-size: 16px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-history-title-row time {
+  flex: 0 0 auto !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.osdetail-premium-history-content p {
+  margin: 0 !important;
+  color: #334155 !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-history-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.osdetail-premium-history-meta span {
+  min-height: 26px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  color: #536780 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-card--history {
+    margin-top: 14px !important;
+  }
+
+  .osdetail-premium-history-head {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-head > span {
+    width: fit-content !important;
+  }
+
+  .osdetail-premium-history-item {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 15px !important;
+  }
+
+  .osdetail-premium-history-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+  }
+
+  .osdetail-premium-history-title-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
+  .osdetail-premium-history-title-row time {
+    white-space: normal !important;
+  }
+
+  .osdetail-premium-history-content p {
+    font-size: 13px !important;
+  }
+}
+
+
+/* =========================
+   SEMANA 8 - OSDETAIL FIX 05 MOBILE RESPONSIVO
+   Corrige quebra da faixa superior no mobile:
+   - Cliente/Veículo/Placa/Status/Data/Total deixam de ficar espremidos
+   - Cards ficam em coluna única no celular
+   - Mantém desktop como está
+   Cole no FINAL do web/src/index.css
+   ========================= */
+
+@media (max-width: 767px) {
+  .osdetail-premium-page,
+  .osdetail-premium-main,
+  .osdetail-premium-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .osdetail-premium-container {
+    padding: 12px !important;
+  }
+
+  /* Faixa superior quebrada no mobile */
+  .osdetail-premium-meta-strip {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+
+    padding: 12px !important;
+    border-radius: 18px !important;
+    overflow: visible !important;
+  }
+
+  .osdetail-premium-meta-item,
+  .osdetail-premium-meta-item.is-money {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: auto !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+
+    padding: 12px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .osdetail-premium-meta-icon {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    flex: 0 0 34px !important;
+  }
+
+  .osdetail-premium-meta-item > div {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .osdetail-premium-meta-item small {
+    display: block !important;
+    width: 100% !important;
+
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    text-align: left !important;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+
+  .osdetail-premium-meta-item strong {
+    display: block !important;
+    width: 100% !important;
+
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    text-align: left !important;
+
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .osdetail-premium-meta-item.is-money strong {
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  /* Cards principais no mobile */
+  .osdetail-premium-grid-primary,
+  .osdetail-premium-grid-secondary {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .osdetail-premium-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px !important;
+    padding: 16px !important;
+    overflow: hidden !important;
+  }
+
+  /* Situação da OS */
+  .osdetail-premium-situation-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-situation-grid .osdetail-premium-info-tile.is-money {
+    grid-column: auto !important;
+  }
+
+  /* Resumo */
+  .osdetail-premium-summary-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Peças */
+  .osdetail-premium-piece-form {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-piece-form > .osdetail-premium-btn {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .osdetail-premium-piece-row {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "nome"
+      "qtd"
+      "unitario"
+      "subtotal"
+      "acao" !important;
+  }
+
+  .osdetail-premium-piece-row > button {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+  }
+
+  .osdetail-premium-total-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Editar OS */
+  .osdetail-premium-edit-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osdetail-premium-actions {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-actions .osdetail-premium-btn {
+    width: 100% !important;
+  }
+
+  /* Histórico */
+  .osdetail-premium-history-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-item {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .osdetail-premium-history-date {
+    position: static !important;
+    text-align: left !important;
+    margin-top: 6px !important;
+  }
+}

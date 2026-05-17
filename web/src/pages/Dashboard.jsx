@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import "./Dashboard.css";
 
 const STATUS_LABEL = {
   triagem: "Triagem",

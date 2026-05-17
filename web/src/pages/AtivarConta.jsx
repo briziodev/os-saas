@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch, clearToken } from "../api";
+import "./AtivarConta.css";
 
 function formatarDataHora(valor) {
   if (!valor) return "Não informado";

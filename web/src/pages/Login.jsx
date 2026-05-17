@@ -12,6 +12,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { apiFetch, setToken } from "../api";
+import "./Login.css";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,7 +84,7 @@ export default function Login() {
   }
 
   return (
-    <div className="login-premium-page">
+    <div className="login-page login-premium-page">
       <main className="login-premium-shell" aria-label="Login do OS SaaS">
         <section className="login-premium-hero" aria-label="Apresentação do sistema">
           <div className="login-premium-brand-row">

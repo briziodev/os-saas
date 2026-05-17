@@ -1,0 +1,44 @@
+OS SaaS - Refatoração CSS frontend
+
+Objetivo:
+- Recuperar a tela Login quebrada.
+- Reduzir dependência do web/src/index.css global.
+- Separar CSS específico por página sem alterar backend, banco ou regras de negócio.
+
+Arquivos criados:
+- src/pages/Login.css
+- src/pages/AtivarConta.css
+- src/pages/Usuarios.css
+- src/pages/Dashboard.css
+- src/pages/Clientes.css
+- src/pages/OSNew.css
+- src/pages/OSList.css
+- src/pages/OSDetail.css
+- src/pages/Kanban.css
+
+Arquivos alterados:
+- src/index.css: agora concentrado em base global e componentes compartilhados.
+- src/pages/*.jsx: adicionado import do CSS da própria página.
+- src/pages/Login.jsx: adicionado alias de raiz login-page, mantendo login-premium-page.
+
+Não foi alterado:
+- Backend
+- Banco de dados
+- Rotas
+- Regras de negócio
+- Permissões
+- api.js
+- main.jsx
+
+Validação recomendada:
+1. npm run dev
+2. abrir /login
+3. testar login admin/atendimento/tecnico
+4. revisar /usuarios
+5. revisar /dashboard
+6. revisar /clientes
+7. revisar /os
+8. revisar /os/new
+9. revisar /os/:id
+10. revisar /kanban
+11. revisar /ativar-conta?token=invalido

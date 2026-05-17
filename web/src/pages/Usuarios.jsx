@@ -26,6 +26,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { apiFetch } from "../api";
+import "./Usuarios.css";
 
 const STATUS_FILTERS = [
   { value: "all", label: "Todos os status" },
