@@ -47,6 +47,49 @@ function normalizarTelefoneBrasil(phone) {
   return `55${digits}`;
 }
 
+
+function normalizarEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function validarDadosPerfilUsuario({ name, email, phone }) {
+  const errors = [];
+  const cleanName = String(name || "").trim();
+  const cleanEmail = normalizarEmail(email);
+  const cleanPhone = String(phone || "").trim();
+  const phoneDigits = cleanPhone.replace(/\D/g, "");
+
+  if (!cleanName) {
+    errors.push({ field: "name", message: "Nome é obrigatório." });
+  }
+
+  if (cleanName.length > 120) {
+    errors.push({ field: "name", message: "Nome deve ter no máximo 120 caracteres." });
+  }
+
+  if (!cleanEmail) {
+    errors.push({ field: "email", message: "Email é obrigatório." });
+  }
+
+  if (cleanEmail.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    errors.push({ field: "email", message: "Email inválido." });
+  }
+
+  if (cleanPhone && (phoneDigits.length < 10 || phoneDigits.length > 13)) {
+    errors.push({ field: "phone", message: "Telefone deve ter DDD e número válido." });
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    data: {
+      name: cleanName,
+      email: cleanEmail,
+      phone: phoneDigits || null,
+    },
+  };
+}
+
 function getTargetId(req) {
   return Number(req.params.id);
 }
@@ -188,6 +231,118 @@ router.post(
         user,
         invite_link: inviteLink,
         whatsapp_link: whatsappLink,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+);
+
+
+// PATCH /users/:id/profile
+router.patch(
+  "/:id/profile",
+  requireRole("admin"),
+  validate(userIdParamSchema, "params"),
+  async (req, res, next) => {
+    try {
+      const targetId = getTargetId(req);
+      const validation = validarDadosPerfilUsuario(req.body || {});
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: "Dados inválidos.",
+          details: validation.errors,
+          requestId: req.requestId,
+        });
+      }
+
+      const targetUserResult = await pool.query(
+        `SELECT id, email, role, company_id
+         FROM users
+         WHERE id = $1 AND company_id = $2`,
+        [targetId, req.user.company_id]
+      );
+
+      if (targetUserResult.rowCount === 0) {
+        logger.warn("USER_PROFILE_UPDATE_TARGET_NOT_FOUND", "Tentativa de editar usuário inexistente", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetId,
+          ip: req.ip,
+        });
+
+        return res.status(404).json({
+          error: "Usuário não encontrado",
+          requestId: req.requestId,
+        });
+      }
+
+      const emailExists = await pool.query(
+        `SELECT id
+         FROM users
+         WHERE email = $1 AND id <> $2`,
+        [validation.data.email, targetId]
+      );
+
+      if (emailExists.rowCount > 0) {
+        logger.warn("USER_PROFILE_UPDATE_DUPLICATE_EMAIL", "Tentativa de editar usuário com email já cadastrado", {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetId,
+          targetEmail: maskEmail(validation.data.email),
+          ip: req.ip,
+        });
+
+        return res.status(409).json({
+          error: "Email já cadastrado em outro usuário.",
+          requestId: req.requestId,
+        });
+      }
+
+      const updated = await pool.query(
+        `UPDATE users
+         SET name = $1,
+             email = $2,
+             phone = $3
+         WHERE id = $4 AND company_id = $5
+         RETURNING
+           id,
+           name,
+           email,
+           phone,
+           role,
+           company_id,
+           is_active,
+           invite_expires_at,
+           activated_at,
+           invited_by,
+           created_at`,
+        [
+          validation.data.name,
+          validation.data.email,
+          validation.data.phone,
+          targetId,
+          req.user.company_id,
+        ]
+      );
+
+      logger.info("USER_PROFILE_UPDATED", "Dados de usuário atualizados", {
+        requestId: req.requestId,
+        adminUserId: req.user.id,
+        companyId: req.user.company_id,
+        targetUserId: targetId,
+        targetEmail: maskEmail(validation.data.email),
+        hasPhone: Boolean(validation.data.phone),
+        ip: req.ip,
+      });
+
+      return res.json({
+        message: "Usuário atualizado",
+        user: updated.rows[0],
+        requestId: req.requestId,
       });
     } catch (err) {
       return next(err);
@@ -403,7 +558,7 @@ router.post(
       }
 
       const targetUser = await pool.query(
-        `SELECT id, name, email, role, is_active
+        `SELECT id, name, email, phone, role, is_active
          FROM users
          WHERE id = $1 AND company_id = $2`,
         [targetId, req.user.company_id]
@@ -467,9 +622,22 @@ router.post(
         ip: req.ip,
       });
 
+      const whatsappText = encodeURIComponent(
+        `Olá, ${user.name}.\n\n` +
+          `Um novo convite foi gerado para você acessar o sistema da oficina.\n\n` +
+          `Ative sua conta pelo link:\n${inviteLink}\n\n` +
+          `Este link é válido por 72 horas.`
+      );
+
+      const phoneNormalized = normalizarTelefoneBrasil(user.phone);
+      const whatsappLink = phoneNormalized
+        ? `https://wa.me/${phoneNormalized}?text=${whatsappText}`
+        : null;
+
       return res.json({
         message: "Convite reenviado",
         invite_link: inviteLink,
+        whatsapp_link: whatsappLink,
         requestId: req.requestId,
       });
     } catch (err) {
