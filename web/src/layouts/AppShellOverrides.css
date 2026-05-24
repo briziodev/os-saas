@@ -1,0 +1,730 @@
+/* =========================
+   APP SHELL OVERRIDES - SIDEBAR ÚNICA FINAL
+   Objetivo: garantir que todas as telas autenticadas usem somente o AppShell.
+   Importar este arquivo por último no App.jsx para vencer CSS legado das páginas.
+   ========================= */
+
+@media (min-width: 1024px) {
+  .app-shell {
+    display: grid !important;
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-sidebar {
+    display: flex !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+  }
+
+  .app-shell-main,
+  .app-shell-content {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-mobile-header,
+  .app-shell-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Remove sidebars/headers/bottom-nav antigos que ainda existem dentro das páginas. */
+.app-shell .dashboard-premium-sidebar,
+.app-shell .dashboard-premium-mobile-header,
+.app-shell .dashboard-premium-bottom-nav,
+.app-shell .dashboard-premium-mobile-menu-overlay,
+.app-shell .usuarios-status-sidebar,
+.app-shell .usuarios-status-mobile-header,
+.app-shell .usuarios-status-bottom-nav,
+.app-shell .oslist-premium-sidebar,
+.app-shell .oslist-premium-mobile-header,
+.app-shell .oslist-premium-bottom-nav,
+.app-shell .oslist-premium-mobile-menu-overlay,
+.app-shell .kanban-premium-sidebar,
+.app-shell .kanban-premium-mobile-header,
+.app-shell .kanban-premium-bottom-nav,
+.app-shell .kanban-premium-mobile-menu-overlay,
+.app-shell .osdetail-premium-sidebar,
+.app-shell .osdetail-premium-mobile-hero {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Reseta grids antigos de página para o conteúdo ocupar apenas a área do AppShell. */
+.app-shell .dashboard-premium-page,
+.app-shell .usuarios-status-page,
+.app-shell .oslist-premium-page,
+.app-shell .kanban-premium-page,
+.app-shell .osdetail-premium-page,
+.app-shell .clientes-premium-page,
+.app-shell .osnew-page {
+  display: block !important;
+  grid-template-columns: none !important;
+  min-height: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  background: transparent !important;
+  overflow-x: hidden !important;
+  padding-bottom: 0 !important;
+}
+
+.app-shell .dashboard-premium-page::before,
+.app-shell .usuarios-status-page::before,
+.app-shell .oslist-premium-page::before,
+.app-shell .kanban-premium-page::before,
+.app-shell .osdetail-premium-page::before {
+  display: none !important;
+  content: none !important;
+}
+
+.app-shell .dashboard-premium-main,
+.app-shell .usuarios-status-main,
+.app-shell .oslist-premium-main,
+.app-shell .kanban-premium-main,
+.app-shell .osdetail-premium-main {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+}
+
+.app-shell .dashboard-premium-container,
+.app-shell .usuarios-status-container,
+.app-shell .oslist-premium-container,
+.app-shell .kanban-premium-container,
+.app-shell .osdetail-premium-container,
+.app-shell .clientes-premium-container {
+  width: 100% !important;
+  max-width: 1320px !important;
+  margin: 0 auto !important;
+  padding: 32px !important;
+}
+
+/* Corrige regras legadas que forçavam largura 100vw no Kanban e podiam cobrir a sidebar. */
+.app-shell .kanban-premium-page,
+.app-shell .kanban-premium-main,
+.app-shell .kanban-premium-container,
+.app-shell .kanban-premium-board {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Mantém ações mobile próprias do conteúdo quando necessárias, mas sem menu duplicado. */
+@media (max-width: 1023px) {
+  .app-shell {
+    display: block !important;
+    min-width: 320px !important;
+    padding-bottom: 92px !important;
+  }
+
+  .app-shell-sidebar {
+    display: none !important;
+  }
+
+  .app-shell-mobile-header {
+    display: flex !important;
+  }
+
+  .app-shell-bottom-nav {
+    display: grid !important;
+  }
+
+  .app-shell .dashboard-premium-container,
+  .app-shell .usuarios-status-container,
+  .app-shell .oslist-premium-container,
+  .app-shell .kanban-premium-container,
+  .app-shell .osdetail-premium-container,
+  .app-shell .clientes-premium-container {
+    max-width: 100% !important;
+    padding: 18px 14px 26px !important;
+  }
+
+  .app-shell .dashboard-mobile-actions,
+  .app-shell .kanban-premium-mobile-actions {
+    display: grid !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell .dashboard-premium-container,
+  .app-shell .usuarios-status-container,
+  .app-shell .oslist-premium-container,
+  .app-shell .kanban-premium-container,
+  .app-shell .osdetail-premium-container,
+  .app-shell .clientes-premium-container {
+    padding-inline: 10px !important;
+  }
+}
+
+/* =========================
+   FIX SIDEBAR DESKTOP ALTURA TOTAL
+   Mantém a sidebar visualmente contínua em páginas longas.
+   ========================= */
+
+@media (min-width: 1024px) {
+  .app-shell {
+    --app-shell-sidebar-width: 280px;
+    --app-shell-sidebar-bg: #071f3a;
+
+    display: grid !important;
+    grid-template-columns: var(--app-shell-sidebar-width) minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    min-height: 100vh !important;
+
+    background:
+      linear-gradient(
+        90deg,
+        var(--app-shell-sidebar-bg) 0,
+        var(--app-shell-sidebar-bg) var(--app-shell-sidebar-width),
+        #eaf2fb var(--app-shell-sidebar-width),
+        #eaf2fb 100%
+      ) !important;
+  }
+
+  .app-shell-sidebar {
+    width: var(--app-shell-sidebar-width) !important;
+    min-width: var(--app-shell-sidebar-width) !important;
+    max-width: var(--app-shell-sidebar-width) !important;
+
+    min-height: 100vh !important;
+    height: 100vh !important;
+
+    position: sticky !important;
+    top: 0 !important;
+    align-self: start !important;
+
+    background: var(--app-shell-sidebar-bg) !important;
+    overflow-y: auto !important;
+    z-index: 50 !important;
+  }
+
+  .app-shell-main {
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell-content {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* =========================
+   FIX DEFINITIVO SIDEBAR DESKTOP
+   Sidebar fixa, sem vazamento e conteúdo rolando à direita.
+   ========================= */
+
+@media (min-width: 1024px) {
+  .app-shell {
+    --app-shell-sidebar-width: 280px;
+    --app-shell-sidebar-bg: #071f3a;
+
+    display: block !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+
+    width: var(--app-shell-sidebar-width) !important;
+    min-width: var(--app-shell-sidebar-width) !important;
+    max-width: var(--app-shell-sidebar-width) !important;
+
+    height: 100vh !important;
+    min-height: 100vh !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+
+    background: var(--app-shell-sidebar-bg) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    z-index: 100 !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-main {
+    margin-left: var(--app-shell-sidebar-width) !important;
+    width: calc(100% - var(--app-shell-sidebar-width)) !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-mobile-header,
+  .app-shell-bottom-nav {
+    display: none !important;
+  }
+
+  .app-shell-sidebar-footer {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-context-card,
+  .app-shell-user-card,
+  .app-shell-logout {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-context-card > div,
+  .app-shell-user-card > div {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-context-card strong,
+  .app-shell-context-card span,
+  .app-shell-user-card strong,
+  .app-shell-user-card span {
+    display: block !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    line-height: 1.35 !important;
+  }
+
+  .app-shell-menu-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-menu-item span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Mobile/tablet: mantém comportamento normal com bottom nav */
+@media (max-width: 1023px) {
+  .app-shell {
+    display: block !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell-sidebar {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding-bottom: 96px !important;
+  }
+
+  .app-shell-mobile-header {
+    display: flex !important;
+  }
+
+  .app-shell-bottom-nav {
+    display: flex !important;
+  }
+}
+
+/* =========================
+   FIX MOBILE APPSHELL
+   Corrige sobreposição da bottom nav e estabiliza telas mobile.
+   ========================= */
+
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-sidebar {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+    padding-bottom: 132px !important;
+  }
+
+  .app-shell-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    padding-bottom: 132px !important;
+  }
+
+  .app-shell-mobile-header {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 80 !important;
+
+    width: 100% !important;
+    min-height: 74px !important;
+    padding: 14px 16px !important;
+
+    align-items: center !important;
+    justify-content: space-between !important;
+
+    background: #071f3a !important;
+    color: #ffffff !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-mobile-brand {
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    text-decoration: none !important;
+    color: #ffffff !important;
+  }
+
+  .app-shell-mobile-brand strong,
+  .app-shell-mobile-brand span {
+    color: #ffffff !important;
+  }
+
+  .app-shell-mobile-new-os,
+  .app-shell-mobile-role-pill {
+    flex: 0 0 auto !important;
+    max-width: 132px !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 120 !important;
+
+    width: auto !important;
+    max-width: none !important;
+    height: 70px !important;
+    padding: 8px 10px !important;
+
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid rgba(148, 163, 184, 0.32) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22) !important;
+    backdrop-filter: blur(16px) !important;
+
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-bottom-nav a,
+  .app-shell-bottom-nav button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 52px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+
+    border: 0 !important;
+    background: transparent !important;
+    color: #64748b !important;
+    text-decoration: none !important;
+
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-shell-bottom-nav a svg,
+  .app-shell-bottom-nav button svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .app-shell-bottom-nav a span,
+  .app-shell-bottom-nav button span {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell-bottom-nav a.is-active,
+  .app-shell-bottom-nav button.is-active {
+    color: #0f62fe !important;
+  }
+
+  .app-shell-bottom-plus {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    height: 58px !important;
+    margin-top: -28px !important;
+    border-radius: 999px !important;
+
+    background: linear-gradient(135deg, #1d74ff, #0f5be7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.4) !important;
+  }
+
+  .app-shell-bottom-plus span {
+    display: none !important;
+  }
+
+  .app-shell-bottom-plus svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  /* Garante espaço para o menu inferior nas páginas principais */
+  .dashboard-premium-page,
+  .os-premium-page,
+  .kanban-premium-page,
+  .usuarios-page,
+  .clientes-premium-page,
+  .os-detail-page,
+  .os-new-page {
+    padding-bottom: 150px !important;
+  }
+}
+/* =========================
+   FIX MOBILE APPSHELL
+   Corrige sobreposição da bottom nav e estabiliza telas mobile.
+   ========================= */
+
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-sidebar {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+    padding-bottom: 132px !important;
+  }
+
+  .app-shell-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    padding-bottom: 132px !important;
+  }
+
+  .app-shell-mobile-header {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 80 !important;
+
+    width: 100% !important;
+    min-height: 74px !important;
+    padding: 14px 16px !important;
+
+    align-items: center !important;
+    justify-content: space-between !important;
+
+    background: #071f3a !important;
+    color: #ffffff !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-mobile-brand {
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    text-decoration: none !important;
+    color: #ffffff !important;
+  }
+
+  .app-shell-mobile-brand strong,
+  .app-shell-mobile-brand span {
+    color: #ffffff !important;
+  }
+
+  .app-shell-mobile-new-os,
+  .app-shell-mobile-role-pill {
+    flex: 0 0 auto !important;
+    max-width: 132px !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 120 !important;
+
+    width: auto !important;
+    max-width: none !important;
+    height: 70px !important;
+    padding: 8px 10px !important;
+
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid rgba(148, 163, 184, 0.32) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22) !important;
+    backdrop-filter: blur(16px) !important;
+
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-bottom-nav a,
+  .app-shell-bottom-nav button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 52px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+
+    border: 0 !important;
+    background: transparent !important;
+    color: #64748b !important;
+    text-decoration: none !important;
+
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-shell-bottom-nav a svg,
+  .app-shell-bottom-nav button svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .app-shell-bottom-nav a span,
+  .app-shell-bottom-nav button span {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell-bottom-nav a.is-active,
+  .app-shell-bottom-nav button.is-active {
+    color: #0f62fe !important;
+  }
+
+  .app-shell-bottom-plus {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    height: 58px !important;
+    margin-top: -28px !important;
+    border-radius: 999px !important;
+
+    background: linear-gradient(135deg, #1d74ff, #0f5be7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.4) !important;
+  }
+
+  .app-shell-bottom-plus span {
+    display: none !important;
+  }
+
+  .app-shell-bottom-plus svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  /* Garante espaço para o menu inferior nas páginas principais */
+  .dashboard-premium-page,
+  .os-premium-page,
+  .kanban-premium-page,
+  .usuarios-page,
+  .clientes-premium-page,
+  .os-detail-page,
+  .os-new-page {
+    padding-bottom: 150px !important;
+  }
+}

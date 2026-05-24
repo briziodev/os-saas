@@ -7,7 +7,7 @@
   min-height: 100vh;
   width: 100%;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 34%),
     linear-gradient(180deg, #f7f9fc 0%, #eef3f9 100%);
@@ -22,10 +22,10 @@
   flex-direction: column;
   gap: 22px;
   padding: 24px 16px;
-  background: linear-gradient(180deg, #071d3a 0%, #082447 55%, #06172e 100%);
+  background: linear-gradient(180deg, #07172f 0%, #082344 100%);
   color: #ffffff;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 18px 0 38px rgba(15, 23, 42, 0.14);
+  box-shadow: 18px 0 44px rgba(15, 23, 42, 0.12);
   z-index: 20;
 }
 
@@ -69,8 +69,8 @@
 
 .app-shell-brand strong,
 .app-shell-mobile-brand strong {
-  font-size: 15px;
-  font-weight: 900;
+  font-size: 17px;
+  font-weight: 950;
 }
 
 .app-shell-brand span,
@@ -82,7 +82,8 @@
 
 .app-shell-menu {
   display: grid;
-  gap: 8px;
+  gap: 9px;
+  margin-top: 8px;
 }
 
 .app-shell-menu-item {
@@ -94,8 +95,8 @@
   border-radius: 15px;
   color: rgba(255, 255, 255, 0.74);
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 850;
+  font-size: 15px;
+  font-weight: 900;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 

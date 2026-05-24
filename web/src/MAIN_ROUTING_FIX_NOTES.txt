@@ -1,0 +1,22 @@
+MAIN ROUTING FIX - OS SaaS
+
+Objetivo:
+- Corrigir o problema em que /clientes não exibia o AppShell/sidebar.
+
+Causa encontrada:
+- App.jsx estava correto e já renderizava /clientes dentro de PrivateShell/AppShell.
+- Porém web/src/main.jsx ainda tinha um roteamento antigo próprio, renderizando Routes diretamente.
+- Como main.jsx era o ponto real de entrada do React, o navegador usava as rotas antigas e ignorava App.jsx.
+
+Correção:
+- main.jsx agora apenas inicializa React, BrowserRouter e App.
+- O roteamento passa a ficar centralizado em App.jsx.
+
+Arquivos alterados:
+- src/main.jsx
+- src/MAIN_ROUTING_FIX_NOTES.txt
+
+Validação esperada:
+- /clientes deve mostrar a sidebar padrão OS SaaS / Oficina mecânica.
+- /usuarios, /dashboard, /os e /kanban também devem usar o AppShell.
+- /login e /ativar-conta continuam fora do AppShell.

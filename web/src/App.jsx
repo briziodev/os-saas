@@ -11,6 +11,7 @@ import Clientes from "./pages/Clientes";
 import Usuarios from "./pages/Usuarios";
 import AtivarConta from "./pages/AtivarConta";
 import Kanban from "./pages/Kanban";
+import "./layouts/AppShellOverrides.css";
 
 function PrivateRoute({ children }) {
   const token = getToken();

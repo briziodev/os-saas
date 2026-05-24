@@ -1,0 +1,29 @@
+SIDEBAR FINAL - OS SAAS
+
+Objetivo:
+- Padronizar a barra lateral em todas as telas autenticadas.
+- Usar a identidade oficial OS SaaS / Oficina mecânica.
+- Evitar a sensação de dois aplicativos diferentes.
+
+Arquivos alterados:
+- src/App.jsx
+- src/layouts/AppShell.css
+- src/layouts/AppShellOverrides.css
+
+Decisão técnica:
+- AppShell continua sendo o layout autenticado único.
+- AppShellOverrides.css é importado por último em App.jsx para neutralizar CSS legado das páginas antigas.
+- Login e AtivarConta continuam fora do AppShell.
+- Sidebars antigas de Dashboard, OSList, Kanban, Usuarios e OSDetail são escondidas no contexto do AppShell.
+- Clientes Premium passa a aparecer dentro do AppShell padrão.
+
+Validação necessária:
+- /dashboard desktop/mobile
+- /usuarios desktop/mobile
+- /os desktop/mobile
+- /kanban desktop/mobile
+- /clientes desktop/mobile
+- /login desktop/mobile
+
+Observação:
+Esta etapa não altera backend, banco de dados, permissões nem regras de negócio.

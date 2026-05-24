@@ -1,0 +1,27 @@
+CLIENTES PREMIUM - OS SAAS
+
+Escopo desta alteração:
+- Moderniza apenas a tela Clientes.
+- Mantém backend, banco, rotas, autenticação e regras de negócio sem alteração.
+- Mantém permissões existentes: acesso à tela via App.jsx para admin/atendimento; exclusão visível apenas para admin.
+- Mantém o AppShell criado na etapa anterior.
+
+Arquivos alterados:
+- src/pages/Clientes.jsx
+- src/pages/Clientes.css
+
+Objetivo visual:
+- Aproximar Clientes do padrão premium já usado em Usuários, Dashboard, OSList e Kanban.
+- Remover header antigo com botões Dashboard / Ordens de Serviço / Sair, pois a navegação agora é responsabilidade do AppShell.
+- Criar cards de resumo, formulário premium, busca premium e lista responsiva.
+
+Validação recomendada:
+1. npm run build
+2. Testar /clientes desktop
+3. Testar /clientes mobile
+4. Cadastrar cliente
+5. Buscar por nome, email e telefone
+6. Editar cliente
+7. Excluir cliente como admin
+8. Confirmar que atendimento não vê botão excluir, se essa regra estiver ativa no fluxo real
+9. Confirmar que /dashboard, /usuarios, /os e /kanban não foram afetadas
