@@ -728,3 +728,75 @@
     padding-bottom: 150px !important;
   }
 }
+/* ==========================================================
+   SPRINT UX 8.5 - FIX FINAL MOBILE BOTTOM NAV
+   Objetivo: impedir que o menu inferior cubra conteúdo,
+   botões, cards, filtros e formulários nas telas autenticadas.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  :root {
+    --app-mobile-bottom-nav-space: calc(156px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell {
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-main {
+    width: 100% !important;
+    min-height: 100dvh !important;
+    padding-bottom: var(--app-mobile-bottom-nav-space) !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-content {
+    width: 100% !important;
+    min-height: calc(100dvh - 72px) !important;
+    padding-bottom: var(--app-mobile-bottom-nav-space) !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-bottom-nav {
+    position: fixed !important;
+    left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 9999 !important;
+  }
+
+  .app-shell .dashboard-premium-container,
+  .app-shell .usuarios-status-container,
+  .app-shell .oslist-premium-container,
+  .app-shell .kanban-premium-container,
+  .app-shell .osdetail-premium-container,
+  .app-shell .clientes-premium-container,
+  .app-shell .page > .container,
+  .app-shell .osnew-page {
+    padding-bottom: var(--app-mobile-bottom-nav-space) !important;
+  }
+
+  .app-shell .dashboard-premium-page,
+  .app-shell .usuarios-status-page,
+  .app-shell .oslist-premium-page,
+  .app-shell .kanban-premium-page,
+  .app-shell .osdetail-premium-page,
+  .app-shell .clientes-premium-page,
+  .app-shell .page {
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --app-mobile-bottom-nav-space: calc(168px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell-bottom-nav {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
