@@ -129,6 +129,7 @@ export default function OSDetail() {
   const [addingPiece, setAddingPiece] = useState(false);
   const [removingPieceId, setRemovingPieceId] = useState(null);
   const [msg, setMsg] = useState("");
+  const [pieceFeedback, setPieceFeedback] = useState(null);
   const [initialForm, setInitialForm] = useState(emptyForm());
   const [form, setForm] = useState(emptyForm());
   const [pieceForm, setPieceForm] = useState({
@@ -173,7 +174,7 @@ export default function OSDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function loadOS({ preserveMessage = false } = {}) {
+  async function loadOS({ preserveMessage = false, silent = false } = {}) {
     if (!token) {
       setMsg("Sessão não encontrada. Faça login novamente.");
       setLoading(false);
@@ -181,7 +182,7 @@ export default function OSDetail() {
     }
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       if (!preserveMessage) setMsg("");
 
       const osData = await apiFetch(`/os/${id}`);
@@ -211,7 +212,7 @@ export default function OSDetail() {
     } catch (error) {
       setMsg(error.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -260,6 +261,7 @@ export default function OSDetail() {
   }
 
   function handlePieceFieldChange(field, value) {
+    setPieceFeedback(null);
     setPieceForm((prev) => ({
       ...prev,
       [field]: field === "valor_unitario" ? sanitizeMoneyInput(value) : value,
@@ -332,7 +334,7 @@ export default function OSDetail() {
 
   async function adicionarPeca() {
     if (hasUnsavedChanges) {
-      setMsg("Salve as alterações da OS antes de adicionar peças.");
+      setPieceFeedback({ type: "error", message: "Salve as alterações da OS antes de adicionar peças." });
       return;
     }
 
@@ -341,23 +343,23 @@ export default function OSDetail() {
     const valorUnitario = parseMoneyInput(pieceForm.valor_unitario);
 
     if (!nome) {
-      setMsg("Informe o nome da peça.");
+      setPieceFeedback({ type: "error", message: "Informe o nome da peça." });
       return;
     }
 
     if (!Number.isFinite(quantidade) || quantidade <= 0) {
-      setMsg("Informe uma quantidade válida para a peça.");
+      setPieceFeedback({ type: "error", message: "Informe uma quantidade válida para a peça." });
       return;
     }
 
     if (!Number.isFinite(valorUnitario) || valorUnitario < 0) {
-      setMsg("Informe um valor unitário válido para a peça.");
+      setPieceFeedback({ type: "error", message: "Informe um valor unitário válido para a peça." });
       return;
     }
 
     try {
       setAddingPiece(true);
-      setMsg("");
+      setPieceFeedback(null);
 
       await apiFetch(`/os/${id}/pecas`, {
         method: "POST",
@@ -369,10 +371,10 @@ export default function OSDetail() {
       });
 
       resetPieceForm();
-      await loadOS({ preserveMessage: true });
-      setMsg(`Peça "${nome}" adicionada com sucesso.`);
+      await loadOS({ preserveMessage: true, silent: true });
+      setPieceFeedback({ type: "success", message: `Peça "${nome}" adicionada com sucesso.` });
     } catch (error) {
-      setMsg(error.message);
+      setPieceFeedback({ type: "error", message: error.message });
     } finally {
       setAddingPiece(false);
     }
@@ -380,7 +382,7 @@ export default function OSDetail() {
 
   async function removerPeca(pecaId) {
     if (hasUnsavedChanges) {
-      setMsg("Salve as alterações da OS antes de remover peças.");
+      setPieceFeedback({ type: "error", message: "Salve as alterações da OS antes de remover peças." });
       return;
     }
 
@@ -389,16 +391,16 @@ export default function OSDetail() {
 
     try {
       setRemovingPieceId(pecaId);
-      setMsg("");
+      setPieceFeedback(null);
 
       await apiFetch(`/os/${id}/pecas/${pecaId}`, {
         method: "DELETE",
       });
 
-      await loadOS({ preserveMessage: true });
-      setMsg("Peça removida com sucesso.");
+      await loadOS({ preserveMessage: true, silent: true });
+      setPieceFeedback({ type: "success", message: "Peça removida com sucesso." });
     } catch (error) {
-      setMsg(error.message);
+      setPieceFeedback({ type: "error", message: error.message });
     } finally {
       setRemovingPieceId(null);
     }
@@ -494,6 +496,7 @@ export default function OSDetail() {
                 total={total}
                 pieceForm={pieceForm}
                 pieceSubtotal={pieceSubtotal}
+                pieceFeedback={pieceFeedback}
                 addingPiece={addingPiece}
                 removingPieceId={removingPieceId}
                 onPieceChange={handlePieceFieldChange}
@@ -787,6 +790,7 @@ function PecasCard({
   total,
   pieceForm,
   pieceSubtotal,
+  pieceFeedback,
   addingPiece,
   removingPieceId,
   onPieceChange,
@@ -797,6 +801,12 @@ function PecasCard({
   return (
     <section className="osdetail-premium-card osdetail-premium-card--pieces">
       <CardTitle icon="parts" title="Peças da OS" subtitle="Adicione peças para montar o orçamento completo." />
+
+      {pieceFeedback?.message ? (
+        <div className={`osdetail-premium-piece-feedback is-${pieceFeedback.type || "success"}`}>
+          {pieceFeedback.message}
+        </div>
+      ) : null}
 
       <div className="osdetail-premium-piece-form">
         <div className="osdetail-premium-form-field">

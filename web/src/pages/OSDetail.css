@@ -2754,3 +2754,90 @@
   }
 }
 
+
+
+/* ==========================================================
+   OSDETAIL FIX CIRÚRGICO - PEÇAS DA OS DESKTOP + FEEDBACK LOCAL
+   Escopo:
+   - Corrige estouro do botão Adicionar peça/Subtotal em desktop cheio.
+   - Mantém tablet/mobile preservados.
+   - Mostra feedback de peça dentro do card, sem empurrar a página para o topo.
+   ========================================================== */
+
+.osdetail-premium-piece-feedback {
+  width: 100% !important;
+  margin: 0 0 16px !important;
+  padding: 13px 16px !important;
+  border-radius: 16px !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.osdetail-premium-piece-feedback.is-success {
+  background: #ecfdf5 !important;
+  color: #166534 !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+.osdetail-premium-piece-feedback.is-error {
+  background: #fff7ed !important;
+  color: #9a3412 !important;
+  border: 1px solid #fdba74 !important;
+}
+
+/* Desktop grande: evita que a linha dos campos dispute espaço com o botão. */
+@media (min-width: 1501px) {
+  .app-shell .osdetail-premium-card--pieces .osdetail-premium-piece-form,
+  .osdetail-premium-card--pieces .osdetail-premium-piece-form {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    display: grid !important;
+    grid-template-columns:
+      minmax(0, 1.45fr)
+      minmax(96px, 0.55fr)
+      minmax(140px, 0.82fr)
+      minmax(120px, 0.72fr) !important;
+    gap: 12px !important;
+    align-items: end !important;
+    overflow: visible !important;
+  }
+
+  .app-shell .osdetail-premium-card--pieces .osdetail-premium-piece-form > .osdetail-premium-form-field,
+  .osdetail-premium-card--pieces .osdetail-premium-piece-form > .osdetail-premium-form-field {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .app-shell .osdetail-premium-card--pieces .osdetail-premium-form-field--subtotal,
+  .osdetail-premium-card--pieces .osdetail-premium-form-field--subtotal {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell .osdetail-premium-card--pieces .osdetail-premium-form-field--subtotal strong,
+  .osdetail-premium-card--pieces .osdetail-premium-form-field--subtotal strong {
+    display: block !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .app-shell .osdetail-premium-card--pieces .osdetail-premium-piece-form > .osdetail-premium-btn,
+  .osdetail-premium-card--pieces .osdetail-premium-piece-form > .osdetail-premium-btn {
+    grid-column: 1 / -1 !important;
+    justify-self: end !important;
+
+    width: auto !important;
+    min-width: 210px !important;
+    max-width: 280px !important;
+    min-height: 48px !important;
+
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+}

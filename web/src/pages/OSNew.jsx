@@ -8,13 +8,8 @@ const MAX_RESULTADOS = 5;
 export default function OSNew() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const nav = useNavigate();
-    const user = getUser();
+  const user = getUser();
   const isTecnico = user?.role === "tecnico";
-
-
-
-
-
 
   const buscaRef = useRef(null);
 
@@ -42,9 +37,9 @@ export default function OSNew() {
     email: "",
   });
 
-  async function loadClientes() {
+  async function loadClientes({ silent = false } = {}) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setMsg("");
       const data = await apiFetch("/clientes");
       setClientes(Array.isArray(data) ? data : []);
@@ -56,7 +51,7 @@ export default function OSNew() {
       }
       setMsg(e.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -110,6 +105,15 @@ export default function OSNew() {
   const mostrarDropdown =
     !clienteSelecionado && buscaAtiva && buscaCliente.trim().length > 0;
 
+  const totalPrevisto =
+    safeMoneyValue(form.mao_obra) + safeMoneyValue(form.valor_pecas);
+
+  const modelo = form.modelo.trim();
+  const placa = form.placa.trim().toUpperCase();
+  const problema = form.problema_relatado.trim();
+  const veiculoPreenchido = Boolean(modelo || placa);
+  const podeCriarOS = Boolean(clienteSelecionado && problema && veiculoPreenchido);
+
   async function criarNovoCliente() {
     setMsg("");
 
@@ -150,7 +154,7 @@ export default function OSNew() {
         }),
       });
 
-      await loadClientes();
+      await loadClientes({ silent: true });
 
       setForm((prev) => ({
         ...prev,
@@ -283,186 +287,185 @@ export default function OSNew() {
     }));
     setBuscaCliente("");
     setBuscaAtiva(true);
+    setShowNovoCliente(false);
     requestAnimationFrame(() => {
       const input = document.getElementById("busca-cliente-input");
       if (input) input.focus();
     });
   }
 
-  const totalPrevisto =
-    safeMoneyValue(form.mao_obra) + safeMoneyValue(form.valor_pecas);
-      if (isTecnico) {
+  if (isTecnico) {
     return (
-      <div className="page">
-        <div className="container">
-          <div className="card alert alert--error">
-            Acesso negado. O perfil técnico não pode criar nova OS.
-          </div>
-        </div>
-      </div>
+      <StatePage
+        type="error"
+        title="Acesso negado"
+        description="O perfil técnico não pode criar nova OS. Use a lista de OS para acompanhar os serviços liberados para execução."
+      />
     );
   }
 
   if (!token) {
     return (
-      <div className="page">
-        <div className="container">
-          <div className="card">Sem sessão. Faça login novamente.</div>
-        </div>
-      </div>
+      <StatePage
+        type="error"
+        title="Sem sessão"
+        description="Faça login novamente para abrir uma nova ordem de serviço."
+      />
     );
   }
 
   if (loading) {
     return (
-      <div className="page">
-        <div className="container">
-          <div className="card">Carregando clientes...</div>
-        </div>
-      </div>
+      <StatePage
+        type="loading"
+        title="Carregando clientes"
+        description="Buscando os clientes da oficina para iniciar a abertura da OS."
+      />
     );
   }
 
   return (
-    <div className="page">
-      <div className="container">
-        <PageHeader
-          eyebrow="Painel da oficina"
-          title="Nova OS"
-          description="Abra uma nova ordem de serviço com cliente, veículo e valores previstos."
-          right={
-            <>
-              <Link to="/os">
-                <button className="btn btn--ghost-dark" type="button">
-                  Voltar para OS
-                </button>
-              </Link>
+    <div className="osnew-premium-page">
+      <div className="osnew-premium-container">
+        <header className="osnew-premium-hero">
+          <div className="osnew-premium-hero-content">
+            <span className="osnew-premium-eyebrow">Painel da oficina</span>
+            <h1>Nova OS</h1>
+            <p>
+              Abra uma ordem de serviço com cliente, veículo, problema relatado e
+              valores previstos em um fluxo rápido e seguro.
+            </p>
+          </div>
 
-              <Link to="/dashboard">
-                <button className="btn btn--ghost-dark" type="button">
-                  Dashboard
-                </button>
-              </Link>
-            </>
-          }
-        />
+          <div className="osnew-premium-hero-actions">
+            <Link to="/os" className="osnew-premium-btn osnew-premium-btn--ghost-dark">
+              <SvgIcon name="arrow-left" />
+              Voltar para OS
+            </Link>
+
+            <Link
+              to="/dashboard"
+              className="osnew-premium-btn osnew-premium-btn--ghost-dark"
+            >
+              <SvgIcon name="grid" />
+              Dashboard
+            </Link>
+          </div>
+        </header>
 
         {msg ? <AlertMessage message={msg} /> : null}
 
-        <form onSubmit={onSubmit} className="section stack" noValidate>
-          <div className="card">
-            <SectionTitle
-              title="Cliente"
-              subtitle="Busque e selecione o cliente de forma rápida."
-            />
+        <form onSubmit={onSubmit} className="osnew-premium-layout" noValidate>
+          <main className="osnew-premium-main-stack">
+            <section className="osnew-premium-card osnew-premium-card--client">
+              <CardTitle
+                icon="user"
+                title="Cliente"
+                subtitle="Busque um cliente existente ou cadastre rapidamente sem sair da OS."
+                status={clienteSelecionado ? "Cliente selecionado" : "Obrigatório"}
+                statusType={clienteSelecionado ? "success" : "warning"}
+              />
 
-            {!clienteSelecionado ? (
-              <div ref={buscaRef} className="cliente-search-wrap">
-                <div className="form-group">
-                  <label className="label">Buscar cliente</label>
-                  <input
-                    id="busca-cliente-input"
-                    value={buscaCliente}
-                    onChange={(e) => {
-                      setBuscaCliente(e.target.value);
-                      setBuscaAtiva(true);
-                    }}
-                    onFocus={() => setBuscaAtiva(true)}
-                    placeholder="Digite nome, telefone ou ID"
-                    autoComplete="off"
-                  />
-                </div>
+              {!clienteSelecionado ? (
+                <div ref={buscaRef} className="osnew-premium-client-search cliente-search-wrap">
+                  <label className="osnew-premium-label" htmlFor="busca-cliente-input">
+                    Buscar cliente
+                  </label>
 
-                <div className="helper-text">
-                  {buscaCliente.trim()
-                    ? clientesFiltrados.length > 0
-                      ? `${clientesFiltrados.length} cliente(s) encontrado(s).`
-                      : "Nenhum cliente encontrado."
-                    : "Digite nome, telefone ou ID para buscar o cliente."}
-                </div>
-
-                {mostrarDropdown ? (
-                  <div className="cliente-dropdown">
-                    {clientesFiltrados.length > 0 ? (
-                      clientesFiltrados.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="cliente-dropdown__item"
-                          onClick={() => selectCliente(c)}
-                        >
-                          <div className="cliente-dropdown__title">
-                            #{c.id} — {c.nome}
-                          </div>
-                          <div className="cliente-dropdown__meta">
-                            {c.telefone || "Sem telefone"}
-                            {c.email ? ` • ${c.email}` : ""}
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="cliente-dropdown__empty">
-                        Nenhum cliente encontrado.
-                      </div>
-                    )}
+                  <div className="osnew-premium-input-shell">
+                    <SvgIcon name="search" />
+                    <input
+                      id="busca-cliente-input"
+                      value={buscaCliente}
+                      onChange={(e) => {
+                        setBuscaCliente(e.target.value);
+                        setBuscaAtiva(true);
+                      }}
+                      onFocus={() => setBuscaAtiva(true)}
+                      placeholder="Digite nome, telefone ou ID"
+                      autoComplete="off"
+                    />
                   </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="soft-box selected-client-box">
-                <div className="selected-client-box__label">Cliente selecionado</div>
-                <div className="selected-client-box__name">
-                  #{clienteSelecionado.id} — {clienteSelecionado.nome}
-                </div>
-                <div className="selected-client-box__meta">
-                  {clienteSelecionado.telefone || "Sem telefone"}
-                  {clienteSelecionado.email ? ` • ${clienteSelecionado.email}` : ""}
-                </div>
 
-                <div className="form-actions section-gap-sm">
+                  <div className="osnew-premium-helper helper-text">
+                    {buscaCliente.trim()
+                      ? clientesFiltrados.length > 0
+                        ? `${clientesFiltrados.length} cliente(s) encontrado(s).`
+                        : "Nenhum cliente encontrado. Você pode cadastrar um novo cliente abaixo."
+                      : "Comece digitando nome, telefone ou ID do cliente."}
+                  </div>
+
+                  {mostrarDropdown ? (
+                    <div className="cliente-dropdown osnew-premium-client-dropdown">
+                      {clientesFiltrados.length > 0 ? (
+                        clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="cliente-dropdown__item"
+                            onClick={() => selectCliente(c)}
+                          >
+                            <span className="cliente-dropdown__title">
+                              #{c.id} — {c.nome}
+                            </span>
+                            <span className="cliente-dropdown__meta">
+                              {c.telefone || "Sem telefone"}
+                              {c.email ? ` • ${c.email}` : ""}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="cliente-dropdown__empty">
+                          Nenhum cliente encontrado.
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <SelectedClientBox
+                  cliente={clienteSelecionado}
+                  onChangeClient={limparClienteSelecionado}
+                />
+              )}
+
+              {!clienteSelecionado ? (
+                <div className="osnew-premium-inline-actions">
                   <button
                     type="button"
-                    className="btn btn--ghost"
-                    onClick={limparClienteSelecionado}
+                    onClick={() => setShowNovoCliente((prev) => !prev)}
+                    className={
+                      showNovoCliente
+                        ? "osnew-premium-btn osnew-premium-btn--secondary"
+                        : "osnew-premium-btn osnew-premium-btn--primary"
+                    }
                   >
-                    Trocar cliente
+                    <SvgIcon name={showNovoCliente ? "x" : "plus"} />
+                    {showNovoCliente ? "Cancelar cadastro" : "Novo cliente"}
                   </button>
                 </div>
-              </div>
-            )}
+              ) : null}
 
-            <div className="form-actions section-gap-sm">
-              <button
-                type="button"
-                onClick={() => setShowNovoCliente((prev) => !prev)}
-                className={showNovoCliente ? "btn btn--ghost" : "btn btn--primary"}
-              >
-                {showNovoCliente ? "Cancelar novo cliente" : "+ Novo cliente"}
-              </button>
-            </div>
-
-            {showNovoCliente ? (
-              <>
-                <div className="divider" />
-
-                <div className="soft-box form-panel-soft">
-                  <SectionTitle
-                    title="Cadastro rápido de cliente"
-                    subtitle="Cadastre o cliente sem sair da abertura da OS."
+              {showNovoCliente ? (
+                <div className="osnew-premium-new-client-panel">
+                  <CardTitle
+                    icon="user-plus"
+                    title="Cadastro rápido"
+                    subtitle="Preencha o mínimo necessário para usar o cliente nesta OS."
                   />
 
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label className="label">Nome</label>
+                  <div className="osnew-premium-grid-2">
+                    <FormField label="Nome" required>
                       <input
                         value={novoCliente.nome}
-                        onChange={(e) => handleNovoClienteChange("nome", e.target.value)}
+                        onChange={(e) =>
+                          handleNovoClienteChange("nome", e.target.value)
+                        }
                         placeholder="Nome do cliente"
                       />
-                    </div>
+                    </FormField>
 
-                    <div className="form-group">
-                      <label className="label">Telefone</label>
+                    <FormField label="Telefone" required>
                       <input
                         value={novoCliente.telefone}
                         onChange={(e) =>
@@ -471,149 +474,174 @@ export default function OSNew() {
                         placeholder="(44) 99999-9999"
                         inputMode="tel"
                       />
-                    </div>
+                    </FormField>
                   </div>
 
-                  <div className="form-group section-gap-sm">
-                    <label className="label">Email (opcional)</label>
+                  <FormField label="Email" hint="Opcional">
                     <input
                       value={novoCliente.email}
                       onChange={(e) => handleNovoClienteChange("email", e.target.value)}
                       placeholder="cliente@email.com"
                       inputMode="email"
                     />
-                  </div>
+                  </FormField>
 
-                  <div className="form-actions section-gap-md">
+                  <div className="osnew-premium-inline-actions">
                     <button
                       type="button"
                       onClick={criarNovoCliente}
                       disabled={savingCliente}
-                      className="btn btn--solid"
+                      className="osnew-premium-btn osnew-premium-btn--dark"
                     >
+                      <SvgIcon name="save" />
                       {savingCliente ? "Salvando cliente..." : "Salvar cliente"}
                     </button>
                   </div>
                 </div>
-              </>
-            ) : null}
-          </div>
+              ) : null}
+            </section>
 
-          <div className="card">
-            <SectionTitle
-              title="Veículo"
-              subtitle="Informe os dados básicos do veículo."
-            />
+            <section className="osnew-premium-card">
+              <CardTitle
+                icon="car"
+                title="Veículo"
+                subtitle="Informe placa e/ou modelo para identificar rapidamente o serviço."
+                status={veiculoPreenchido ? "Preenchido" : "Placa ou modelo"}
+                statusType={veiculoPreenchido ? "success" : "warning"}
+              />
 
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="label">Modelo</label>
-                <input
-                  value={form.modelo}
-                  onChange={(e) => handleFormChange("modelo", e.target.value)}
-                  placeholder="Ex.: Gol, Uno, Civic..."
-                />
+              <div className="osnew-premium-grid-2">
+                <FormField label="Modelo">
+                  <input
+                    value={form.modelo}
+                    onChange={(e) => handleFormChange("modelo", e.target.value)}
+                    placeholder="Ex.: Gol, Uno, Civic..."
+                  />
+                </FormField>
+
+                <FormField label="Placa">
+                  <input
+                    value={form.placa}
+                    onChange={(e) => handleFormChange("placa", e.target.value)}
+                    placeholder="ABC1D23"
+                    maxLength={8}
+                  />
+                </FormField>
               </div>
+            </section>
 
-              <div className="form-group">
-                <label className="label">Placa</label>
-                <input
-                  value={form.placa}
-                  onChange={(e) => handleFormChange("placa", e.target.value)}
-                  placeholder="ABC1D23"
-                  maxLength={8}
+            <section className="osnew-premium-card">
+              <CardTitle
+                icon="clipboard"
+                title="Serviço"
+                subtitle="Registre o problema relatado e os valores previstos para abrir a OS."
+                status={problema ? "Descrição pronta" : "Descrição obrigatória"}
+                statusType={problema ? "success" : "warning"}
+              />
+
+              <FormField label="Problema relatado" required>
+                <textarea
+                  value={form.problema_relatado}
+                  onChange={(e) =>
+                    handleFormChange("problema_relatado", e.target.value)
+                  }
+                  placeholder="Ex.: Cliente relata barulho na suspensão ao passar em lombadas..."
+                  rows={5}
                 />
+              </FormField>
+
+              <div className="osnew-premium-grid-2 osnew-premium-money-grid">
+                <FormField label="Mão de obra (R$)">
+                  <input
+                    value={form.mao_obra}
+                    onChange={(e) => handleFormChange("mao_obra", e.target.value)}
+                    onBlur={() => handleMoneyBlur("mao_obra")}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                  />
+                </FormField>
+
+                <FormField label="Peças (R$)">
+                  <input
+                    value={form.valor_pecas}
+                    onChange={(e) => handleFormChange("valor_pecas", e.target.value)}
+                    onBlur={() => handleMoneyBlur("valor_pecas")}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                  />
+                </FormField>
+              </div>
+            </section>
+          </main>
+
+          <aside className="osnew-premium-summary-card" aria-label="Resumo da nova OS">
+            <div className="osnew-premium-summary-top">
+              <span>
+                <SvgIcon name="receipt" />
+              </span>
+              <div>
+                <h2>Resumo da OS</h2>
+                <p>Confirme os dados antes de criar.</p>
               </div>
             </div>
-          </div>
 
-          <div className="card">
-            <SectionTitle
-              title="Serviço"
-              subtitle="Descreva o problema e informe os valores previstos."
-            />
+            <div className="osnew-premium-total-box">
+              <small>Total previsto</small>
+              <strong>{money(totalPrevisto)}</strong>
+            </div>
 
-            <div className="form-group">
-              <label className="label">Problema relatado</label>
-              <textarea
-                value={form.problema_relatado}
-                onChange={(e) =>
-                  handleFormChange("problema_relatado", e.target.value)
-                }
-                placeholder="Descreva o problema informado pelo cliente..."
-                rows={5}
+            <div className="osnew-premium-checklist">
+              <SummaryItem
+                ok={Boolean(clienteSelecionado)}
+                label="Cliente"
+                value={clienteSelecionado ? clienteSelecionado.nome : "Selecione um cliente"}
+              />
+              <SummaryItem
+                ok={veiculoPreenchido}
+                label="Veículo"
+                value={modelo || placa ? [modelo, placa].filter(Boolean).join(" • ") : "Informe placa ou modelo"}
+              />
+              <SummaryItem
+                ok={Boolean(problema)}
+                label="Problema"
+                value={problema ? truncate(problema, 70) : "Descreva o problema relatado"}
+              />
+              <SummaryItem
+                ok={true}
+                label="Valores"
+                value={`Mão de obra ${money(safeMoneyValue(form.mao_obra))} • Peças ${money(safeMoneyValue(form.valor_pecas))}`}
               />
             </div>
 
-            <div className="grid-2 section-gap-sm">
-              <div className="form-group">
-                <label className="label">Mão de obra (R$)</label>
-                <input
-                  value={form.mao_obra}
-                  onChange={(e) => handleFormChange("mao_obra", e.target.value)}
-                  onBlur={() => handleMoneyBlur("mao_obra")}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                />
+            {!podeCriarOS ? (
+              <div className="osnew-premium-summary-warning">
+                Preencha cliente, veículo e problema relatado para criar a OS com segurança.
               </div>
+            ) : null}
 
-              <div className="form-group">
-                <label className="label">Peças (R$)</label>
-                <input
-                  value={form.valor_pecas}
-                  onChange={(e) => handleFormChange("valor_pecas", e.target.value)}
-                  onBlur={() => handleMoneyBlur("valor_pecas")}
-                  inputMode="decimal"
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <SectionTitle
-              title="Finalização"
-              subtitle="Revise o total previsto e crie a ordem de serviço."
-            />
-
-            <div className="soft-box total-preview-box">
-              <div className="label detail-label-tight">Total previsto</div>
-              <div className="kpi kpi--dark kpi-compact">
-                {money(totalPrevisto)}
-              </div>
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn btn--solid" disabled={savingOS}>
-                {savingOS ? "Criando..." : "Criar OS"}
-              </button>
-            </div>
-          </div>
+            <button
+              type="submit"
+              className="osnew-premium-btn osnew-premium-btn--submit"
+              disabled={savingOS}
+            >
+              <SvgIcon name="check" />
+              {savingOS ? "Criando OS..." : "Criar OS"}
+            </button>
+          </aside>
         </form>
       </div>
     </div>
   );
 }
 
-function PageHeader({ eyebrow, title, description, right }) {
+function StatePage({ type, title, description }) {
   return (
-    <div className="topbar">
-      <div className="page-header-meta">
-        <div className="page-eyebrow">{eyebrow}</div>
-        <h1 className="page-title">{title}</h1>
-        <p className="page-description">{description}</p>
+    <div className="osnew-premium-page osnew-premium-state-page">
+      <div className={`osnew-premium-state-card is-${type}`}>
+        <span>{type === "error" ? <SvgIcon name="alert" /> : <SvgIcon name="loader" />}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
       </div>
-
-      <div className="form-actions header-actions">{right}</div>
-    </div>
-  );
-}
-
-function SectionTitle({ title, subtitle }) {
-  return (
-    <div className="section-header">
-      <h2>{title}</h2>
-      {subtitle ? <div className="section-subtitle">{subtitle}</div> : null}
     </div>
   );
 }
@@ -630,9 +658,203 @@ function AlertMessage({ message }) {
     text.includes("não");
 
   return (
-    <div className={`card section alert ${isError ? "alert--error" : "alert--success"}`}>
-      {message}
+    <div className={`osnew-premium-alert ${isError ? "is-error" : "is-success"}`}>
+      <SvgIcon name={isError ? "alert" : "check"} />
+      <span>{message}</span>
     </div>
+  );
+}
+
+function CardTitle({ icon, title, subtitle, status, statusType }) {
+  return (
+    <div className="osnew-premium-card-title">
+      <span className="osnew-premium-card-icon">
+        <SvgIcon name={icon} />
+      </span>
+
+      <div className="osnew-premium-card-title-text">
+        <h2>{title}</h2>
+        {subtitle ? <p>{subtitle}</p> : null}
+      </div>
+
+      {status ? (
+        <span className={`osnew-premium-status-pill is-${statusType || "neutral"}`}>
+          {status}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function FormField({ label, required, hint, children }) {
+  return (
+    <label className="osnew-premium-field">
+      <span>
+        {label}
+        {required ? <b>*</b> : null}
+        {hint ? <em>{hint}</em> : null}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function SelectedClientBox({ cliente, onChangeClient }) {
+  return (
+    <div className="osnew-premium-selected-client selected-client-box">
+      <div className="osnew-premium-selected-client-main">
+        <span className="osnew-premium-selected-avatar">
+          <SvgIcon name="user" />
+        </span>
+        <div>
+          <small>Cliente selecionado</small>
+          <strong>
+            #{cliente.id} — {cliente.nome}
+          </strong>
+          <p>
+            {cliente.telefone || "Sem telefone"}
+            {cliente.email ? ` • ${cliente.email}` : ""}
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="osnew-premium-btn osnew-premium-btn--secondary"
+        onClick={onChangeClient}
+      >
+        <SvgIcon name="refresh" />
+        Trocar cliente
+      </button>
+    </div>
+  );
+}
+
+function SummaryItem({ ok, label, value }) {
+  return (
+    <div className={`osnew-premium-summary-item ${ok ? "is-ok" : "is-pending"}`}>
+      <span>{ok ? <SvgIcon name="check" /> : <SvgIcon name="dot" />}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function SvgIcon({ name }) {
+  const icons = {
+    "arrow-left": (
+      <>
+        <path d="M19 12H5" />
+        <path d="m12 19-7-7 7-7" />
+      </>
+    ),
+    grid: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    user: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </>
+    ),
+    "user-plus": (
+      <>
+        <circle cx="9" cy="8" r="4" />
+        <path d="M3 21a6 6 0 0 1 12 0" />
+        <path d="M19 8v6" />
+        <path d="M16 11h6" />
+      </>
+    ),
+    search: (
+      <>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </>
+    ),
+    car: (
+      <>
+        <path d="M5 17h14" />
+        <path d="M6 17v-5l2-5h8l2 5v5" />
+        <circle cx="8" cy="17" r="2" />
+        <circle cx="16" cy="17" r="2" />
+      </>
+    ),
+    clipboard: (
+      <>
+        <path d="M9 4h6" />
+        <path d="M9 4a3 3 0 0 0 6 0" />
+        <rect x="5" y="4" width="14" height="17" rx="2" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </>
+    ),
+    receipt: (
+      <>
+        <path d="M6 2v20l3-2 3 2 3-2 3 2V2Z" />
+        <path d="M9 7h6" />
+        <path d="M9 11h6" />
+        <path d="M9 15h4" />
+      </>
+    ),
+    plus: (
+      <>
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
+      </>
+    ),
+    x: (
+      <>
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </>
+    ),
+    save: (
+      <>
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+        <path d="M17 21v-8H7v8" />
+        <path d="M7 3v5h8" />
+      </>
+    ),
+    check: <path d="m5 12 4 4L19 6" />,
+    alert: (
+      <>
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
+        <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" />
+      </>
+    ),
+    loader: (
+      <>
+        <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+      </>
+    ),
+    refresh: (
+      <>
+        <path d="M21 12a9 9 0 0 1-15.3 6.4" />
+        <path d="M3 12a9 9 0 0 1 15.3-6.4" />
+        <path d="M3 3v6h6" />
+        <path d="M21 21v-6h-6" />
+      </>
+    ),
+    dot: <circle cx="12" cy="12" r="3" />,
+  };
+
+  return (
+    <svg
+      className="osnew-premium-svg-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {icons[name] || icons.dot}
+    </svg>
   );
 }
 
@@ -693,4 +915,10 @@ function money(value) {
     style: "currency",
     currency: "BRL",
   });
+}
+
+function truncate(value, maxLength) {
+  const text = String(value || "").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1)}…`;
 }
