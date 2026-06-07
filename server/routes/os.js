@@ -36,12 +36,20 @@ function sanitizePhoneBR(phone) {
 }
 
 
+const OS_IN_PROGRESS_STATUSES = [
+  "aprovado",
+  "em_execucao",
+  "aguardando_peca",
+  "pronto_retirada",
+];
+
 const OS_STATUS_FILTERS = new Set([
   "triagem",
   "em_analise",
   "aguardando_aprovacao",
   "aprovado",
   "em_execucao",
+  "em_andamento",
   "aguardando_peca",
   "pronto_retirada",
   "encerrado",
@@ -59,6 +67,14 @@ function parseOSStatusFilter(value) {
 
   if (!OS_STATUS_FILTERS.has(status)) {
     return { error: "Status inválido para filtro de OS." };
+  }
+
+  if (status === "em_andamento") {
+    return {
+      status,
+      clause: "status_group",
+      statuses: OS_IN_PROGRESS_STATUSES,
+    };
   }
 
   return { status, clause: "status" };
@@ -426,8 +442,19 @@ router.get("/", async (req, res, next) => {
     let statusClause = "";
 
     if (statusFilter.status !== "all") {
-      params.push(statusFilter.status);
-      statusClause = `AND os.status = $${params.length}`;
+      if (statusFilter.clause === "status_group") {
+        const statusPlaceholders = statusFilter.statuses
+          .map((status) => {
+            params.push(status);
+            return `$${params.length}`;
+          })
+          .join(", ");
+
+        statusClause = `AND os.status IN (${statusPlaceholders})`;
+      } else {
+        params.push(statusFilter.status);
+        statusClause = `AND os.status = $${params.length}`;
+      }
     }
 
     const result = await pool.query(

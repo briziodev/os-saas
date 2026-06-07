@@ -47,6 +47,7 @@ const STATUS_LABEL = {
   cancelado: "Cancelado",
   orcamento_enviado: "Orçamento enviado",
   finalizado: "Finalizado",
+  em_andamento: "Em andamento",
 };
 
 const PERIOD_OPTIONS = [
@@ -59,7 +60,7 @@ const PERIOD_OPTIONS = [
 
 const QUICK_FILTERS = [
   { key: "todos", label: "Todas", status: "todos" },
-  { key: "em_execucao", label: "Em andamento", status: "em_execucao" },
+  { key: "em_andamento", label: "Em andamento", status: "em_andamento" },
   { key: "aguardando_aprovacao", label: "Pendentes", status: "aguardando_aprovacao" },
   { key: "encerrado", label: "Finalizadas", status: "encerrado" },
 ];
@@ -678,6 +679,7 @@ function FilterPanel({
         <label>Status</label>
         <select value={statusFiltro} onChange={(event) => setStatusFiltro(event.target.value)}>
           <option value="todos">Todos os status</option>
+          <option value="em_andamento">Em andamento</option>
           {STATUS.map((status) => (
             <option key={status} value={status}>
               {statusLabel(status)}
@@ -1176,7 +1178,7 @@ function statusUrl(status, period = "all", startDate = "", endDate = "") {
 
 function quickCount(status, stats) {
   if (status === "todos") return stats.total;
-  if (status === "em_execucao") return stats.inProgress;
+  if (status === "em_andamento") return stats.inProgress;
   if (status === "aguardando_aprovacao") return stats.pending;
   if (status === "encerrado") return stats.finished;
   return 0;
@@ -1184,7 +1186,16 @@ function quickCount(status, stats) {
 
 function getInitialStatus(params) {
   const status = params.get("status") || "todos";
-  if (status === "todos" || STATUS.includes(status) || status === "orcamento_enviado" || status === "finalizado") return status;
+  if (
+    status === "todos" ||
+    status === "em_andamento" ||
+    STATUS.includes(status) ||
+    status === "orcamento_enviado" ||
+    status === "finalizado"
+  ) {
+    return status;
+  }
+
   return "todos";
 }
 

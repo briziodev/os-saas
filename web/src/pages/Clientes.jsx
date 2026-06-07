@@ -328,7 +328,7 @@ export default function Clientes() {
         normalizeSearch(cliente.nome).includes(term) ||
         normalizeSearch(cliente.email).includes(term) ||
         normalizeSearch(cliente.telefone).includes(term) ||
-        normalizePhone(cliente.telefone).includes(phoneTerm);
+        (Boolean(phoneTerm) && normalizePhone(cliente.telefone).includes(phoneTerm));
 
       const matchesResumo =
         filtroResumo === "all" ||
