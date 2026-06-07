@@ -41,7 +41,6 @@ const ROLE_FILTERS = [
   { value: "admin", label: "Admin" },
   { value: "atendimento", label: "Atendimento" },
   { value: "tecnico", label: "Técnico" },
-  { value: "member", label: "Member antigo" },
 ];
 
 export default function Usuarios() {
@@ -875,7 +874,7 @@ function formatRoleLabel(role) {
   if (role === "admin") return "Admin";
   if (role === "atendimento") return "Atendimento";
   if (role === "tecnico") return "Técnico";
-  if (role === "member") return "Member antigo";
+  if (role === "member") return "Perfil antigo";
   return role || "-";
 }
 
@@ -883,7 +882,7 @@ function getRoleBadgeClass(role) {
   if (role === "admin") return "is-info";
   if (role === "atendimento") return "is-success";
   if (role === "tecnico") return "is-purple";
-  if (role === "member") return "is-warning";
+  if (role === "member") return "is-gray";
   return "is-gray";
 }
 

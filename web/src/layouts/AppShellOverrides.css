@@ -800,3 +800,992 @@
     bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* ==========================================================
+   SPRINT UX 8.5 - APPSHELL TABLET/DESKTOP BRIDGE
+   Objetivo: evitar layout híbrido quebrado entre 900px e 1023px.
+   Em telas largas o sistema deve usar sidebar desktop, não bottom nav.
+   ========================================================== */
+
+@media (min-width: 900px) and (max-width: 1023px) {
+  .app-shell {
+    --app-shell-sidebar-width: 240px;
+    display: block !important;
+    min-height: 100vh !important;
+    background: linear-gradient(
+      90deg,
+      #071f3a 0,
+      #071f3a var(--app-shell-sidebar-width),
+      #eaf2fb var(--app-shell-sidebar-width),
+      #eaf2fb 100%
+    ) !important;
+  }
+
+  .app-shell-sidebar {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: var(--app-shell-sidebar-width) !important;
+    min-width: var(--app-shell-sidebar-width) !important;
+    max-width: var(--app-shell-sidebar-width) !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    z-index: 50 !important;
+    background: #071f3a !important;
+  }
+
+  .app-shell-main {
+    margin-left: var(--app-shell-sidebar-width) !important;
+    width: calc(100% - var(--app-shell-sidebar-width)) !important;
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .app-shell-content {
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+  }
+
+  .app-shell-mobile-header,
+  .app-shell-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Celular muito estreito: evita botão Nova OS espremido no topo */
+@media (max-width: 360px) {
+  .app-shell-mobile-new-os {
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  .app-shell-mobile-new-os span,
+  .app-shell-mobile-new-os strong {
+    display: none !important;
+  }
+}
+
+/* ==========================================================
+   SPRINT UX 8.5 - FIX GLOBAL RESPONSIVIDADE POS-VALIDACAO
+   Baseado nos prints validados em:
+   Dashboard, OS, Clientes, OS Detail, Kanban e Usuários.
+   ========================================================== */
+
+/* Evita que textos dos cards da sidebar vazem para fora da caixa */
+@media (min-width: 900px) {
+  .app-shell-context-card,
+  .app-shell-user-card {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-context-card span,
+  .app-shell-user-card span,
+  .app-shell-context-card strong,
+  .app-shell-user-card strong {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .app-shell-context-card span,
+  .app-shell-user-card span {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* Faixa intermediária: evita layout híbrido quebrado */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .app-shell {
+    --app-shell-sidebar-width: 232px;
+    display: block !important;
+    min-height: 100vh !important;
+    background: linear-gradient(
+      90deg,
+      #071f3a 0,
+      #071f3a var(--app-shell-sidebar-width),
+      #eaf2fb var(--app-shell-sidebar-width),
+      #eaf2fb 100%
+    ) !important;
+  }
+
+  .app-shell-sidebar {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: var(--app-shell-sidebar-width) !important;
+    min-width: var(--app-shell-sidebar-width) !important;
+    max-width: var(--app-shell-sidebar-width) !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 50 !important;
+    background: #071f3a !important;
+  }
+
+  .app-shell-main {
+    margin-left: var(--app-shell-sidebar-width) !important;
+    width: calc(100% - var(--app-shell-sidebar-width)) !important;
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-content {
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell-mobile-header,
+  .app-shell-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Celular estreito: botão Nova OS vira só ícone e não quebra */
+@media (max-width: 360px) {
+  .app-shell-mobile-header {
+    grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+    gap: 8px !important;
+  }
+
+  .app-shell-mobile-new-os {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell-mobile-new-os svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+
+/* Largura extrema abaixo de 320px: proteger, não otimizar como alvo principal */
+@media (max-width: 319px) {
+  .app-shell-content {
+    min-width: 280px !important;
+  }
+
+  .app-shell-mobile-brand strong,
+  .app-shell-mobile-brand span {
+    max-width: 120px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+/* ==========================================================
+   SPRINT UX 8.5 - APPSHELL OVERRIDE KANBAN MOBILE SEAM 13
+   Este arquivo é importado por último; por isso reforça a
+   remoção da faixa clara acima das ações mobile do Kanban.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell .kanban-premium-container {
+    padding-top: 0 !important;
+  }
+
+  .app-shell .kanban-premium-mobile-actions {
+    margin-top: 0 !important;
+    padding-top: 12px !important;
+    background: #071f3a !important;
+  }
+}
+
+/* ==========================================================
+   SPRINT UX 8.5 - APPSHELL KANBAN FIX 14
+   Reforço porque AppShellOverrides é importado depois das páginas.
+   - remove gutter/faixa lateral no topo mobile do Kanban;
+   - protege texto do card de contexto na sidebar intermediária.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell:has(.kanban-premium-page) .app-shell-content {
+    padding-top: 0 !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-container {
+    padding-top: 0 !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    margin-top: -1px !important;
+    background: #071f3a !important;
+    border-radius: 0 !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .app-shell-context-card,
+  .app-shell-user-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-context-card *,
+  .app-shell-user-card * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .app-shell-context-card span,
+  .app-shell-context-card p,
+  .app-shell-context-card strong,
+  .app-shell-user-card span,
+  .app-shell-user-card p,
+  .app-shell-user-card strong {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* ==========================================================
+   SPRINT UX 8.5 - APPSHELL KANBAN FIX 15
+   Reforço final porque AppShellOverrides é importado depois.
+   Corrige duplicidade/colagem dos botões do Kanban.
+   ========================================================== */
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions {
+    display: none !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-head-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    margin: 6px 0 20px !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-head-actions .kanban-premium-primary-action {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions {
+    display: grid !important;
+    gap: 12px !important;
+    padding-top: 12px !important;
+    padding-bottom: 16px !important;
+    background: #071f3a !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions .kanban-premium-primary-action {
+    display: none !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions .kanban-premium-secondary-action {
+    min-height: 48px !important;
+    border-radius: 15px !important;
+    background: #ffffff !important;
+    color: #0757e7 !important;
+    border: 1px solid rgba(218, 230, 244, 0.96) !important;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions .kanban-premium-secondary-action.is-dark {
+    background: #ffffff !important;
+    color: #0f766e !important;
+    border-color: rgba(209, 250, 229, 0.95) !important;
+  }
+}
+
+/* ==========================================================
+   SPRINT UX 8.5 - APPSHELL KANBAN EDGE LINE FIX 16
+   AppShellOverrides é carregado por último. Este bloco remove
+   as linhas finas laterais/dupla costura do topo mobile Kanban.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell:has(.kanban-premium-page),
+  .app-shell:has(.kanban-premium-page) .app-shell-main,
+  .app-shell:has(.kanban-premium-page) .app-shell-content {
+    overflow-x: hidden !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .app-shell-content {
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .app-shell-mobile-header {
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 12px 0 !important;
+    padding: 12px 10px 16px !important;
+    background: #071f3a !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    box-shadow: -2px 0 0 #071f3a, 2px 0 0 #071f3a !important;
+  }
+}
+
+
+/* ==========================================================
+   KANBAN MOBILE - FIX DEFINITIVO DAS LINHAS FINAS DO TOPO
+   Objetivo: eliminar costuras/bordas entre AppShell e Kanban
+   sem pintar a página inteira de azul.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  /* Aplica somente quando a página atual é o Kanban */
+  .app-shell:has(.kanban-premium-page) {
+    background: #062b52 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Header mobile global: remove qualquer linha/borda/sombra */
+  .app-shell:has(.kanban-premium-page) .app-shell-mobile-header {
+    background: #062b52 !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .app-shell-mobile-header::before,
+  .app-shell:has(.kanban-premium-page) .app-shell-mobile-header::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Área principal: sem espaço fantasma entre header e página */
+  .app-shell:has(.kanban-premium-page) .app-shell-main,
+  .app-shell:has(.kanban-premium-page) .app-shell-content {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Página Kanban: começa colada no header, sem linha */
+  .app-shell:has(.kanban-premium-page) .kanban-premium-page {
+    margin-top: -1px !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Container do Kanban: cria topo azul contínuo e depois fundo claro */
+  .app-shell:has(.kanban-premium-page) .kanban-premium-container {
+    position: relative !important;
+    z-index: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    overflow-x: hidden !important;
+    background:
+      linear-gradient(
+        180deg,
+        #062b52 0,
+        #062b52 165px,
+        #eaf2fb 165px,
+        #eaf2fb 100%
+      ) !important;
+  }
+
+  /* Bloco azul do topo: sem bordas internas */
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-header,
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions {
+    background: #062b52 !important;
+    border: 0 !important;
+    border-top: 0 !important;
+    border-bottom: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-header::before,
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-header::after,
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions::before,
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Botões do topo mobile sem linhas laterais/fantasmas */
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions a,
+  .app-shell:has(.kanban-premium-page) .kanban-premium-mobile-actions button {
+    box-shadow: none !important;
+    outline: 0 !important;
+  }
+
+  /* Primeiro bloco claro depois do topo azul */
+  .app-shell:has(.kanban-premium-page) .kanban-premium-filter-card {
+    margin-top: 14px !important;
+  }
+}
+
+/* ==========================================================
+   OS LIST MOBILE - FIX DEFINITIVO DAS LINHAS FINAS DO TOPO
+   Objetivo: eliminar costuras entre AppShell e OSList mobile
+   sem pintar a lista inteira de azul.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  /* Aplica somente quando a tela atual é /os */
+  .app-shell:has(.oslist-premium-page) {
+    background: #062b52 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Header mobile global sem linha/borda/sombra */
+  .app-shell:has(.oslist-premium-page) .app-shell-mobile-header,
+  .app-shell:has(.oslist-premium-page) .app-shell-header,
+  .app-shell:has(.oslist-premium-page) .app-shell-topbar {
+    background: #062b52 !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .app-shell-mobile-header::before,
+  .app-shell:has(.oslist-premium-page) .app-shell-mobile-header::after,
+  .app-shell:has(.oslist-premium-page) .app-shell-header::before,
+  .app-shell:has(.oslist-premium-page) .app-shell-header::after,
+  .app-shell:has(.oslist-premium-page) .app-shell-topbar::before,
+  .app-shell:has(.oslist-premium-page) .app-shell-topbar::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Área principal sem espaço fantasma */
+  .app-shell:has(.oslist-premium-page) .app-shell-main,
+  .app-shell:has(.oslist-premium-page) .app-shell-content,
+  .app-shell:has(.oslist-premium-page) .app-shell-page,
+  .app-shell:has(.oslist-premium-page) .app-shell-body {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Página /os: fundo claro geral, mas com topo azul por trás */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-page {
+    position: relative !important;
+    isolation: isolate !important;
+    margin-top: -1px !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-page::before {
+    content: "" !important;
+    position: absolute !important;
+    z-index: -1 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 178px !important;
+    background: #062b52 !important;
+    display: block !important;
+    pointer-events: none !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-container,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-main,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-content {
+    position: relative !important;
+    z-index: 1 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Bloco azul do período */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-actions,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-top,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-hero,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-shell,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-panel,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-hero {
+    background: #062b52 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border: 0 !important;
+    border-top: 0 !important;
+    border-bottom: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-actions::before,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-actions::after,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-top::before,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-top::after,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-shell::before,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-shell::after,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-panel::before,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-panel::after,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-hero::before,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-hero::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* A partir dos chips, volta para fundo claro */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-list-section,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-list-card {
+    background: transparent !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row {
+    margin-top: 12px !important;
+  }
+}
+
+/* ==========================================================
+   OS LIST MOBILE - FIX FINAL DA LINHA FINA NO TOPO
+   Escopo: somente /os em mobile.
+   Estratégia: remove bordas genéricas do header e cobre a
+   costura entre AppShell e OSList com uma faixa azul de 3px.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell:has(.oslist-premium-page) {
+    background: #062b52 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Remove bordas/sombras de qualquer header/topbar do AppShell */
+  .app-shell:has(.oslist-premium-page) [class*="header"],
+  .app-shell:has(.oslist-premium-page) [class*="Header"],
+  .app-shell:has(.oslist-premium-page) [class*="topbar"],
+  .app-shell:has(.oslist-premium-page) [class*="Topbar"],
+  .app-shell:has(.oslist-premium-page) [class*="top-bar"],
+  .app-shell:has(.oslist-premium-page) [class*="TopBar"] {
+    border-top: 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) [class*="header"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="header"]::after,
+  .app-shell:has(.oslist-premium-page) [class*="Header"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="Header"]::after,
+  .app-shell:has(.oslist-premium-page) [class*="topbar"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="topbar"]::after,
+  .app-shell:has(.oslist-premium-page) [class*="Topbar"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="Topbar"]::after,
+  .app-shell:has(.oslist-premium-page) [class*="top-bar"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="top-bar"]::after,
+  .app-shell:has(.oslist-premium-page) [class*="TopBar"]::before,
+  .app-shell:has(.oslist-premium-page) [class*="TopBar"]::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Área onde a linha aparece */
+  .app-shell:has(.oslist-premium-page) .app-shell-main,
+  .app-shell:has(.oslist-premium-page) .app-shell-content {
+    position: relative !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  /*
+    Cobre a costura exata entre cabeçalho e conteúdo.
+    Essa é a parte que resolve a linha de 1px mesmo quando
+    ela vem de subpixel, borda herdada ou diferença de background.
+  */
+  .app-shell:has(.oslist-premium-page) .app-shell-content::before {
+    content: "" !important;
+    position: absolute !important;
+    top: -2px !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 5px !important;
+    z-index: 50 !important;
+    display: block !important;
+    background: #062b52 !important;
+    pointer-events: none !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-page {
+    position: relative !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    background: #eaf2fb !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-container,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-main,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-content {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    background: transparent !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Mantém só o topo/filtro em azul */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-actions,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-top,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-hero,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-shell,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-period-panel,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-hero {
+    background: #062b52 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+  }
+}
+
+/* ==========================================================
+   OS LIST MOBILE - QUICK FILTER UX POLISH
+   Objetivo: melhorar contraste dos botões Todas / Em andamento /
+   Pendentes / Finalizadas no mobile.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 0 10px !important;
+    background: #eaf2fb !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip {
+    min-height: 40px !important;
+    border-radius: 12px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+    font-weight: 950 !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045) !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button:hover,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button:hover,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip:hover,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter:hover,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip:hover {
+    background: #eef5ff !important;
+    border-color: #bfdbfe !important;
+    color: #0f62fe !important;
+  }
+
+  /* Estado selecionado */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button[aria-pressed="true"],
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button[aria-pressed="true"] {
+    border-color: #1764ff !important;
+    background: linear-gradient(135deg, #237cff 0%, #0f62fe 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 22px rgba(23, 100, 255, 0.24) !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button[aria-pressed="true"] *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button[aria-pressed="true"] * {
+    color: #ffffff !important;
+  }
+
+  /* Botão Filtros avançados continua branco, mas com mais separação visual */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-advanced-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-advanced-toggle {
+    margin-top: 8px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04) !important;
+  }
+}
+
+/* ==========================================================
+   OS LIST MOBILE - QUICK FILTER UX POLISH V2
+   Corrige chips quebrando texto e deixa filtros avançados
+   em linha própria.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: 0 10px !important;
+    margin-top: 12px !important;
+    background: #eaf2fb !important;
+    overflow: visible !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 40px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+    font-size: 0.78rem !important;
+    font-weight: 950 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045) !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button[aria-pressed="true"],
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button[aria-pressed="true"] {
+    border-color: #1764ff !important;
+    background: linear-gradient(135deg, #237cff 0%, #0f62fe 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 22px rgba(23, 100, 255, 0.24) !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-chip.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-chip.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-filter.is-active * {
+    color: #ffffff !important;
+  }
+
+  /* Filtros avançados sempre em linha própria */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-advanced-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-advanced-toggle {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    margin-top: 2px !important;
+    border-radius: 14px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+    font-size: 0.82rem !important;
+    font-weight: 950 !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04) !important;
+  }
+}
+
+/* ==========================================================
+   OS LIST MOBILE - QUICK FILTER FINAL ALIGNMENT
+   Corrige largura/alinhamento dos chips:
+   Todas / Em andamento / Pendentes / Finalizadas.
+   ========================================================== */
+
+@media (max-width: 768px) {
+  /* Garante que a área dos filtros rápidos ocupe a largura real */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+
+    margin: 12px 0 0 !important;
+    padding: 0 10px !important;
+
+    align-items: stretch !important;
+    justify-items: stretch !important;
+
+    background: #eaf2fb !important;
+    overflow: visible !important;
+  }
+
+  /* Corrige qualquer wrapper interno que esteja deixando os chips pequenos */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row > *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row > * {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Botões dos filtros rápidos */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    min-height: 40px !important;
+    padding: 0 10px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+
+    border-radius: 12px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+
+    font-size: clamp(10px, 2.7vw, 12px) !important;
+    font-weight: 950 !important;
+    line-height: 1.1 !important;
+
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045) !important;
+  }
+
+  /* Estado selecionado: azul vivo, não azul escuro */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button[aria-pressed="true"],
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button[aria-pressed="true"] {
+    background: linear-gradient(135deg, #237cff 0%, #0f62fe 100%) !important;
+    border-color: #1764ff !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 22px rgba(23, 100, 255, 0.24) !important;
+  }
+
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button.is-active *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-quick-row button[aria-pressed="true"] *,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-quick-row button[aria-pressed="true"] * {
+    color: #ffffff !important;
+  }
+
+  /* Filtros avançados deve ficar em linha inteira e separado dos chips */
+  .app-shell:has(.oslist-premium-page) .oslist-premium-filter-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-advanced-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-filter-toggle,
+  .app-shell:has(.oslist-premium-page) .oslist-premium-mobile-advanced-toggle {
+    box-sizing: border-box !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+
+    margin: 8px 10px 0 !important;
+    min-height: 42px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+
+    border-radius: 14px !important;
+    border: 1px solid #d9e6f5 !important;
+    background: #ffffff !important;
+    color: #082344 !important;
+
+    font-size: 0.82rem !important;
+    font-weight: 950 !important;
+
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04) !important;
+  }
+}

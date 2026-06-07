@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -51,6 +51,21 @@ function formatPhone(value) {
   return value || digits;
 }
 
+function hasValidEmail(cliente) {
+  return Boolean(normalizeEmail(cliente?.email));
+}
+
+function hasValidPhone(cliente) {
+  return normalizePhone(cliente?.telefone).length >= 10;
+}
+
+const RESUMO_FILTER_LABELS = {
+  all: "Todos os clientes",
+  with_phone: "Com telefone",
+  with_email: "Com email",
+  without_email: "Sem email",
+};
+
 function validateClienteForm(values) {
   const nome = normalizeText(values.nome);
   const email = normalizeEmail(values.email);
@@ -84,6 +99,9 @@ export default function Clientes() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [busca, setBusca] = useState("");
+  const [filtroResumo, setFiltroResumo] = useState("all");
+  const [refreshOk, setRefreshOk] = useState(false);
+  const listaRef = useRef(null);
   const user = getUser();
   const isAdmin = user?.role === "admin";
 
@@ -100,15 +118,26 @@ export default function Clientes() {
     telefone: "",
   });
 
-  async function carregarClientes({ silent = false } = {}) {
+  async function carregarClientes({ silent = false, showSuccess = false } = {}) {
     if (!silent) setLoadingList(true);
     setErro("");
+    if (showSuccess) setMsg("");
 
     try {
       const data = await apiFetch("/clientes");
       setClientes(Array.isArray(data) ? data : []);
+
+      if (showSuccess) {
+        setMsg("Lista de clientes atualizada com sucesso.");
+        setRefreshOk(true);
+
+        window.setTimeout(() => {
+          setRefreshOk(false);
+        }, 2600);
+      }
     } catch (e) {
       setErro(e?.message || "Erro ao carregar clientes.");
+      setRefreshOk(false);
     } finally {
       if (!silent) setLoadingList(false);
     }
@@ -128,6 +157,28 @@ export default function Clientes() {
   function clearFeedback() {
     if (erro) setErro("");
     if (msg) setMsg("");
+  }
+
+  function scrollParaLista() {
+    window.setTimeout(() => {
+      listaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function aplicarFiltroResumo(tipo) {
+    setFiltroResumo(tipo);
+    setEditingId(null);
+    scrollParaLista();
+  }
+
+  function limparFiltrosClientes() {
+    setBusca("");
+    setFiltroResumo("all");
+    scrollParaLista();
+  }
+
+  function handleBuscarClientes() {
+    scrollParaLista();
   }
 
   function handleChange(e) {
@@ -269,27 +320,37 @@ export default function Clientes() {
 
   const clientesFiltrados = useMemo(() => {
     const term = normalizeSearch(busca);
+    const phoneTerm = normalizePhone(term);
 
     return clientes.filter((cliente) => {
-      if (!term) return true;
-
-      return (
+      const matchesBusca =
+        !term ||
         normalizeSearch(cliente.nome).includes(term) ||
         normalizeSearch(cliente.email).includes(term) ||
         normalizeSearch(cliente.telefone).includes(term) ||
-        normalizePhone(cliente.telefone).includes(normalizePhone(term))
-      );
+        normalizePhone(cliente.telefone).includes(phoneTerm);
+
+      const matchesResumo =
+        filtroResumo === "all" ||
+        (filtroResumo === "with_phone" && hasValidPhone(cliente)) ||
+        (filtroResumo === "with_email" && hasValidEmail(cliente)) ||
+        (filtroResumo === "without_email" && !hasValidEmail(cliente));
+
+      return matchesBusca && matchesResumo;
     });
-  }, [clientes, busca]);
+  }, [clientes, busca, filtroResumo]);
 
   const stats = useMemo(() => {
     const total = clientes.length;
-    const comTelefone = clientes.filter((cliente) => normalizePhone(cliente.telefone).length >= 10).length;
-    const comEmail = clientes.filter((cliente) => normalizeEmail(cliente.email)).length;
+    const comTelefone = clientes.filter(hasValidPhone).length;
+    const comEmail = clientes.filter(hasValidEmail).length;
     const semEmail = Math.max(total - comEmail, 0);
 
     return { total, comTelefone, comEmail, semEmail };
   }, [clientes]);
+
+  const filtroResumoLabel = RESUMO_FILTER_LABELS[filtroResumo] || RESUMO_FILTER_LABELS.all;
+  const temFiltroAtivo = filtroResumo !== "all" || Boolean(busca.trim());
 
   return (
     <section className="clientes-premium-page">
@@ -303,12 +364,13 @@ export default function Clientes() {
 
           <button
             type="button"
-            className="clientes-premium-refresh"
-            onClick={() => carregarClientes()}
+            className={`clientes-premium-refresh${refreshOk ? " is-success" : ""}`}
+            onClick={() => carregarClientes({ showSuccess: true })}
             disabled={loadingList}
+            title="Sincroniza a lista com o banco de dados. Útil quando outro usuário cadastrou, editou ou excluiu clientes."
           >
-            <RefreshCw size={18} />
-            {loadingList ? "Atualizando..." : "Atualizar"}
+            <RefreshCw size={18} className={loadingList ? "is-spinning" : ""} />
+            {loadingList ? "Atualizando..." : refreshOk ? "Atualizado" : "Atualizar clientes"}
           </button>
         </header>
 
@@ -327,41 +389,61 @@ export default function Clientes() {
         ) : null}
 
         <div className="clientes-premium-stats-grid" aria-label="Resumo dos clientes">
-          <article className="clientes-premium-stat-card is-blue">
+          <button
+            type="button"
+            className={`clientes-premium-stat-card is-blue${filtroResumo === "all" ? " is-active" : ""}`}
+            onClick={() => aplicarFiltroResumo("all")}
+            aria-pressed={filtroResumo === "all"}
+          >
             <span><Users size={22} /></span>
             <div>
               <strong>Total</strong>
               <b>{stats.total}</b>
-              <small>Clientes cadastrados</small>
+              <small>Ver todos os clientes</small>
             </div>
-          </article>
+          </button>
 
-          <article className="clientes-premium-stat-card is-green">
+          <button
+            type="button"
+            className={`clientes-premium-stat-card is-green${filtroResumo === "with_phone" ? " is-active" : ""}`}
+            onClick={() => aplicarFiltroResumo("with_phone")}
+            aria-pressed={filtroResumo === "with_phone"}
+          >
             <span><Phone size={22} /></span>
             <div>
               <strong>Com telefone</strong>
               <b>{stats.comTelefone}</b>
-              <small>Prontos para contato</small>
+              <small>Filtrar contatos prontos</small>
             </div>
-          </article>
+          </button>
 
-          <article className="clientes-premium-stat-card is-indigo">
+          <button
+            type="button"
+            className={`clientes-premium-stat-card is-indigo${filtroResumo === "with_email" ? " is-active" : ""}`}
+            onClick={() => aplicarFiltroResumo("with_email")}
+            aria-pressed={filtroResumo === "with_email"}
+          >
             <span><Mail size={22} /></span>
             <div>
               <strong>Com email</strong>
               <b>{stats.comEmail}</b>
-              <small>Cadastro mais completo</small>
+              <small>Filtrar cadastros completos</small>
             </div>
-          </article>
+          </button>
 
-          <article className="clientes-premium-stat-card is-orange">
+          <button
+            type="button"
+            className={`clientes-premium-stat-card is-orange${filtroResumo === "without_email" ? " is-active" : ""}`}
+            onClick={() => aplicarFiltroResumo("without_email")}
+            aria-pressed={filtroResumo === "without_email"}
+          >
             <span><AlertTriangle size={22} /></span>
             <div>
               <strong>Sem email</strong>
               <b>{stats.semEmail}</b>
-              <small>Completar depois</small>
+              <small>Clique para listar</small>
             </div>
-          </article>
+          </button>
         </div>
 
         <div className="clientes-premium-grid">
@@ -428,19 +510,36 @@ export default function Clientes() {
               </div>
             </div>
 
-            <label className="clientes-premium-search-field">
-              <Search size={18} />
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Digite nome, email ou telefone..."
-              />
-              {busca ? (
-                <button type="button" onClick={() => setBusca("")} aria-label="Limpar busca">
-                  <X size={17} />
+            <div className="clientes-premium-search-tools">
+              <label className="clientes-premium-search-field">
+                <Search size={18} />
+                <input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleBuscarClientes();
+                    }
+                  }}
+                  placeholder="Digite nome, email ou telefone..."
+                />
+              </label>
+
+              <div className="clientes-premium-search-actions">
+                <button type="button" className="clientes-premium-search-action" onClick={handleBuscarClientes}>
+                  <Search size={17} />
+                  Buscar
                 </button>
-              ) : null}
-            </label>
+
+                {busca || filtroResumo !== "all" ? (
+                  <button type="button" className="clientes-premium-search-clear" onClick={limparFiltrosClientes}>
+                    <X size={17} />
+                    Limpar
+                  </button>
+                ) : null}
+              </div>
+            </div>
 
             <div className="clientes-premium-info-note">
               <ShieldCheck size={18} />
@@ -449,18 +548,29 @@ export default function Clientes() {
           </article>
         </div>
 
-        <article className="clientes-premium-card clientes-premium-list-card">
+        <article className="clientes-premium-card clientes-premium-list-card" ref={listaRef}>
           <div className="clientes-premium-list-head">
             <div>
-              <h2>Clientes da oficina</h2>
+              <h2>{filtroResumo === "without_email" ? "Clientes sem email" : "Clientes da oficina"}</h2>
               <p>
-                Mostrando {clientesFiltrados.length} de {clientes.length} clientes cadastrados.
+                Mostrando {clientesFiltrados.length} de {clientes.length} clientes cadastrados
+                {filtroResumo !== "all" ? ` • Filtro: ${filtroResumoLabel}` : ""}
+                {busca.trim() ? ` • Busca: ${busca.trim()}` : ""}.
               </p>
             </div>
 
-            <div className="clientes-premium-count-pill">
-              <Users size={17} />
-              {clientesFiltrados.length} clientes
+            <div className="clientes-premium-list-head-actions">
+              <div className="clientes-premium-count-pill">
+                <Users size={17} />
+                {clientesFiltrados.length} clientes
+              </div>
+
+              {temFiltroAtivo ? (
+                <button type="button" className="clientes-premium-list-clear-filter" onClick={limparFiltrosClientes}>
+                  <X size={15} />
+                  Limpar filtros
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -468,7 +578,7 @@ export default function Clientes() {
             <div className="clientes-premium-empty">Carregando clientes...</div>
           ) : clientesFiltrados.length === 0 ? (
             <div className="clientes-premium-empty">
-              {busca.trim() ? "Nenhum cliente encontrado para essa busca." : "Nenhum cliente cadastrado."}
+              {temFiltroAtivo ? "Nenhum cliente encontrado para os filtros aplicados." : "Nenhum cliente cadastrado."}
             </div>
           ) : (
             <div className="clientes-premium-list">

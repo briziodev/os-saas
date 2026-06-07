@@ -25,7 +25,41 @@ const PERIOD_OPTIONS = [
   { value: "custom", label: "Personalizado" },
 ];
 
-const PENDING_BUDGETS_URL = "/os?status=aguardando_aprovacao";
+const PENDING_BUDGETS_URL = "/os?period=all&status=aguardando_aprovacao";
+
+
+const NOTIFICATION_FALLBACK_ITEMS = [
+  {
+    key: "aguardando_aprovacao",
+    title: "Orçamentos aguardando aprovação",
+    description: "Clientes precisam aprovar orçamento.",
+    count: 0,
+    severity: "warning",
+    href: PENDING_BUDGETS_URL,
+  },
+];
+
+function normalizeNotifications(notifications, pendingBudgets) {
+  if (notifications?.items?.length) {
+    const items = notifications.items
+      .map((item) => ({ ...item, count: Number(item.count || 0) }))
+      .filter((item) => item.count > 0);
+
+    return {
+      total: Number(notifications.total ?? items.reduce((sum, item) => sum + item.count, 0)),
+      items,
+    };
+  }
+
+  const total = Number(pendingBudgets || 0);
+
+  return {
+    total,
+    items: total > 0
+      ? NOTIFICATION_FALLBACK_ITEMS.map((item) => ({ ...item, count: total }))
+      : [],
+  };
+}
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -35,8 +69,11 @@ export default function Dashboard() {
   const [period, setPeriod] = useState("month");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isFinancialVisible, setIsFinancialVisible] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1280
+  );
 
   const user = getUser();
   const isAdmin = user?.role === "admin";
@@ -54,13 +91,22 @@ export default function Dashboard() {
   useEffect(() => {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
-        setIsMobileMenuOpen(false);
         setIsNotificationOpen(false);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      setViewportWidth(window.innerWidth);
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -124,11 +170,6 @@ export default function Dashboard() {
     clearToken();
     window.location.href = "/login";
   }
-
-  function closeMobileMenu() {
-    setIsMobileMenuOpen(false);
-  }
-
   function toggleNotifications() {
     setIsNotificationOpen((current) => !current);
   }
@@ -148,39 +189,22 @@ export default function Dashboard() {
   const { cards, ultimas_os, period: periodInfo } = data;
   const canShowFinancials = isAdmin;
   const pendingBudgets = Number(cards?.orcamentos_pendentes ?? 0);
+  const notifications = normalizeNotifications(data?.notifications, pendingBudgets);
+  const notificationTotal = notifications.total;
+  const pendingBudgetsUrl = buildPeriodStatusUrl(periodInfo, "aguardando_aprovacao");
+  const allOrdersUrl = buildPeriodUrl(periodInfo);
+  const inProgressOrdersUrl = buildPeriodStatusUrl(periodInfo, "em_execucao");
+  const finishedOrdersUrl = buildPeriodStatusUrl(periodInfo, "encerrado");
+  const isMobileViewport = viewportWidth <= 768;
 
   return (
     <div className="dashboard-premium-page">
-      <DesktopSidebar user={user} isAdmin={isAdmin} onLogout={logout} />
 
       <main className="dashboard-premium-main">
-        <MobileHeader
-          pendingBudgets={pendingBudgets}
-          isNotificationOpen={isNotificationOpen}
-          onToggleMenu={() => setIsMobileMenuOpen(true)}
-          onToggleNotifications={toggleNotifications}
-        />
 
         <div className="dashboard-premium-container">
-          <TopHeader
-            period={period}
-            setPeriod={setPeriod}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            onApply={applyFilters}
-            pendingBudgets={pendingBudgets}
-            isNotificationOpen={isNotificationOpen}
-            onToggleNotifications={toggleNotifications}
-          />
-
-          {error ? (
-            <div className="dashboard-premium-alert-error">Erro: {error}</div>
-          ) : null}
-
-          <section className="dashboard-mobile-actions" aria-label="Ações rápidas">
-            <PeriodControls
+          {!isMobileViewport ? (
+            <TopHeader
               period={period}
               setPeriod={setPeriod}
               startDate={startDate}
@@ -188,20 +212,53 @@ export default function Dashboard() {
               endDate={endDate}
               setEndDate={setEndDate}
               onApply={applyFilters}
-              compact
+              notificationTotal={notificationTotal}
+              notifications={notifications}
+              isNotificationOpen={isNotificationOpen}
+              onToggleNotifications={toggleNotifications}
             />
+          ) : null}
 
-            <Link to="/os/new" className="dashboard-premium-new-os">
-              <span aria-hidden="true">+</span>
-              Nova OS
-            </Link>
-          </section>
+          {error ? (
+            <div className="dashboard-premium-alert-error">Erro: {error}</div>
+          ) : null}
+
+          {isMobileViewport ? (
+            <section className="dashboard-mobile-actions dashboard-mobile-actions--only-mobile" aria-label="Ações rápidas">
+              <MobileNotificationSummary
+                notificationTotal={notificationTotal}
+                notifications={notifications}
+                isNotificationOpen={isNotificationOpen}
+                onToggleNotifications={toggleNotifications}
+              />
+
+              <PeriodControls
+                period={period}
+                setPeriod={setPeriod}
+                startDate={startDate}
+                setStartDate={setStartDate}
+                endDate={endDate}
+                setEndDate={setEndDate}
+                onApply={applyFilters}
+                compact
+              />
+
+              <Link to="/os/new" className="dashboard-premium-new-os">
+                <span aria-hidden="true">+</span>
+                Nova OS
+              </Link>
+            </section>
+          ) : null}
 
           <section className="dashboard-premium-kpi-grid" aria-label="Indicadores do dashboard">
             <MainMetricCard
               cards={cards}
               periodLabel={periodInfo?.label || "-"}
               canShowFinancials={canShowFinancials}
+              isFinancialVisible={isFinancialVisible}
+              onToggleFinancialVisibility={() =>
+                setIsFinancialVisible((current) => !current)
+              }
             />
 
             <SmallMetricCard
@@ -210,6 +267,8 @@ export default function Dashboard() {
               value={cards?.abertas_periodo ?? 0}
               hint="Serviços registrados no período"
               tone="blue"
+              to={allOrdersUrl}
+              ariaLabel="Ver OS abertas do período na lista de OS"
             />
 
             <SmallMetricCard
@@ -218,6 +277,8 @@ export default function Dashboard() {
               value={cards?.em_andamento ?? 0}
               hint="OS ainda em execução"
               tone="blue"
+              to={inProgressOrdersUrl}
+              ariaLabel="Ver OS em andamento na lista de OS"
             />
 
             <SmallMetricCard
@@ -226,6 +287,8 @@ export default function Dashboard() {
               value={cards?.orcamentos_pendentes ?? 0}
               hint="Aguardando aprovação"
               tone="orange"
+              to={pendingBudgetsUrl}
+              ariaLabel="Ver orçamentos pendentes na lista de OS"
             />
 
             <SmallMetricCard
@@ -234,11 +297,13 @@ export default function Dashboard() {
               value={cards?.finalizados_no_periodo ?? 0}
               hint="Concluídas no período"
               tone="green"
+              to={finishedOrdersUrl}
+              ariaLabel="Ver OS finalizadas na lista de OS"
             />
           </section>
 
           {pendingBudgets > 0 ? (
-            <PendingBudgetsAlert total={pendingBudgets} />
+            <PendingBudgetsAlert total={pendingBudgets} url={pendingBudgetsUrl} />
           ) : null}
 
           <section className="dashboard-premium-os-section">
@@ -270,16 +335,6 @@ export default function Dashboard() {
           </section>
         </div>
       </main>
-
-      <MobileMenuOverlay
-        isOpen={isMobileMenuOpen}
-        user={user}
-        isAdmin={isAdmin}
-        onClose={closeMobileMenu}
-        onLogout={logout}
-      />
-
-      <MobileBottomNav isAdmin={isAdmin} onLogout={logout} />
     </div>
   );
 }
@@ -350,7 +405,8 @@ function TopHeader({
   endDate,
   setEndDate,
   onApply,
-  pendingBudgets,
+  notificationTotal,
+  notifications,
   isNotificationOpen,
   onToggleNotifications,
 }) {
@@ -376,17 +432,17 @@ function TopHeader({
           <button
             type="button"
             className="dashboard-premium-notification"
-            title="Orçamentos pendentes"
-            aria-label={`${pendingBudgets} orçamentos pendentes`}
+            title="Ações necessárias"
+            aria-label={`${notificationTotal} ações necessárias`}
             aria-expanded={isNotificationOpen}
             onClick={onToggleNotifications}
           >
             🔔
-            {pendingBudgets > 0 ? <span>{pendingBudgets}</span> : null}
+            {notificationTotal > 0 ? <span>{notificationTotal}</span> : null}
           </button>
 
           {isNotificationOpen ? (
-            <NotificationPanel pendingBudgets={pendingBudgets} />
+            <NotificationPanel notifications={notifications} />
           ) : null}
         </div>
 
@@ -400,7 +456,8 @@ function TopHeader({
 }
 
 function MobileHeader({
-  pendingBudgets,
+  notificationTotal,
+  notifications,
   isNotificationOpen,
   onToggleMenu,
   onToggleNotifications,
@@ -419,25 +476,27 @@ function MobileHeader({
       <div className="dashboard-premium-mobile-notification-wrap">
         <button
           type="button"
-          aria-label={`${pendingBudgets} orçamentos pendentes`}
+          aria-label={`${notificationTotal} ações necessárias`}
           aria-expanded={isNotificationOpen}
           className="dashboard-premium-mobile-bell"
           onClick={onToggleNotifications}
         >
           🔔
-          {pendingBudgets > 0 ? <span>{pendingBudgets}</span> : null}
+          {notificationTotal > 0 ? <span>{notificationTotal}</span> : null}
         </button>
 
         {isNotificationOpen ? (
-          <NotificationPanel pendingBudgets={pendingBudgets} mobile />
+          <NotificationPanel notifications={notifications} mobile />
         ) : null}
       </div>
     </header>
   );
 }
 
-function NotificationPanel({ pendingBudgets, mobile = false }) {
-  const hasPending = pendingBudgets > 0;
+function NotificationPanel({ notifications, mobile = false }) {
+  const items = notifications?.items || [];
+  const total = Number(notifications?.total || 0);
+  const hasItems = items.length > 0;
 
   return (
     <div
@@ -445,24 +504,86 @@ function NotificationPanel({ pendingBudgets, mobile = false }) {
         mobile ? "dashboard-premium-notification-panel--mobile" : ""
       }`}
       role="dialog"
-      aria-label="Notificações do dashboard"
+      aria-label="Central de ações necessárias"
     >
-      <strong>{hasPending ? "Ação necessária" : "Tudo certo por aqui"}</strong>
+      <strong>{hasItems ? "Ações necessárias" : "Tudo certo por aqui"}</strong>
       <p>
-        {hasPending
-          ? `${pendingBudgets} orçamento${
-              pendingBudgets === 1 ? "" : "s"
-            } pendente${pendingBudgets === 1 ? "" : "s"} aguardando aprovação.`
-          : "Nenhum orçamento pendente no período selecionado."}
+        {hasItems
+          ? `${total} OS exigem atenção operacional.`
+          : "Nenhuma ação pendente no período selecionado."}
       </p>
+
+      {hasItems ? (
+        <div className="dashboard-premium-notification-list">
+          {items.map((item) => (
+            <Link
+              key={item.key}
+              to={item.href || "/os"}
+              className={`dashboard-premium-notification-item is-${item.severity || "info"}`}
+            >
+              <span className="dashboard-premium-notification-item-icon" aria-hidden="true">
+                {notificationIcon(item.key)}
+              </span>
+              <span className="dashboard-premium-notification-item-body">
+                <strong>{item.title}</strong>
+                <small>{item.description}</small>
+              </span>
+              <span className="dashboard-premium-notification-count">{item.count}</span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
       <Link
-        to={hasPending ? PENDING_BUDGETS_URL : "/os"}
+        to={hasItems ? "/os?period=all" : "/os"}
         className="dashboard-premium-notification-action"
       >
-        {hasPending ? "Ver orçamentos" : "Ver OS"}
+        {hasItems ? "Ver todas as OS" : "Abrir lista de OS"}
       </Link>
     </div>
   );
+}
+
+function MobileNotificationSummary({
+  notificationTotal,
+  notifications,
+  isNotificationOpen,
+  onToggleNotifications,
+}) {
+  return (
+    <div className="dashboard-mobile-notification-wrap">
+      <button
+        type="button"
+        className="dashboard-mobile-notification-card"
+        aria-label={`${notificationTotal} ações necessárias`}
+        aria-expanded={isNotificationOpen}
+        onClick={onToggleNotifications}
+      >
+        <span className="dashboard-mobile-notification-icon" aria-hidden="true">
+          🔔
+          {notificationTotal > 0 ? <em>{notificationTotal}</em> : null}
+        </span>
+        <span>
+          <strong>{notificationTotal} ação{notificationTotal === 1 ? "" : "ões"} necessária{notificationTotal === 1 ? "" : "s"}</strong>
+          <small>Toque no sino para filtrar OS que exigem atenção.</small>
+        </span>
+      </button>
+
+      {isNotificationOpen ? (
+        <NotificationPanel notifications={notifications} mobile />
+      ) : null}
+    </div>
+  );
+}
+
+function notificationIcon(key) {
+  if (key === "aguardando_aprovacao" || key === "orcamento_enviado") return "⚠";
+  if (key === "aguardando_peca") return "▣";
+  if (key === "pronto_retirada") return "✓";
+  if (key === "em_execucao") return "↻";
+  if (key === "em_analise") return "⌕";
+  if (key === "aprovado") return "✓";
+  return "•";
 }
 
 function MobileMenuOverlay({ isOpen, user, isAdmin, onClose, onLogout }) {
@@ -589,7 +710,13 @@ function PeriodControls({
   );
 }
 
-function MainMetricCard({ cards, periodLabel, canShowFinancials }) {
+function MainMetricCard({
+  cards,
+  periodLabel,
+  canShowFinancials,
+  isFinancialVisible = false,
+  onToggleFinancialVisibility = () => {},
+}) {
   if (!canShowFinancials) {
     return (
       <article className="dashboard-premium-main-card dashboard-premium-main-card--operation">
@@ -610,12 +737,29 @@ function MainMetricCard({ cards, periodLabel, canShowFinancials }) {
     <article className="dashboard-premium-main-card">
       <div className="dashboard-premium-main-card-top">
         <span>Faturamento do período</span>
-        <span className="dashboard-premium-main-card-info">ⓘ</span>
+        <button
+          type="button"
+          className="dashboard-premium-money-toggle"
+          onClick={onToggleFinancialVisibility}
+          aria-label={
+            isFinancialVisible
+              ? "Ocultar faturamento do período"
+              : "Mostrar faturamento do período"
+          }
+          title={isFinancialVisible ? "Ocultar faturamento" : "Mostrar faturamento"}
+        >
+          {isFinancialVisible ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
       </div>
-      <strong>{money(cards?.faturamento_periodo ?? 0)}</strong>
+      <strong className={isFinancialVisible ? "" : "is-hidden-money"}>
+        {isFinancialVisible ? money(cards?.faturamento_periodo ?? 0) : "R$ •••••"}
+      </strong>
+      <span className="dashboard-premium-revenue-period">
+        Referente a: {periodLabel}
+      </span>
       <p>Somente OS encerradas/finalizadas no período.</p>
       <div className="dashboard-premium-main-card-foot">
-        <span>{periodLabel}</span>
+        <span>Período: {periodLabel}</span>
         <span>Baseado em OS fechadas</span>
       </div>
       <div className="dashboard-premium-chart-line" aria-hidden="true" />
@@ -623,9 +767,9 @@ function MainMetricCard({ cards, periodLabel, canShowFinancials }) {
   );
 }
 
-function SmallMetricCard({ icon, title, value, hint, tone }) {
-  return (
-    <article className={`dashboard-premium-small-card dashboard-premium-small-card--${tone}`}>
+function SmallMetricCard({ icon, title, value, hint, tone, to, ariaLabel }) {
+  const content = (
+    <>
       <div className="dashboard-premium-small-icon" aria-hidden="true">
         {icon}
       </div>
@@ -634,11 +778,25 @@ function SmallMetricCard({ icon, title, value, hint, tone }) {
         <strong>{value}</strong>
         <p>{hint}</p>
       </div>
-    </article>
+    </>
   );
+
+  const className = `dashboard-premium-small-card dashboard-premium-small-card--${tone}${
+    to ? " dashboard-premium-small-card--link" : ""
+  }`;
+
+  if (to) {
+    return (
+      <Link to={to} className={className} aria-label={ariaLabel || `Ver ${title}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <article className={className}>{content}</article>;
 }
 
-function PendingBudgetsAlert({ total }) {
+function PendingBudgetsAlert({ total, url = PENDING_BUDGETS_URL }) {
   const plural = total === 1 ? "orçamento pendente" : "orçamentos pendentes";
 
   return (
@@ -652,7 +810,7 @@ function PendingBudgetsAlert({ total }) {
         </strong>
         <p>Revise e aprove para manter o fluxo da oficina acelerado.</p>
       </div>
-      <Link to={PENDING_BUDGETS_URL} className="dashboard-premium-warning-action">
+      <Link to={url} className="dashboard-premium-warning-action">
         Ver orçamentos
       </Link>
     </section>
@@ -750,6 +908,56 @@ function OrderMobileCard({ os, canShowFinancials }) {
   );
 }
 
+
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M10.6 10.6a2 2 0 0 0 2.8 2.8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.1 7.5C4.1 9.2 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.8 0 3.3-.4 4.6-1.1"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 5.5c6 0 9.5 6.5 9.5 6.5a15.6 15.6 0 0 1-2.2 2.8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function MobileBottomNav({ isAdmin, onLogout }) {
   return (
     <nav className="dashboard-premium-bottom-nav" aria-label="Navegação mobile">
@@ -835,6 +1043,32 @@ function roleLabel(role) {
   if (role === "atendimento") return "Atendimento";
   if (role === "tecnico") return "Técnico";
   return "Usuário";
+}
+
+
+function buildPeriodUrl(periodInfo) {
+  const params = new URLSearchParams();
+  params.set("period", periodInfo?.key || "all");
+
+  if (periodInfo?.key === "custom") {
+    if (periodInfo.start_date) params.set("start_date", periodInfo.start_date);
+    if (periodInfo.end_date) params.set("end_date", periodInfo.end_date);
+  }
+
+  return `/os?${params.toString()}`;
+}
+
+function buildPeriodStatusUrl(periodInfo, status) {
+  const params = new URLSearchParams();
+  params.set("period", periodInfo?.key || "all");
+  params.set("status", status);
+
+  if (periodInfo?.key === "custom") {
+    if (periodInfo.start_date) params.set("start_date", periodInfo.start_date);
+    if (periodInfo.end_date) params.set("end_date", periodInfo.end_date);
+  }
+
+  return `/os?${params.toString()}`;
 }
 
 function money(value) {
