@@ -10,6 +10,95 @@ router.use(authRequired, loadUser);
 
 const SAO_PAULO_TZ = "America/Sao_Paulo";
 
+
+const ACTION_NOTIFICATION_META = [
+  {
+    key: "triagem",
+    title: "OS em triagem",
+    description: "Ordens criadas aguardando classificação inicial.",
+    severity: "info",
+  },
+  {
+    key: "em_analise",
+    title: "OS em análise",
+    description: "Aguardando diagnóstico ou revisão técnica.",
+    severity: "info",
+  },
+  {
+    key: "aguardando_aprovacao",
+    title: "Orçamentos aguardando aprovação",
+    description: "Clientes precisam aprovar orçamento.",
+    severity: "warning",
+  },
+  {
+    key: "orcamento_enviado",
+    title: "Orçamentos enviados",
+    description: "Orçamentos enviados aguardando resposta.",
+    severity: "warning",
+  },
+  {
+    key: "aprovado",
+    title: "OS aprovadas para iniciar",
+    description: "Cliente aprovou e a oficina precisa iniciar.",
+    severity: "success",
+  },
+  {
+    key: "em_execucao",
+    title: "OS em execução",
+    description: "Serviços em andamento para acompanhar.",
+    severity: "info",
+  },
+  {
+    key: "aguardando_peca",
+    title: "OS aguardando peça",
+    description: "Serviços parados por falta de peça.",
+    severity: "warning",
+  },
+  {
+    key: "pronto_retirada",
+    title: "Prontas para retirada",
+    description: "Serviços prontos para cliente retirar.",
+    severity: "success",
+  },
+];
+
+function dashboardPeriodParams(range) {
+  const params = new URLSearchParams();
+  params.set("period", range.period);
+
+  if (range.period === "custom") {
+    params.set("start_date", range.startDate);
+    params.set("end_date", range.endDate);
+  }
+
+  return params;
+}
+
+function buildActionNotifications(statusRows, range) {
+  const countsByStatus = new Map(
+    statusRows.map((row) => [row.status, Number(row.total || 0)])
+  );
+
+  const items = ACTION_NOTIFICATION_META.map((meta) => {
+    const count = countsByStatus.get(meta.key) || 0;
+
+    return {
+      ...meta,
+      count,
+      href: (() => {
+        const params = dashboardPeriodParams(range);
+        params.set("status", meta.key);
+        return `/os?${params.toString()}`;
+      })(),
+    };
+  }).filter((item) => item.count > 0);
+
+  return {
+    total: items.reduce((sum, item) => sum + item.count, 0),
+    items,
+  };
+}
+
 function parsePeriodRange(query) {
   const period = query.period || "month";
   const startDate = query.start_date || "";
@@ -120,12 +209,7 @@ router.get(
          FROM ordens_servico os
          WHERE os.company_id = $1
          ${range.createdClause}
-         AND os.status IN (
-           'triagem',
-           'em_analise',
-           'aguardando_aprovacao',
-           'orcamento_enviado'
-         )`,
+         AND os.status = 'aguardando_aprovacao'`,
         baseParams
       );
 
@@ -214,6 +298,7 @@ router.get(
           faturamento_periodo: faturamentoPeriodo.rows[0].total,
         },
         por_status: porStatus.rows,
+        notifications: buildActionNotifications(porStatus.rows, range),
         ultimas_os: ultimasOS.rows,
       });
     } catch (err) {

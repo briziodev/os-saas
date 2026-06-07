@@ -1,5 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import {
+  AlertCircle,
+  BarChart3,
+  Bell,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  LayoutDashboard,
+  LogOut,
+  PackageCheck,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  UserCog,
+  Users,
+  Wrench,
+  X,
+} from "lucide-react";
 import { apiFetch, clearToken, getUser } from "../api";
 import "./OSList.css";
 
@@ -47,6 +67,7 @@ const QUICK_FILTERS = [
 export default function OSList() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamString = searchParams.toString();
 
   const user = getUser();
   const role = user?.role;
@@ -70,17 +91,20 @@ export default function OSList() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationStats, setNotificationStats] = useState(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(searchParamString);
+
     loadOS({
-      nextPeriod: getInitialPeriod(searchParams),
-      nextStart: searchParams.get("start_date") || "",
-      nextEnd: searchParams.get("end_date") || "",
-      nextStatus: getInitialStatus(searchParams),
+      nextPeriod: getInitialPeriod(params),
+      nextStart: params.get("start_date") || "",
+      nextEnd: params.get("end_date") || "",
+      nextStatus: getInitialStatus(params),
       syncState: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParamString]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -128,6 +152,9 @@ export default function OSList() {
         params.set("end_date", nextEnd);
       }
 
+      // Evita 304 sem corpo em desenvolvimento e garante que a lista de OS sempre receba payload novo.
+      params.set("_ts", String(Date.now()));
+
       const data = await apiFetch(`/os?${params.toString()}`);
       const lista = Array.isArray(data) ? data : [];
 
@@ -138,6 +165,29 @@ export default function OSList() {
       });
 
       setOsList(ordenada);
+
+      let sourceForNotifications = ordenada;
+
+      if (nextStatus && nextStatus !== "todos") {
+        try {
+          const notificationParams = new URLSearchParams();
+          notificationParams.set("period", nextPeriod);
+
+          if (nextPeriod === "custom") {
+            if (nextStart) notificationParams.set("start_date", nextStart);
+            if (nextEnd) notificationParams.set("end_date", nextEnd);
+          }
+
+          notificationParams.set("_ts", String(Date.now()));
+
+          const notificationData = await apiFetch(`/os?${notificationParams.toString()}`);
+          sourceForNotifications = Array.isArray(notificationData) ? notificationData : ordenada;
+        } catch {
+          sourceForNotifications = ordenada;
+        }
+      }
+
+      setNotificationStats(buildNotificationStats(sourceForNotifications));
 
       if (syncState) {
         setPeriod(nextPeriod);
@@ -263,7 +313,12 @@ export default function OSList() {
   }, [osList, searchText]);
 
   const stats = useMemo(() => buildStats(osList), [osList]);
-  const pendingCount = stats.pending;
+  const notificationSummary = useMemo(() => notificationStats || buildNotificationStats(osList), [notificationStats, osList]);
+  const notificationItems = useMemo(
+    () => buildNotificationItems(notificationSummary, { period, startDate, endDate, role }),
+    [notificationSummary, period, startDate, endDate, role]
+  );
+  const notificationCount = notificationItems.reduce((total, item) => total + item.count, 0);
   const periodLabel = PERIOD_OPTIONS.find((item) => item.value === period)?.label || "Período";
 
   if (!token) {
@@ -312,7 +367,7 @@ export default function OSList() {
                   className={`oslist-premium-mobile-menu-link ${item.active ? "is-active" : ""}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <span>{item.icon}</span>
+                  <IconSlot icon={item.icon} size={18} />
                   {item.label}
                 </Link>
               ))}
@@ -336,12 +391,28 @@ export default function OSList() {
           >
             ☰
           </button>
-          <strong>Ordens de Serviço</strong>
-          <NotificationButton
-            pendingCount={pendingCount}
-            open={notificationOpen}
-            onToggle={() => setNotificationOpen((prev) => !prev)}
-          />
+
+          <div className="oslist-premium-mobile-title">
+            <strong>Ordens de Serviço</strong>
+            <span>OS</span>
+          </div>
+
+          <div className="oslist-premium-mobile-header-actions">
+            <NotificationButton
+              notificationCount={notificationCount}
+              notifications={notificationItems}
+              open={notificationOpen}
+              onToggle={() => setNotificationOpen((prev) => !prev)}
+              onClose={() => setNotificationOpen(false)}
+            />
+
+            {canCreateOS ? (
+              <Link to="/os/new" className="oslist-premium-new-os oslist-premium-mobile-new-os-top">
+                <Plus size={18} strokeWidth={2.6} />
+                <span>Nova OS</span>
+              </Link>
+            ) : null}
+          </div>
         </header>
 
         <div className="oslist-premium-container">
@@ -353,9 +424,11 @@ export default function OSList() {
 
             <div className="oslist-premium-head-actions">
               <NotificationButton
-                pendingCount={pendingCount}
+                notificationCount={notificationCount}
+                notifications={notificationItems}
                 open={notificationOpen}
                 onToggle={() => setNotificationOpen((prev) => !prev)}
+                onClose={() => setNotificationOpen(false)}
               />
 
               {canCreateOS ? (
@@ -370,8 +443,22 @@ export default function OSList() {
           {msg ? <AlertMessage message={msg} /> : null}
 
           <section className="oslist-premium-mobile-actions">
+            <div className="oslist-mobile-notification-row-v28">
+              <NotificationButton
+                notificationCount={notificationCount}
+                notifications={notificationItems}
+                open={notificationOpen}
+                onToggle={() => setNotificationOpen((prev) => !prev)}
+                onClose={() => setNotificationOpen(false)}
+              />
+              <div className="oslist-mobile-notification-copy-v28">
+                <strong>{notificationCount > 0 ? `${notificationCount} ação necessária` : "Sem ações pendentes"}</strong>
+                <span>Toque no sino para filtrar OS que exigem atenção.</span>
+              </div>
+            </div>
+
             <div className="oslist-premium-mobile-period">
-              <span>🗓️</span>
+              <CalendarDays size={18} strokeWidth={2.4} />
               <select value={period} onChange={(event) => setPeriod(event.target.value)}>
                 {PERIOD_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -383,7 +470,7 @@ export default function OSList() {
 
             {canCreateOS ? (
               <Link to="/os/new" className="oslist-premium-new-os">
-                <span>+</span>
+                <Plus size={20} strokeWidth={2.6} />
                 Nova OS
               </Link>
             ) : null}
@@ -410,34 +497,61 @@ export default function OSList() {
           />
 
           <section className="oslist-premium-stats" aria-label="Resumo de ordens de serviço">
-            <StatCard icon="▣" label="Total de OS" value={stats.total} hint="Todas as ordens" tone="blue" />
-            <StatCard icon="↻" label="Em andamento" value={stats.inProgress} hint="OS em execução" tone="blue" />
-            <StatCard icon="◷" label="Orçamentos pendentes" value={stats.pending} hint="Aguardando aprovação" tone="orange" />
-            <StatCard icon="✓" label="Finalizadas" value={stats.finished} hint="OS concluídas" tone="green" />
+            <StatCard icon={ClipboardList} label="Total de OS" value={stats.total} hint="Todas as ordens" tone="blue" />
+            <StatCard icon={RefreshCw} label="Em andamento" value={stats.inProgress} hint="OS em execução" tone="blue" />
+            <StatCard icon={AlertCircle} label="Orçamentos pendentes" value={stats.pending} hint="Aguardando aprovação" tone="orange" />
+            <StatCard icon={CheckCircle2} label="Finalizadas" value={stats.finished} hint="OS concluídas" tone="green" />
           </section>
 
-          <section className="oslist-premium-quick-row" aria-label="Filtros rápidos">
-            <div className="oslist-premium-chip-group">
+          <section className="oslist-premium-quick-row oslist-quick-filters-panel oslist-quick-filters-desktop-v26" aria-label="Filtros rápidos">
+            <div className="oslist-premium-chip-group oslist-quick-filters-grid">
               {QUICK_FILTERS.map((item) => (
                 <button
                   key={item.key}
                   type="button"
-                  className={`oslist-premium-chip ${statusFiltro === item.status ? "is-active" : ""}`}
+                  className={`oslist-premium-chip oslist-quick-filter-chip ${statusFiltro === item.status ? "is-active" : ""}`}
                   onClick={() => applyQuickStatus(item.status)}
                 >
-                  {item.label}
-                  <span>{quickCount(item.status, stats)}</span>
+                  <span className="oslist-quick-filter-label">{item.label}</span>
+                  <span className="oslist-quick-filter-count">{quickCount(item.status, stats)}</span>
                 </button>
               ))}
             </div>
 
             <button
               type="button"
-              className="oslist-premium-filter-toggle"
+              className="oslist-premium-filter-toggle oslist-quick-filter-advanced"
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen((prev) => !prev)}
             >
-              ☷
+              <SlidersHorizontal className="oslist-quick-filter-advanced-icon" size={18} strokeWidth={2.5} />
+              <span className="oslist-quick-filter-advanced-label">Filtros avançados</span>
+            </button>
+          </section>
+
+          <section className="oslist-mobile-status-filters-v26" aria-label="Filtros rápidos">
+            <div className="oslist-mobile-status-grid-v26">
+              {QUICK_FILTERS.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`oslist-mobile-status-chip-v26 ${statusFiltro === item.status ? "is-active" : ""}`}
+                  onClick={() => applyQuickStatus(item.status)}
+                >
+                  <span className="oslist-mobile-status-label-v26">{item.label}</span>
+                  <span className="oslist-mobile-status-count-v26">{quickCount(item.status, stats)}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="oslist-mobile-advanced-button-v26"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((prev) => !prev)}
+            >
+              <SlidersHorizontal size={18} strokeWidth={2.5} />
+              <span>Filtros avançados</span>
             </button>
           </section>
 
@@ -550,7 +664,7 @@ function FilterPanel({
       <div className="oslist-premium-search-field">
         <label>Buscar</label>
         <div className="oslist-premium-search-input">
-          <span>⌕</span>
+          <Search size={21} strokeWidth={2.4} />
           <input
             type="search"
             value={searchText}
@@ -633,7 +747,7 @@ function DesktopTable({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mu
             </Link>
             <strong>{os.cliente_nome || "-"}</strong>
             <span>{vehicleText(os)}</span>
-            <span className={`oslist-premium-badge ${statusBadgeClass(os.status)}`}>{statusLabel(os.status)}</span>
+            <span className={`oslist-premium-badge oslist-status-pill-v33 ${statusBadgeClass(os.status)} status-${os.status}`} title={statusLabel(os.status)}>{statusLabel(os.status)}</span>
             <span>{formatDateShort(os.created_at)}</span>
             {canSeeMoney ? <strong className="oslist-premium-money">{moneyOrEmpty(os.valor_total)}</strong> : null}
             <div className="oslist-premium-row-actions">
@@ -689,7 +803,7 @@ function MobileCards({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mud
           <article key={os.id} className={`oslist-premium-mobile-card ${tone}`}>
             <div className="oslist-premium-mobile-card-top">
               <Link to={`/os/${os.id}`}>OS #{os.id}</Link>
-              <span className={`oslist-premium-badge ${statusBadgeClass(os.status)}`}>{statusLabel(os.status)}</span>
+              <span className={`oslist-premium-badge oslist-status-pill-v33 ${statusBadgeClass(os.status)} status-${os.status}`} title={statusLabel(os.status)}>{statusLabel(os.status)}</span>
               <button type="button" onClick={() => toggleDetalhes(os.id)} aria-label="Abrir ações da OS">
                 {aberto ? "×" : "⋯"}
               </button>
@@ -748,10 +862,12 @@ function MobileCards({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mud
   );
 }
 
-function StatCard({ icon, label, value, hint, tone }) {
+function StatCard({ icon: Icon, label, value, hint, tone }) {
   return (
     <div className={`oslist-premium-stat oslist-premium-stat--${tone}`}>
-      <span>{icon}</span>
+      <span aria-hidden="true">
+        {Icon ? <Icon size={22} strokeWidth={2.35} /> : null}
+      </span>
       <div>
         <strong>{label}</strong>
         <b>{value}</b>
@@ -768,7 +884,7 @@ function SidebarContent({ user, navItems, onLogout }) {
       <nav className="oslist-premium-menu" aria-label="Menu principal">
         {navItems.map((item) => (
           <Link key={item.to} to={item.to} className={`oslist-premium-menu-item ${item.active ? "is-active" : ""}`}>
-            <span>{item.icon}</span>
+            <IconSlot icon={item.icon} size={18} />
             {item.label}
           </Link>
         ))}
@@ -777,7 +893,8 @@ function SidebarContent({ user, navItems, onLogout }) {
       <div className="oslist-premium-sidebar-footer">
         <UserCard user={user} />
         <button type="button" className="oslist-premium-logout" onClick={onLogout}>
-          ↪ Sair
+          <LogOut size={18} strokeWidth={2.3} />
+          Sair
         </button>
       </div>
     </>
@@ -787,10 +904,10 @@ function SidebarContent({ user, navItems, onLogout }) {
 function Brand() {
   return (
     <div className="oslist-premium-brand">
-      <div className="oslist-premium-logo">OP</div>
+      <div className="oslist-premium-logo">OS</div>
       <div>
-        <strong>OficinaPro</strong>
-        <span>Gestão de oficina</span>
+        <strong>OS SaaS</strong>
+        <span>Oficina mecânica</span>
       </div>
     </div>
   );
@@ -810,23 +927,52 @@ function UserCard({ user, compact = false }) {
   );
 }
 
-function NotificationButton({ pendingCount, open, onToggle }) {
+function NotificationButton({ notificationCount, notifications = [], open, onToggle, onClose }) {
+  const visibleNotifications = notifications.filter((item) => item.count > 0);
+
   return (
     <div className="oslist-premium-notification-wrap">
       <button type="button" className="oslist-premium-notification" onClick={onToggle} aria-label="Notificações">
-        🔔
-        {pendingCount > 0 ? <span>{pendingCount}</span> : null}
+        <Bell size={19} strokeWidth={2.4} />
+        {notificationCount > 0 ? <span>{notificationCount}</span> : null}
       </button>
 
       {open ? (
         <div className="oslist-premium-notification-panel">
-          <strong>Ação necessária</strong>
-          <p>
-            {pendingCount > 0
-              ? `${pendingCount} orçamento${pendingCount === 1 ? "" : "s"} pendente${pendingCount === 1 ? "" : "s"} aguardando aprovação.`
-              : "Nenhum orçamento pendente no filtro atual."}
-          </p>
-          <Link to="/os?period=all&status=aguardando_aprovacao">Ver orçamentos</Link>
+          <strong>Central de ações</strong>
+          <p>Atalhos para filtrar rapidamente as OS que exigem atenção operacional.</p>
+
+          {visibleNotifications.length > 0 ? (
+            <div className="oslist-premium-notification-list">
+              {visibleNotifications.map((item) => {
+                const ItemIcon = item.icon;
+
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.href}
+                    className={`oslist-premium-notification-item is-${item.tone}`}
+                    onClick={onClose}
+                  >
+                    <span className="oslist-premium-notification-item-icon" aria-hidden="true">
+                      <ItemIcon size={18} strokeWidth={2.5} />
+                    </span>
+                    <span className="oslist-premium-notification-item-text">
+                      <strong>{item.label}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                    <b>{item.count}</b>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="oslist-premium-notification-empty">Nenhuma ação crítica no período atual.</div>
+          )}
+
+          <Link to={statusUrl("todos", "all", "", "")} className="oslist-premium-notification-all" onClick={onClose}>
+            Ver todas as OS
+          </Link>
         </div>
       ) : null}
     </div>
@@ -838,41 +984,49 @@ function BottomNav({ canCreateOS, canAccessDashboard, canAccessClientes, canAcce
     <nav className="oslist-premium-bottom-nav" aria-label="Navegação mobile">
       {canAccessDashboard ? (
         <Link to="/dashboard">
-          <span>▦</span>
+          <LayoutDashboard size={20} strokeWidth={2.2} />
           Dashboard
         </Link>
       ) : null}
 
       <Link to="/os" className="is-active">
-        <span>▤</span>
+        <ClipboardList size={20} strokeWidth={2.2} />
         OS
       </Link>
 
       {canCreateOS ? (
         <Link to="/os/new" className="oslist-premium-bottom-plus" aria-label="Nova OS">
-          +
+          <Plus size={26} strokeWidth={2.6} />
         </Link>
       ) : null}
 
       {canAccessClientes ? (
         <Link to="/clientes">
-          <span>♙</span>
+          <Users size={20} strokeWidth={2.2} />
           Clientes
         </Link>
       ) : null}
 
       {canAccessUsuarios ? (
         <Link to="/usuarios">
-          <span>◌</span>
+          <UserCog size={20} strokeWidth={2.2} />
           Usuários
         </Link>
       ) : (
         <button type="button" onClick={onLogout}>
-          <span>↪</span>
+          <LogOut size={20} strokeWidth={2.2} />
           Sair
         </button>
       )}
     </nav>
+  );
+}
+
+function IconSlot({ icon: Icon, size = 18 }) {
+  return (
+    <span className="oslist-premium-menu-icon" aria-hidden="true">
+      <Icon size={size} strokeWidth={2.35} />
+    </span>
   );
 }
 
@@ -893,11 +1047,11 @@ function AlertMessage({ message }) {
 function buildNavItems({ canAccessDashboard, canAccessClientes, canAccessUsuarios }) {
   const items = [];
 
-  if (canAccessDashboard) items.push({ to: "/dashboard", label: "Dashboard", icon: "▦", active: false });
-  items.push({ to: "/os", label: "OS", icon: "▤", active: true });
-  items.push({ to: "/kanban", label: "Quadro de OS", icon: "▥", active: false });
-  if (canAccessClientes) items.push({ to: "/clientes", label: "Clientes", icon: "◎", active: false });
-  if (canAccessUsuarios) items.push({ to: "/usuarios", label: "Usuários", icon: "○", active: false });
+  if (canAccessDashboard) items.push({ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: false });
+  items.push({ to: "/os", label: "OS", icon: ClipboardList, active: true });
+  items.push({ to: "/kanban", label: "Quadro de OS", icon: BarChart3, active: false });
+  if (canAccessClientes) items.push({ to: "/clientes", label: "Clientes", icon: Users, active: false });
+  if (canAccessUsuarios) items.push({ to: "/usuarios", label: "Usuários", icon: UserCog, active: false });
 
   return items;
 }
@@ -909,6 +1063,115 @@ function buildStats(list) {
   const finished = list.filter((os) => ["encerrado", "finalizado"].includes(os.status)).length;
 
   return { total, inProgress, pending, finished };
+}
+
+function buildNotificationStats(list) {
+  const count = (statuses) => list.filter((os) => statuses.includes(os.status)).length;
+
+  return {
+    total: list.length,
+    triage: count(["triagem"]),
+    analysis: count(["em_analise"]),
+    waitingApproval: count(["aguardando_aprovacao", "orcamento_enviado"]),
+    approved: count(["aprovado"]),
+    execution: count(["em_execucao"]),
+    waitingPart: count(["aguardando_peca"]),
+    readyPickup: count(["pronto_retirada"]),
+    finished: count(["encerrado", "finalizado"]),
+    canceled: count(["cancelado"]),
+  };
+}
+
+function buildNotificationItems(stats, { period, startDate, endDate, role }) {
+  const isTecnico = role === "tecnico";
+
+  const operationalItems = [
+    {
+      key: "analysis",
+      label: "Em análise",
+      description: "OS aguardando diagnóstico ou revisão técnica.",
+      count: stats.analysis,
+      href: statusUrl("em_analise", period, startDate, endDate),
+      tone: "info",
+      icon: Search,
+    },
+    {
+      key: "execution",
+      label: "Em execução",
+      description: "Serviços em andamento na oficina.",
+      count: stats.execution,
+      href: statusUrl("em_execucao", period, startDate, endDate),
+      tone: "info",
+      icon: RefreshCw,
+    },
+    {
+      key: "waitingPart",
+      label: "Aguardando peça",
+      description: "OS paradas por falta de peça.",
+      count: stats.waitingPart,
+      href: statusUrl("aguardando_peca", period, startDate, endDate),
+      tone: "warning",
+      icon: Wrench,
+    },
+    {
+      key: "readyPickup",
+      label: "Prontas para retirada",
+      description: "Veículos prontos para entregar ao cliente.",
+      count: stats.readyPickup,
+      href: statusUrl("pronto_retirada", period, startDate, endDate),
+      tone: "success",
+      icon: PackageCheck,
+    },
+  ];
+
+  if (isTecnico) return operationalItems;
+
+  return [
+    {
+      key: "waitingApproval",
+      label: "Orçamentos pendentes",
+      description: "Aguardando aprovação do cliente.",
+      count: stats.waitingApproval,
+      href: statusUrl("aguardando_aprovacao", period, startDate, endDate),
+      tone: "warning",
+      icon: AlertCircle,
+    },
+    {
+      key: "approved",
+      label: "Aprovadas",
+      description: "OS aprovadas para iniciar execução.",
+      count: stats.approved,
+      href: statusUrl("aprovado", period, startDate, endDate),
+      tone: "info",
+      icon: CheckCircle2,
+    },
+    ...operationalItems,
+    {
+      key: "finished",
+      label: "Finalizadas",
+      description: "Conferir encerramento e faturamento.",
+      count: stats.finished,
+      href: statusUrl("encerrado", period, startDate, endDate),
+      tone: "success",
+      icon: CheckCircle2,
+    },
+  ];
+}
+
+function statusUrl(status, period = "all", startDate = "", endDate = "") {
+  const params = new URLSearchParams();
+  params.set("period", period || "all");
+
+  if (status && status !== "todos") {
+    params.set("status", status);
+  }
+
+  if (period === "custom") {
+    if (startDate) params.set("start_date", startDate);
+    if (endDate) params.set("end_date", endDate);
+  }
+
+  return `/os?${params.toString()}`;
 }
 
 function quickCount(status, stats) {

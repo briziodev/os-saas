@@ -2018,3 +2018,752 @@
     color: #081225 !important;
   }
 }
+
+/* ==========================================================
+   SPRINT UX 8.5 - DASHBOARD RESPONSIVO FINAL
+   Ajuste cirúrgico:
+   - sem menu/ações duplicadas;
+   - desktop/tablet usa TopHeader;
+   - mobile usa PeriodControls compacto;
+   - AppShell controla navegação.
+   ========================================================== */
+
+.app-shell .dashboard-premium-sidebar,
+.app-shell .dashboard-premium-mobile-header,
+.app-shell .dashboard-premium-bottom-nav,
+.app-shell .dashboard-premium-mobile-menu-overlay {
+  display: none !important;
+}
+
+@media (min-width: 769px) {
+  .app-shell .dashboard-mobile-actions,
+  .app-shell .dashboard-mobile-actions--only-mobile {
+    display: none !important;
+  }
+
+  .app-shell .dashboard-premium-header {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .app-shell .dashboard-premium-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .app-shell .dashboard-premium-container {
+    width: 100% !important;
+    max-width: 1120px !important;
+    margin: 0 auto !important;
+    gap: 18px !important;
+  }
+
+  .app-shell .dashboard-premium-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card {
+    grid-column: 1 / -1 !important;
+    margin-top: 0 !important;
+  }
+
+  .app-shell .dashboard-premium-new-os,
+  .app-shell .dashboard-premium-apply {
+    white-space: nowrap !important;
+  }
+}
+
+@media (min-width: 1180px) {
+  .app-shell .dashboard-premium-kpi-grid {
+    grid-template-columns: 1.25fr repeat(4, minmax(130px, 1fr)) !important;
+  }
+
+  .app-shell .dashboard-premium-main-card {
+    grid-column: auto !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell .dashboard-premium-header {
+    display: none !important;
+  }
+
+  .app-shell .dashboard-mobile-actions,
+  .app-shell .dashboard-mobile-actions--only-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin: 0 0 4px !important;
+  }
+
+  .app-shell .dashboard-mobile-actions > .dashboard-premium-new-os {
+    display: none !important;
+  }
+
+  .app-shell .dashboard-premium-period.is-compact {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .app-shell .dashboard-premium-period.is-compact .dashboard-premium-period-select {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .app-shell .dashboard-premium-period.is-compact .dashboard-premium-apply {
+    min-height: 42px !important;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .app-shell .dashboard-premium-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card {
+    grid-column: 1 / -1 !important;
+    min-height: auto !important;
+    padding: 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card strong {
+    font-size: clamp(1.85rem, 9vw, 2.55rem) !important;
+    line-height: 0.98 !important;
+    margin: 2px 0 !important;
+  }
+
+  .app-shell .dashboard-premium-small-card {
+    min-height: auto !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+    gap: 6px !important;
+  }
+
+  .app-shell .dashboard-premium-small-card p {
+    font-size: 0.68rem !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+
+  .app-shell .dashboard-premium-orders-card {
+    padding: 10px !important;
+    border-radius: 18px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell .dashboard-premium-kpi-grid {
+    gap: 8px !important;
+  }
+
+  .app-shell .dashboard-premium-small-card {
+    padding: 10px !important;
+  }
+
+  .app-shell .dashboard-premium-small-card strong {
+    font-size: 1.42rem !important;
+  }
+
+  .app-shell .dashboard-premium-small-card p {
+    display: none !important;
+  }
+}
+
+
+/* ==========================================================
+   HOTFIX DASHBOARD VISUAL CIRÚRGICO
+   Escopo: faturamento com olho, grade KPI desktop e destaque das últimas OS.
+   Não altera backend, rotas, contadores ou permissões.
+   ========================================================== */
+.app-shell .dashboard-premium-money-toggle {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.26) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12) !important;
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease !important;
+}
+
+.app-shell .dashboard-premium-money-toggle:hover {
+  transform: translateY(-1px) !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
+}
+
+.app-shell .dashboard-premium-main-card strong.is-hidden-money {
+  letter-spacing: 0.02em !important;
+}
+
+.app-shell .dashboard-premium-orders-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08) !important;
+}
+
+.app-shell .dashboard-premium-order-row,
+.app-shell .dashboard-premium-order-mobile {
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.075) !important;
+  border-color: #d8e4f2 !important;
+}
+
+.app-shell .dashboard-premium-order-row:hover,
+.app-shell .dashboard-premium-order-mobile:hover {
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.11) !important;
+}
+
+@media (min-width: 1180px) {
+  .app-shell .dashboard-premium-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 18px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card {
+    grid-column: 1 / -1 !important;
+    min-height: 188px !important;
+    display: grid !important;
+    align-content: space-between !important;
+  }
+
+  .app-shell .dashboard-premium-main-card strong {
+    margin-top: 10px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card p {
+    max-width: 520px !important;
+  }
+
+  .app-shell .dashboard-premium-small-card {
+    min-height: 168px !important;
+    align-content: center !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell .dashboard-premium-money-toggle {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .app-shell .dashboard-premium-main-card {
+    box-shadow: 0 16px 34px rgba(6, 77, 223, 0.24) !important;
+  }
+
+  .app-shell .dashboard-premium-order-mobile {
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.09) !important;
+  }
+}
+
+/* ==========================================================
+   HOTFIX DASHBOARD V4 - BREAKPOINT 769px a 1023px
+   Corrige duplicidade visual no tablet/desktop compacto:
+   - remove ações mobile nessa faixa;
+   - impede o botão Nova OS full-width duplicado;
+   - preserva apenas o header desktop/tablet.
+   ========================================================== */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .app-shell .dashboard-mobile-actions,
+  .app-shell .dashboard-mobile-actions--only-mobile {
+    display: none !important;
+  }
+
+  .app-shell .dashboard-premium-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 18px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .app-shell .dashboard-premium-header-actions {
+    width: 100% !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .app-shell .dashboard-premium-header .dashboard-premium-period {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .app-shell .dashboard-premium-header .dashboard-premium-new-os {
+    width: auto !important;
+    max-width: max-content !important;
+    min-width: 132px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .app-shell .dashboard-premium-header .dashboard-premium-notification-wrap {
+    flex: 0 0 auto !important;
+  }
+}
+
+/* ==========================================================
+   DASHBOARD V5 - CENTRAL DE AÇÕES NECESSÁRIAS NO MOBILE
+   Correção cirúrgica: adiciona sino/notificações mobile sem mexer
+   no layout desktop aprovado.
+   ========================================================== */
+.dashboard-premium-notification-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  max-height: min(360px, 56vh);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dashboard-premium-notification-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #dbe7f4;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.dashboard-premium-notification-item:hover {
+  border-color: #b9d3f5;
+  background: #eef6ff;
+}
+
+.dashboard-premium-notification-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf2ff;
+  color: #1265f6;
+  font-weight: 950;
+}
+
+.dashboard-premium-notification-item.is-warning .dashboard-premium-notification-item-icon {
+  background: #fff4e8;
+  color: #ea580c;
+}
+
+.dashboard-premium-notification-item.is-success .dashboard-premium-notification-item-icon {
+  background: #eafbf0;
+  color: #16a34a;
+}
+
+.dashboard-premium-notification-item-body {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dashboard-premium-notification-item-body strong {
+  font-size: 13px;
+  line-height: 1.2;
+  color: #0b1730;
+}
+
+.dashboard-premium-notification-item-body small {
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.dashboard-premium-notification-count {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #166bff;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.dashboard-mobile-notification-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dashboard-mobile-notification-card {
+  width: 100%;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-mobile-notification-card span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dashboard-mobile-notification-card strong {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.dashboard-mobile-notification-card small {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.dashboard-mobile-notification-icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #0b1b32;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
+  font-size: 19px;
+}
+
+.dashboard-mobile-notification-icon em {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #166bff;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+@media (max-width: 768px) {
+  .app-shell .dashboard-mobile-notification-wrap {
+    display: block !important;
+  }
+
+  .app-shell .dashboard-premium-notification-panel--mobile {
+    top: calc(100% + 10px) !important;
+    left: 0 !important;
+    right: auto !important;
+    width: min(100%, calc(100vw - 28px)) !important;
+    max-width: 360px !important;
+    z-index: 230 !important;
+  }
+
+  .app-shell .dashboard-premium-notification-panel--mobile::before {
+    left: 24px !important;
+    right: auto !important;
+  }
+
+  .app-shell .dashboard-premium-notification-list {
+    max-height: 320px !important;
+  }
+
+  .app-shell .dashboard-premium-notification-item {
+    grid-template-columns: 36px minmax(0, 1fr) 32px !important;
+    min-height: 56px !important;
+    padding: 9px !important;
+  }
+}
+
+/* ==========================================================
+   DASHBOARD V6 - MOBILE NOTIFICATION VISUAL FIX
+   Corrige contraste do bloco de ações necessárias no mobile.
+   Mantém o sino como central de ações e deixa o texto legível.
+   ========================================================== */
+@media (max-width: 768px) {
+  .app-shell .dashboard-mobile-notification-wrap {
+    width: 100% !important;
+    margin: 8px 0 14px !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-card {
+    min-height: 76px !important;
+    padding: 12px 14px !important;
+    border: 1px solid #cfe0f5 !important;
+    border-radius: 20px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f4f8ff 100%) !important;
+    color: #0f172a !important;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-card:hover,
+  .app-shell .dashboard-mobile-notification-card:focus-visible {
+    border-color: #9fc2f2 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%) !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-card strong {
+    color: #0b1b32 !important;
+    font-size: 14px !important;
+    line-height: 1.18 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-card small {
+    color: #52657f !important;
+    font-size: 11.5px !important;
+    line-height: 1.3 !important;
+    font-weight: 750 !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-icon {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    color: #0b1b32 !important;
+    border: 1px solid #d9e6f5 !important;
+    box-shadow: 0 12px 24px rgba(22, 107, 255, 0.16) !important;
+  }
+
+  .app-shell .dashboard-mobile-notification-icon em {
+    top: -9px !important;
+    right: -8px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    background: #166bff !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 8px 16px rgba(22, 107, 255, 0.25) !important;
+  }
+}
+
+/* ==========================================================
+   DASHBOARD V7 - FIX ÚLTIMAS OS EM RESOLUÇÃO INTERMEDIÁRIA
+   Faixa afetada: 901px a 1180px.
+   Corrige somente a tabela/lista de últimas OS:
+   - status longos não saem do balão
+   - valor total não quebra de forma feia
+   - colunas ganham proporção mais segura
+   ========================================================== */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .app-shell .dashboard-premium-orders-card {
+    padding: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell .dashboard-premium-orders-head,
+  .app-shell .dashboard-premium-order-row {
+    grid-template-columns:
+      58px
+      minmax(95px, 1.05fr)
+      minmax(112px, 1.15fr)
+      minmax(82px, 0.82fr)
+      minmax(82px, 0.82fr)
+      minmax(106px, 0.95fr)
+      54px !important;
+    gap: 8px !important;
+  }
+
+  .app-shell .dashboard-premium-orders-table--no-money .dashboard-premium-orders-head,
+  .app-shell .dashboard-premium-orders-table--no-money .dashboard-premium-order-row {
+    grid-template-columns:
+      58px
+      minmax(110px, 1.15fr)
+      minmax(130px, 1.2fr)
+      minmax(90px, 0.9fr)
+      minmax(110px, 1fr)
+      54px !important;
+  }
+
+  .app-shell .dashboard-premium-orders-head {
+    padding: 0 10px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-shell .dashboard-premium-order-row {
+    min-height: 74px !important;
+    padding: 12px 10px !important;
+  }
+
+  .app-shell .dashboard-premium-order-id {
+    font-size: 18px !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell .dashboard-premium-order-row > div,
+  .app-shell .dashboard-premium-order-row > strong,
+  .app-shell .dashboard-premium-order-row > span {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .app-shell .dashboard-premium-order-row > div:nth-child(4),
+  .app-shell .dashboard-premium-order-row > div:nth-child(5) {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-shell .dashboard-premium-order-row > div:nth-child(5) {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    font-size: 13px !important;
+  }
+
+  .app-shell .dashboard-premium-order-row .badge,
+  .app-shell .dashboard-premium-order-row .badge--status {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 28px !important;
+    padding: 5px 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.12 !important;
+    font-size: 10.5px !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .app-shell .dashboard-premium-row-action {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 8px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Abaixo de 980px a tabela fica apertada demais com sidebar.
+   Mantém a seção de últimas OS, mas troca para cards internos legíveis. */
+@media (min-width: 901px) and (max-width: 980px) {
+  .app-shell .dashboard-premium-orders-table {
+    display: none !important;
+  }
+
+  .app-shell .dashboard-premium-orders-mobile-list {
+    display: grid !important;
+    gap: 12px !important;
+  }
+
+  .app-shell .dashboard-premium-order-mobile {
+    min-height: 104px !important;
+    padding: 14px 14px 14px 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-shell .dashboard-premium-order-mobile-top .badge,
+  .app-shell .dashboard-premium-order-mobile-top .badge--status {
+    max-width: 170px !important;
+    white-space: normal !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+
+/* ==========================================================
+   HOTFIX DASHBOARD V8 - INFORMAÇÃO DO PERÍODO DO FATURAMENTO
+   Melhoria cirúrgica: deixa claro a qual período o valor pertence.
+   ========================================================== */
+.dashboard-premium-revenue-period {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 28px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 12.5px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  white-space: normal;
+}
+
+.dashboard-premium-main-card .dashboard-premium-revenue-period + p {
+  margin-top: 10px;
+}
+
+.dashboard-premium-main-card-foot span:first-child {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+@media (max-width: 768px) {
+  .dashboard-premium-revenue-period {
+    margin-top: 8px;
+    font-size: 11.5px;
+    padding: 5px 9px;
+  }
+}
+
+/* =========================
+   HOTFIX DASHBOARD V9 - CARDS KPI CLICAVEIS
+   Mantém o mesmo visual dos cards e adiciona comportamento de link.
+   ========================= */
+.dashboard-premium-small-card--link {
+  color: inherit !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.dashboard-premium-small-card--link:hover,
+.dashboard-premium-small-card--link:focus,
+.dashboard-premium-small-card--link:active,
+.dashboard-premium-small-card--link:visited {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.dashboard-premium-small-card--link:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 4px;
+}

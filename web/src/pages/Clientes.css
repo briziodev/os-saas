@@ -714,3 +714,242 @@
     font-size: 15px;
   }
 }
+
+/* ==========================================================
+   SPRINT UX 8.5 - CLIENTES RESPONSIVO FINAL
+   Compacta cadastro, busca e lista de clientes em mobile/tablet.
+   ========================================================== */
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .app-shell .clientes-premium-container {
+    max-width: 920px !important;
+    gap: 16px !important;
+  }
+
+  .app-shell .clientes-premium-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-shell .clientes-premium-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell .clientes-premium-container {
+    gap: 12px !important;
+  }
+
+  .app-shell .clientes-premium-stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .app-shell .clientes-premium-stat-card {
+    min-width: 0 !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-shell .clientes-premium-stat-card small {
+    display: none !important;
+  }
+
+  .app-shell .clientes-premium-card,
+  .app-shell .clientes-premium-list-card {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-shell .clientes-premium-form,
+  .app-shell .clientes-premium-edit-grid,
+  .app-shell .clientes-premium-contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .app-shell .clientes-premium-contact-tile span {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell .clientes-premium-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .app-shell .clientes-premium-danger-action {
+    background: #fff1f2 !important;
+    color: #be123c !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell .clientes-premium-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* ==========================================================
+   CLIENTES - UX POLISH V2
+   - Atualizar com feedback azul -> verde -> azul
+   - Cards de resumo viram filtros clicáveis
+   - Busca fica mais explícita com Buscar/Limpar
+   ========================================================== */
+
+.clientes-premium-refresh {
+  background: linear-gradient(135deg, #237cff 0%, #0f62fe 100%) !important;
+  border-color: #1764ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(23, 100, 255, 0.22) !important;
+}
+
+.clientes-premium-refresh.is-success {
+  background: linear-gradient(135deg, #16a34a 0%, #07842b 100%) !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(22, 163, 74, 0.22) !important;
+}
+
+.clientes-premium-refresh .is-spinning {
+  animation: clientesSpin 0.8s linear infinite;
+}
+
+@keyframes clientesSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.clientes-premium-stat-card {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.clientes-premium-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.10);
+}
+
+.clientes-premium-stat-card.is-active {
+  border-color: #1764ff;
+  box-shadow: 0 18px 42px rgba(23, 100, 255, 0.16), 0 0 0 4px rgba(23, 100, 255, 0.08);
+}
+
+.clientes-premium-stat-card.is-orange.is-active {
+  border-color: #fb923c;
+  box-shadow: 0 18px 42px rgba(234, 88, 12, 0.14), 0 0 0 4px rgba(251, 146, 60, 0.10);
+}
+
+.clientes-premium-stat-card.is-green.is-active {
+  border-color: #22c55e;
+  box-shadow: 0 18px 42px rgba(34, 197, 94, 0.14), 0 0 0 4px rgba(34, 197, 94, 0.10);
+}
+
+.clientes-premium-stat-card.is-indigo.is-active {
+  border-color: #6366f1;
+  box-shadow: 0 18px 42px rgba(99, 102, 241, 0.14), 0 0 0 4px rgba(99, 102, 241, 0.10);
+}
+
+.clientes-premium-search-tools {
+  display: grid;
+  gap: 10px;
+}
+
+.clientes-premium-search-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.clientes-premium-search-action,
+.clientes-premium-search-clear,
+.clientes-premium-list-clear-filter {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.clientes-premium-search-action {
+  background: linear-gradient(135deg, #237cff 0%, #0f62fe 100%);
+  border-color: #1764ff;
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(23, 100, 255, 0.18);
+}
+
+.clientes-premium-search-clear,
+.clientes-premium-list-clear-filter {
+  background: #ffffff;
+  border-color: #dbe7f4;
+  color: #173c66;
+}
+
+.clientes-premium-search-action:hover,
+.clientes-premium-search-clear:hover,
+.clientes-premium-list-clear-filter:hover {
+  transform: translateY(-1px);
+}
+
+.clientes-premium-list-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.clientes-premium-list-clear-filter {
+  min-height: 38px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: #f8fbff;
+}
+
+@media (min-width: 1024px) {
+  .clientes-premium-refresh {
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .clientes-premium-refresh {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell .clientes-premium-search-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell .clientes-premium-list-head-actions {
+    justify-content: flex-start;
+  }
+
+  .app-shell .clientes-premium-list-clear-filter,
+  .app-shell .clientes-premium-count-pill {
+    width: 100%;
+    justify-content: center;
+  }
+}

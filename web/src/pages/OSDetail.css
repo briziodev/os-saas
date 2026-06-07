@@ -2633,3 +2633,124 @@
     margin-top: 6px !important;
   }
 }
+
+/* ==========================================================
+   SPRINT UX 8.5 - OS DETAIL RESPONSIVO FINAL
+   Ajustes leves para impedir vazamento em sidebar e cartões.
+   ========================================================== */
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .app-shell .osdetail-premium-container {
+    max-width: 980px !important;
+    gap: 16px !important;
+  }
+
+  .app-shell .osdetail-premium-summary-grid,
+  .app-shell .osdetail-premium-financial-grid,
+  .app-shell .osdetail-premium-edit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell .osdetail-premium-container {
+    gap: 12px !important;
+  }
+
+  .app-shell .osdetail-premium-summary-grid,
+  .app-shell .osdetail-premium-financial-grid,
+  .app-shell .osdetail-premium-edit-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* ==========================================================
+   SPRINT UX 8.5 - OSDETAIL ICON POLISH V1
+   Escopo: melhorar somente ícones da tela Detalhe da OS.
+   Não altera permissões, chamadas de API, regras de técnico/admin
+   nem layout estrutural.
+   ========================================================== */
+
+.osdetail-premium-svg-icon {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  stroke: currentColor !important;
+  stroke-width: 2.25 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+}
+
+.osdetail-premium-card-title > span,
+.osdetail-premium-meta-icon,
+.osdetail-premium-history-icon,
+.osdetail-premium-info-line > span:first-child {
+  background: linear-gradient(135deg, #eef6ff 0%, #dfeeff 100%) !important;
+  color: #1764ff !important;
+  border: 1px solid #d7e6ff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 22px rgba(23, 100, 255, 0.10) !important;
+}
+
+.osdetail-premium-card-title > span {
+  border-radius: 16px !important;
+}
+
+.osdetail-premium-meta-icon {
+  border-radius: 15px !important;
+}
+
+.osdetail-premium-card-title > span .osdetail-premium-svg-icon,
+.osdetail-premium-meta-icon .osdetail-premium-svg-icon,
+.osdetail-premium-history-icon .osdetail-premium-svg-icon {
+  width: 21px !important;
+  height: 21px !important;
+  stroke-width: 2.35 !important;
+}
+
+.osdetail-premium-btn .osdetail-premium-svg-icon,
+.osdetail-premium-whatsapp-wide .osdetail-premium-svg-icon {
+  width: 17px !important;
+  height: 17px !important;
+  stroke-width: 2.35 !important;
+}
+
+.osdetail-premium-btn--primary .osdetail-premium-svg-icon,
+.osdetail-premium-whatsapp-wide .osdetail-premium-svg-icon {
+  color: currentColor !important;
+}
+
+.osdetail-premium-btn--ghost .osdetail-premium-svg-icon {
+  color: #173c66 !important;
+}
+
+.osdetail-premium-card--pieces .osdetail-premium-card-title > span,
+.osdetail-premium-card--pieces .osdetail-premium-info-line > span:first-child {
+  background: linear-gradient(135deg, #eef6ff 0%, #dcecff 100%) !important;
+  color: #0757e7 !important;
+}
+
+.osdetail-premium-card--history .osdetail-premium-card-title > span,
+.osdetail-premium-history-icon {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e1efff 100%) !important;
+  color: #2563eb !important;
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-card-title > span {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 15px !important;
+  }
+
+  .osdetail-premium-card-title > span .osdetail-premium-svg-icon,
+  .osdetail-premium-history-icon .osdetail-premium-svg-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
