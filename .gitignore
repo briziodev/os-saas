@@ -13,3 +13,9 @@
 
 *.zip
 *.rar
+
+# Backups locais de banco
+backups/
+*.dump
+*.backup
+*.sql

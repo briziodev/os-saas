@@ -3,6 +3,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const pool = require("./db");
 
 const authRoutes = require("./routes/auth");
 const clientesRoutes = require("./routes/clientes");
@@ -59,6 +60,36 @@ app.get("/health", (req, res) => {
     app: "running",
     requestId: req.requestId,
   });
+});
+
+app.get("/health/db", async (req, res) => {
+  const startedAt = Date.now();
+
+  try {
+    const result = await pool.query("SELECT 1 AS ok");
+
+    return res.json({
+      status: "ok",
+      app: "running",
+      database: "connected",
+      dbCheck: result.rows[0]?.ok === 1 ? "ok" : "unexpected_result",
+      latencyMs: Date.now() - startedAt,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logger.warn("DB_HEALTH_CHECK_FAILED", "Falha ao verificar conexão com o banco", {
+      requestId: req.requestId,
+      latencyMs: Date.now() - startedAt,
+      errorName: error.name,
+    });
+
+    return res.status(503).json({
+      status: "error",
+      app: "running",
+      database: "unavailable",
+      requestId: req.requestId,
+    });
+  }
 });
 
 app.use(apiLimiter);
