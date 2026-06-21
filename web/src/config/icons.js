@@ -1,0 +1,71 @@
+﻿export const appIcons = {
+  // Navegação principal
+  logo: "mdi:car-wrench",
+  dashboard: "mdi:view-dashboard-outline",
+  os: "mdi:clipboard-text-outline",
+  kanban: "mdi:view-column-outline",
+  clientes: "mdi:account-group-outline",
+  usuarios: "mdi:account-cog-outline",
+  sair: "mdi:logout",
+
+  // Oficina e contexto automotivo
+  oficina: "mdi:garage-open-variant",
+  manutencao: "mdi:wrench-outline",
+  mecanico: "mdi:account-wrench-outline",
+  veiculo: "mdi:car-outline",
+  diagnostico: "mdi:car-search-outline",
+  pecas: "mdi:cog-transfer-outline",
+
+  // Ações gerais
+  novaOS: "mdi:plus-circle-outline",
+  adicionar: "mdi:plus",
+  editar: "mdi:pencil-outline",
+  excluir: "mdi:trash-can-outline",
+  visualizar: "mdi:eye-outline",
+  esconder: "mdi:eye-off-outline",
+  pesquisar: "mdi:magnify",
+  filtrar: "mdi:filter-variant",
+  limparFiltro: "mdi:filter-remove-outline",
+  atualizar: "mdi:refresh",
+  salvar: "mdi:content-save-outline",
+  voltar: "mdi:arrow-left",
+  whatsapp: "mdi:whatsapp",
+
+  // Dashboard
+  osAbertas: "mdi:clipboard-text-clock-outline",
+  osAndamento: "mdi:progress-wrench",
+  orcamentosPendentes: "mdi:file-document-alert-outline",
+  finalizados: "mdi:check-circle-outline",
+  faturamento: "mdi:cash-multiple",
+  alertas: "mdi:bell-alert-outline",
+
+  // Status da OS
+  triagem: "mdi:clipboard-search-outline",
+  emAnalise: "mdi:magnify-scan",
+  aguardandoAprovacao: "mdi:clock-alert-outline",
+  orcamentoEnviado: "mdi:send-clock-outline",
+  aprovado: "mdi:check-circle-outline",
+  emExecucao: "mdi:tools",
+  aguardandoPeca: "mdi:cog-clockwise",
+  prontoRetirada: "mdi:car-check",
+  encerrado: "mdi:check-decagram-outline",
+  cancelado: "mdi:close-circle-outline",
+
+  // Usuários
+  usuario: "mdi:account-outline",
+  admin: "mdi:shield-account-outline",
+  atendimento: "mdi:headset",
+  tecnico: "mdi:account-wrench-outline",
+  convite: "mdi:email-plus-outline",
+  ativo: "mdi:check-circle-outline",
+  inativo: "mdi:close-circle-outline",
+
+  // Informações
+  telefone: "mdi:phone-outline",
+  email: "mdi:email-outline",
+  calendario: "mdi:calendar-month-outline",
+  historico: "mdi:history",
+  financeiro: "mdi:cash-register",
+  alerta: "mdi:alert-circle-outline",
+  sucesso: "mdi:check-circle-outline",
+};
