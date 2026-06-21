@@ -250,12 +250,17 @@ export default function OSNew() {
   }
 
   function handleFormChange(field, value) {
+    const nextValue = isMoneyField(field)
+      ? sanitizeMoneyInput(value)
+      : field === "placa"
+        ? value.toUpperCase()
+        : value;
+
     setForm((prev) => ({
       ...prev,
-      [field]: field === "placa" ? value.toUpperCase() : value,
+      [field]: nextValue,
     }));
   }
-
   function handleNovoClienteChange(field, value) {
     setNovoCliente((prev) => ({
       ...prev,
@@ -874,17 +879,38 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 }
 
+function isMoneyField(field) {
+  return field === "mao_obra" || field === "valor_pecas";
+}
+
+function sanitizeMoneyInput(value) {
+  return String(value ?? "").replace(/[^\d,.]/g, "");
+}
+
 function parseMoneyBR(value) {
   const raw = String(value ?? "").trim();
 
   if (!raw) return 0;
 
-  let normalized = raw.replace(/\s/g, "");
+  const compact = raw.replace(/\s/g, "");
 
-  if (normalized.includes(",")) {
-    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  const isSimpleMoney = /^\d+(?:[.,]\d{0,2})?$/.test(compact);
+  const isBrazilianThousandsMoney = /^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(compact);
+
+  if (!isSimpleMoney && !isBrazilianThousandsMoney) {
+    return NaN;
+  }
+
+  let normalized = compact;
+
+  if (compact.includes(",")) {
+    normalized = compact.replace(/\./g, "").replace(",", ".");
   } else {
-    normalized = normalized.replace(/[^\d.-]/g, "");
+    const dotParts = compact.split(".");
+    const looksLikeThousands =
+      dotParts.length > 1 && dotParts.slice(1).every((part) => part.length === 3);
+
+    normalized = looksLikeThousands ? compact.replace(/\./g, "") : compact;
   }
 
   const numberValue = Number(normalized);
@@ -902,7 +928,7 @@ function formatMoneyInput(value) {
   if (!raw) return "";
 
   const parsed = parseMoneyBR(raw);
-  if (!Number.isFinite(parsed)) return raw;
+  if (!Number.isFinite(parsed)) return "";
 
   return parsed.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
