@@ -181,14 +181,15 @@ export default function AppShell({ children }) {
 
         <div className="app-shell-content">{children}</div>
 
-        <nav className="app-shell-bottom-nav" aria-label="Navegação mobile">
-          {bottomItems.map((item) => {
+        <nav className={`app-shell-bottom-nav ${canCreateOS ? "has-primary-action" : "has-secondary-action"}`} aria-label="Navega??o mobile">
+          {(canCreateOS ? bottomItems.slice(0, 2) : bottomItems).map((item) => {
             const active = item.match(path);
+            const label = item.label === "Quadro de OS" ? "Quadro" : item.label;
 
             return (
               <Link key={item.key} to={item.to} className={active ? "is-active" : ""}>
                 <AppIcon icon={item.icon} size={21} />
-                <span>{item.label === "Quadro de OS" ? "Quadro" : item.label}</span>
+                <span>{label}</span>
               </Link>
             );
           })}
@@ -196,14 +197,28 @@ export default function AppShell({ children }) {
           {canCreateOS ? (
             <Link to="/os/new" className={path === "/os/new" ? "app-shell-bottom-plus is-active" : "app-shell-bottom-plus"}>
               <AppIcon icon={appIcons.novaOS} size={23} />
-              <span>Nova</span>
+              <span>Nova OS</span>
             </Link>
-          ) : (
+          ) : null}
+
+          {canCreateOS ? bottomItems.slice(2).map((item) => {
+            const active = item.match(path);
+            const label = item.label === "Quadro de OS" ? "Quadro" : item.label;
+
+            return (
+              <Link key={item.key} to={item.to} className={active ? "is-active" : ""}>
+                <AppIcon icon={item.icon} size={21} />
+                <span>{label}</span>
+              </Link>
+            );
+          }) : null}
+
+          {!canCreateOS ? (
             <button type="button" onClick={logout}>
               <AppIcon icon={appIcons.sair} size={21} />
               <span>Sair</span>
             </button>
-          )}
+          ) : null}
         </nav>
       </main>
     </div>
