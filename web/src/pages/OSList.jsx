@@ -1,25 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  AlertCircle,
-  BarChart3,
-  Bell,
-  CalendarDays,
-  CheckCircle2,
-  ClipboardList,
-  Clock3,
-  LayoutDashboard,
-  LogOut,
-  PackageCheck,
-  Plus,
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
-  UserCog,
-  Users,
-  Wrench,
-  X,
-} from "lucide-react";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import { apiFetch, clearToken, getUser } from "../api";
 import "./OSList.css";
 
@@ -409,7 +391,7 @@ export default function OSList() {
 
             {canCreateOS ? (
               <Link to="/os/new" className="oslist-premium-new-os oslist-premium-mobile-new-os-top">
-                <Plus size={18} strokeWidth={2.6} />
+                <AppIcon icon={appIcons.novaOS} size={18} />
                 <span>Nova OS</span>
               </Link>
             ) : null}
@@ -459,7 +441,7 @@ export default function OSList() {
             </div>
 
             <div className="oslist-premium-mobile-period">
-              <CalendarDays size={18} strokeWidth={2.4} />
+              <AppIcon icon={appIcons.calendario} size={18} />
               <select value={period} onChange={(event) => setPeriod(event.target.value)}>
                 {PERIOD_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -471,7 +453,7 @@ export default function OSList() {
 
             {canCreateOS ? (
               <Link to="/os/new" className="oslist-premium-new-os">
-                <Plus size={20} strokeWidth={2.6} />
+                <AppIcon icon={appIcons.novaOS} size={20} />
                 Nova OS
               </Link>
             ) : null}
@@ -498,10 +480,10 @@ export default function OSList() {
           />
 
           <section className="oslist-premium-stats" aria-label="Resumo de ordens de serviço">
-            <StatCard icon={ClipboardList} label="Total de OS" value={stats.total} hint="Todas as ordens" tone="blue" />
-            <StatCard icon={RefreshCw} label="Em andamento" value={stats.inProgress} hint="OS em execução" tone="blue" />
-            <StatCard icon={AlertCircle} label="Orçamentos pendentes" value={stats.pending} hint="Aguardando aprovação" tone="orange" />
-            <StatCard icon={CheckCircle2} label="Finalizadas" value={stats.finished} hint="OS concluídas" tone="green" />
+            <StatCard icon={appIcons.os} label="Total de OS" value={stats.total} hint="Todas as ordens" tone="blue" />
+            <StatCard icon={appIcons.osAndamento} label="Em andamento" value={stats.inProgress} hint="OS em execução" tone="blue" />
+            <StatCard icon={appIcons.orcamentosPendentes} label="Orçamentos pendentes" value={stats.pending} hint="Aguardando aprovação" tone="orange" />
+            <StatCard icon={appIcons.finalizados} label="Finalizadas" value={stats.finished} hint="OS concluídas" tone="green" />
           </section>
 
           <section className="oslist-premium-quick-row oslist-quick-filters-panel oslist-quick-filters-desktop-v26" aria-label="Filtros rápidos">
@@ -525,7 +507,7 @@ export default function OSList() {
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen((prev) => !prev)}
             >
-              <SlidersHorizontal className="oslist-quick-filter-advanced-icon" size={18} strokeWidth={2.5} />
+              <AppIcon icon={appIcons.filtrosAvancados} className="oslist-quick-filter-advanced-icon" size={18} />
               <span className="oslist-quick-filter-advanced-label">Filtros avançados</span>
             </button>
           </section>
@@ -551,7 +533,7 @@ export default function OSList() {
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen((prev) => !prev)}
             >
-              <SlidersHorizontal size={18} strokeWidth={2.5} />
+              <AppIcon icon={appIcons.filtrosAvancados} size={18} />
               <span>Filtros avançados</span>
             </button>
           </section>
@@ -665,7 +647,7 @@ function FilterPanel({
       <div className="oslist-premium-search-field">
         <label>Buscar</label>
         <div className="oslist-premium-search-input">
-          <Search size={21} strokeWidth={2.4} />
+          <AppIcon icon={appIcons.pesquisar} size={21} />
           <input
             type="search"
             value={searchText}
@@ -864,11 +846,11 @@ function MobileCards({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mud
   );
 }
 
-function StatCard({ icon: Icon, label, value, hint, tone }) {
+function StatCard({ icon, label, value, hint, tone }) {
   return (
     <div className={`oslist-premium-stat oslist-premium-stat--${tone}`}>
       <span aria-hidden="true">
-        {Icon ? <Icon size={22} strokeWidth={2.35} /> : null}
+        {icon ? <AppIcon icon={icon} size={22} /> : null}
       </span>
       <div>
         <strong>{label}</strong>
@@ -895,7 +877,7 @@ function SidebarContent({ user, navItems, onLogout }) {
       <div className="oslist-premium-sidebar-footer">
         <UserCard user={user} />
         <button type="button" className="oslist-premium-logout" onClick={onLogout}>
-          <LogOut size={18} strokeWidth={2.3} />
+          <AppIcon icon={appIcons.sair} size={18} />
           Sair
         </button>
       </div>
@@ -935,7 +917,7 @@ function NotificationButton({ notificationCount, notifications = [], open, onTog
   return (
     <div className="oslist-premium-notification-wrap">
       <button type="button" className="oslist-premium-notification" onClick={onToggle} aria-label="Notificações">
-        <Bell size={19} strokeWidth={2.4} />
+        <AppIcon icon={appIcons.alertas} size={19} />
         {notificationCount > 0 ? <span>{notificationCount}</span> : null}
       </button>
 
@@ -947,7 +929,7 @@ function NotificationButton({ notificationCount, notifications = [], open, onTog
           {visibleNotifications.length > 0 ? (
             <div className="oslist-premium-notification-list">
               {visibleNotifications.map((item) => {
-                const ItemIcon = item.icon;
+
 
                 return (
                   <Link
@@ -957,7 +939,7 @@ function NotificationButton({ notificationCount, notifications = [], open, onTog
                     onClick={onClose}
                   >
                     <span className="oslist-premium-notification-item-icon" aria-hidden="true">
-                      <ItemIcon size={18} strokeWidth={2.5} />
+                      <AppIcon icon={item.icon} size={18} />
                     </span>
                     <span className="oslist-premium-notification-item-text">
                       <strong>{item.label}</strong>
@@ -986,37 +968,37 @@ function BottomNav({ canCreateOS, canAccessDashboard, canAccessClientes, canAcce
     <nav className="oslist-premium-bottom-nav" aria-label="Navegação mobile">
       {canAccessDashboard ? (
         <Link to="/dashboard">
-          <LayoutDashboard size={20} strokeWidth={2.2} />
+          <AppIcon icon={appIcons.dashboard} size={20} />
           Dashboard
         </Link>
       ) : null}
 
       <Link to="/os" className="is-active">
-        <ClipboardList size={20} strokeWidth={2.2} />
+        <AppIcon icon={appIcons.os} size={20} />
         OS
       </Link>
 
       {canCreateOS ? (
         <Link to="/os/new" className="oslist-premium-bottom-plus" aria-label="Nova OS">
-          <Plus size={26} strokeWidth={2.6} />
+          <AppIcon icon={appIcons.novaOS} size={26} />
         </Link>
       ) : null}
 
       {canAccessClientes ? (
         <Link to="/clientes">
-          <Users size={20} strokeWidth={2.2} />
+          <AppIcon icon={appIcons.clientes} size={20} />
           Clientes
         </Link>
       ) : null}
 
       {canAccessUsuarios ? (
         <Link to="/usuarios">
-          <UserCog size={20} strokeWidth={2.2} />
+          <AppIcon icon={appIcons.usuarios} size={20} />
           Usuários
         </Link>
       ) : (
         <button type="button" onClick={onLogout}>
-          <LogOut size={20} strokeWidth={2.2} />
+          <AppIcon icon={appIcons.sair} size={20} />
           Sair
         </button>
       )}
@@ -1024,10 +1006,10 @@ function BottomNav({ canCreateOS, canAccessDashboard, canAccessClientes, canAcce
   );
 }
 
-function IconSlot({ icon: Icon, size = 18 }) {
+function IconSlot({ icon, size = 18 }) {
   return (
     <span className="oslist-premium-menu-icon" aria-hidden="true">
-      <Icon size={size} strokeWidth={2.35} />
+      {icon ? <AppIcon icon={icon} size={size} /> : null}
     </span>
   );
 }
@@ -1049,11 +1031,11 @@ function AlertMessage({ message }) {
 function buildNavItems({ canAccessDashboard, canAccessClientes, canAccessUsuarios }) {
   const items = [];
 
-  if (canAccessDashboard) items.push({ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, active: false });
-  items.push({ to: "/os", label: "OS", icon: ClipboardList, active: true });
-  items.push({ to: "/kanban", label: "Quadro de OS", icon: BarChart3, active: false });
-  if (canAccessClientes) items.push({ to: "/clientes", label: "Clientes", icon: Users, active: false });
-  if (canAccessUsuarios) items.push({ to: "/usuarios", label: "Usuários", icon: UserCog, active: false });
+  if (canAccessDashboard) items.push({ to: "/dashboard", label: "Dashboard", icon: appIcons.dashboard, active: false });
+  items.push({ to: "/os", label: "OS", icon: appIcons.os, active: true });
+  items.push({ to: "/kanban", label: "Quadro de OS", icon: appIcons.kanban, active: false });
+  if (canAccessClientes) items.push({ to: "/clientes", label: "Clientes", icon: appIcons.clientes, active: false });
+  if (canAccessUsuarios) items.push({ to: "/usuarios", label: "Usuários", icon: appIcons.usuarios, active: false });
 
   return items;
 }
@@ -1095,7 +1077,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.analysis,
       href: statusUrl("em_analise", period, startDate, endDate),
       tone: "info",
-      icon: Search,
+      icon: appIcons.emAnalise,
     },
     {
       key: "execution",
@@ -1104,7 +1086,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.execution,
       href: statusUrl("em_execucao", period, startDate, endDate),
       tone: "info",
-      icon: RefreshCw,
+      icon: appIcons.osAndamento,
     },
     {
       key: "waitingPart",
@@ -1113,7 +1095,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.waitingPart,
       href: statusUrl("aguardando_peca", period, startDate, endDate),
       tone: "warning",
-      icon: Wrench,
+      icon: appIcons.manutencao,
     },
     {
       key: "readyPickup",
@@ -1122,7 +1104,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.readyPickup,
       href: statusUrl("pronto_retirada", period, startDate, endDate),
       tone: "success",
-      icon: PackageCheck,
+      icon: appIcons.prontoRetirada,
     },
   ];
 
@@ -1136,7 +1118,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.waitingApproval,
       href: statusUrl("aguardando_aprovacao", period, startDate, endDate),
       tone: "warning",
-      icon: AlertCircle,
+      icon: appIcons.orcamentosPendentes,
     },
     {
       key: "approved",
@@ -1145,7 +1127,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.approved,
       href: statusUrl("aprovado", period, startDate, endDate),
       tone: "info",
-      icon: CheckCircle2,
+      icon: appIcons.aprovado,
     },
     ...operationalItems,
     {
@@ -1155,7 +1137,7 @@ function buildNotificationItems(stats, { period, startDate, endDate, role }) {
       count: stats.finished,
       href: statusUrl("encerrado", period, startDate, endDate),
       tone: "success",
-      icon: CheckCircle2,
+      icon: appIcons.aprovado,
     },
   ];
 }

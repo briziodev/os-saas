@@ -1,4 +1,4 @@
-﻿export const appIcons = {
+export const appIcons = {
   // Navegação principal
   logo: "mdi:car-wrench",
   dashboard: "mdi:view-dashboard-outline",
@@ -25,6 +25,7 @@
   esconder: "mdi:eye-off-outline",
   pesquisar: "mdi:magnify",
   filtrar: "mdi:filter-variant",
+  filtrosAvancados: "mdi:tune-variant",
   limparFiltro: "mdi:filter-remove-outline",
   atualizar: "mdi:refresh",
   salvar: "mdi:content-save-outline",
