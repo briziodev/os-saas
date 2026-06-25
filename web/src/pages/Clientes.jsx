@@ -1,19 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Edit3,
-  Mail,
-  Phone,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Trash2,
-  UserRound,
-  Users,
-  X,
-} from "lucide-react";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import { apiFetch, getUser } from "../api";
 import "./Clientes.css";
 
@@ -369,21 +356,21 @@ export default function Clientes() {
             disabled={loadingList}
             title="Sincroniza a lista com o banco de dados. Útil quando outro usuário cadastrou, editou ou excluiu clientes."
           >
-            <RefreshCw size={18} className={loadingList ? "is-spinning" : ""} />
+            <AppIcon icon={appIcons.atualizar} size={18} className={loadingList ? "is-spinning" : ""} />
             {loadingList ? "Atualizando..." : refreshOk ? "Atualizado" : "Atualizar clientes"}
           </button>
         </header>
 
         {erro ? (
           <div className="clientes-premium-alert is-error" role="alert">
-            <AlertTriangle size={19} />
+            <AppIcon icon={appIcons.alerta} size={19} />
             <span>{erro}</span>
           </div>
         ) : null}
 
         {msg ? (
           <div className="clientes-premium-alert is-success" role="status">
-            <CheckCircle2 size={19} />
+            <AppIcon icon={appIcons.sucesso} size={19} />
             <span>{msg}</span>
           </div>
         ) : null}
@@ -395,7 +382,7 @@ export default function Clientes() {
             onClick={() => aplicarFiltroResumo("all")}
             aria-pressed={filtroResumo === "all"}
           >
-            <span><Users size={22} /></span>
+            <span><AppIcon icon={appIcons.clientes} size={22} /></span>
             <div>
               <strong>Total</strong>
               <b>{stats.total}</b>
@@ -409,7 +396,7 @@ export default function Clientes() {
             onClick={() => aplicarFiltroResumo("with_phone")}
             aria-pressed={filtroResumo === "with_phone"}
           >
-            <span><Phone size={22} /></span>
+            <span><AppIcon icon={appIcons.telefone} size={22} /></span>
             <div>
               <strong>Com telefone</strong>
               <b>{stats.comTelefone}</b>
@@ -423,7 +410,7 @@ export default function Clientes() {
             onClick={() => aplicarFiltroResumo("with_email")}
             aria-pressed={filtroResumo === "with_email"}
           >
-            <span><Mail size={22} /></span>
+            <span><AppIcon icon={appIcons.email} size={22} /></span>
             <div>
               <strong>Com email</strong>
               <b>{stats.comEmail}</b>
@@ -437,7 +424,7 @@ export default function Clientes() {
             onClick={() => aplicarFiltroResumo("without_email")}
             aria-pressed={filtroResumo === "without_email"}
           >
-            <span><AlertTriangle size={22} /></span>
+            <span><AppIcon icon={appIcons.alerta} size={22} /></span>
             <div>
               <strong>Sem email</strong>
               <b>{stats.semEmail}</b>
@@ -449,7 +436,7 @@ export default function Clientes() {
         <div className="clientes-premium-grid">
           <article className="clientes-premium-card clientes-premium-card--form">
             <div className="clientes-premium-card-head">
-              <span><Plus size={21} /></span>
+              <span><AppIcon icon={appIcons.adicionar} size={21} /></span>
               <div>
                 <h2>Novo cliente</h2>
                 <p>Dados mínimos para atendimento e criação de OS.</p>
@@ -495,7 +482,7 @@ export default function Clientes() {
               </label>
 
               <button type="submit" disabled={loading} className="clientes-premium-primary-action">
-                <Plus size={18} />
+                <AppIcon icon={appIcons.adicionar} size={18} />
                 {loading ? "Salvando..." : "Cadastrar cliente"}
               </button>
             </form>
@@ -503,7 +490,7 @@ export default function Clientes() {
 
           <article className="clientes-premium-card clientes-premium-card--filter">
             <div className="clientes-premium-card-head">
-              <span><Search size={21} /></span>
+              <span><AppIcon icon={appIcons.pesquisar} size={21} /></span>
               <div>
                 <h2>Buscar cliente</h2>
                 <p>Localize por nome, email ou telefone.</p>
@@ -512,7 +499,7 @@ export default function Clientes() {
 
             <div className="clientes-premium-search-tools">
               <label className="clientes-premium-search-field">
-                <Search size={18} />
+                <AppIcon icon={appIcons.pesquisar} size={18} />
                 <input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
@@ -528,13 +515,13 @@ export default function Clientes() {
 
               <div className="clientes-premium-search-actions">
                 <button type="button" className="clientes-premium-search-action" onClick={handleBuscarClientes}>
-                  <Search size={17} />
+                  <AppIcon icon={appIcons.pesquisar} size={17} />
                   Buscar
                 </button>
 
                 {busca || filtroResumo !== "all" ? (
                   <button type="button" className="clientes-premium-search-clear" onClick={limparFiltrosClientes}>
-                    <X size={17} />
+                    <AppIcon icon={appIcons.fechar} size={17} />
                     Limpar
                   </button>
                 ) : null}
@@ -542,7 +529,7 @@ export default function Clientes() {
             </div>
 
             <div className="clientes-premium-info-note">
-              <ShieldCheck size={18} />
+              <AppIcon icon={appIcons.seguranca} size={18} />
               <span>Dados de clientes ficam vinculados à empresa logada pelo isolamento multi-tenant.</span>
             </div>
           </article>
@@ -561,13 +548,13 @@ export default function Clientes() {
 
             <div className="clientes-premium-list-head-actions">
               <div className="clientes-premium-count-pill">
-                <Users size={17} />
+                <AppIcon icon={appIcons.clientes} size={17} />
                 {clientesFiltrados.length} clientes
               </div>
 
               {temFiltroAtivo ? (
                 <button type="button" className="clientes-premium-list-clear-filter" onClick={limparFiltrosClientes}>
-                  <X size={15} />
+                  <AppIcon icon={appIcons.fechar} size={15} />
                   Limpar filtros
                 </button>
               ) : null}
@@ -640,12 +627,12 @@ export default function Clientes() {
                             disabled={savingEdit}
                             className="clientes-premium-save-action"
                           >
-                            <CheckCircle2 size={17} />
+                            <AppIcon icon={appIcons.sucesso} size={17} />
                             {savingEdit ? "Salvando..." : "Salvar alterações"}
                           </button>
 
                           <button type="button" onClick={cancelarEdicao} className="clientes-premium-ghost-action">
-                            <X size={17} />
+                            <AppIcon icon={appIcons.fechar} size={17} />
                             Cancelar
                           </button>
                         </div>
@@ -662,7 +649,7 @@ export default function Clientes() {
 
                         <div className="clientes-premium-contact-grid">
                           <div className="clientes-premium-contact-tile">
-                            <Mail size={17} />
+                            <AppIcon icon={appIcons.email} size={17} />
                             <div>
                               <small>Email</small>
                               <span>{cliente.email || "Sem email"}</span>
@@ -670,7 +657,7 @@ export default function Clientes() {
                           </div>
 
                           <div className="clientes-premium-contact-tile">
-                            <Phone size={17} />
+                            <AppIcon icon={appIcons.telefone} size={17} />
                             <div>
                               <small>Telefone</small>
                               <span>{formatPhone(cliente.telefone)}</span>
@@ -684,7 +671,7 @@ export default function Clientes() {
                             onClick={() => iniciarEdicao(cliente)}
                             className="clientes-premium-ghost-action"
                           >
-                            <Edit3 size={17} />
+                            <AppIcon icon={appIcons.editar} size={17} />
                             Editar
                           </button>
 
@@ -695,7 +682,7 @@ export default function Clientes() {
                               disabled={deletingId === cliente.id}
                               className="clientes-premium-danger-action"
                             >
-                              <Trash2 size={17} />
+                              <AppIcon icon={appIcons.excluir} size={17} />
                               {deletingId === cliente.id ? "Excluindo..." : "Excluir"}
                             </button>
                           ) : null}
