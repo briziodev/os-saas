@@ -31,6 +31,8 @@ export const appIcons = {
   salvar: "mdi:content-save-outline",
   voltar: "mdi:arrow-left",
   whatsapp: "mdi:whatsapp",
+  senha: "mdi:lock-outline",
+  indicadores: "mdi:chart-bar",
   info: "mdi:information-outline",
   copiar: "mdi:content-copy",
   enviar: "mdi:send-outline",

@@ -1,16 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ShieldCheck,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ClipboardList,
-  Users,
-  Wallet,
-  BarChart3,
-} from "lucide-react";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import { apiFetch, setToken } from "../api";
 import "./Login.css";
 
@@ -100,7 +91,7 @@ export default function Login() {
             </div>
 
             <div className="login-premium-safe-pill">
-              <ShieldCheck size={18} strokeWidth={2.3} />
+              <AppIcon icon={appIcons.seguranca} size={18} />
               <span>Sistema seguro</span>
             </div>
           </div>
@@ -118,7 +109,7 @@ export default function Login() {
             <div className="login-premium-feature-list">
               <div className="login-premium-feature-item">
                 <div className="login-premium-feature-icon" aria-hidden="true">
-                  <ClipboardList size={25} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.os} size={25} />
                 </div>
 
                 <div>
@@ -129,7 +120,7 @@ export default function Login() {
 
               <div className="login-premium-feature-item">
                 <div className="login-premium-feature-icon" aria-hidden="true">
-                  <Users size={25} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.clientes} size={25} />
                 </div>
 
                 <div>
@@ -140,7 +131,7 @@ export default function Login() {
 
               <div className="login-premium-feature-item">
                 <div className="login-premium-feature-icon" aria-hidden="true">
-                  <Wallet size={25} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.financeiro} size={25} />
                 </div>
 
                 <div>
@@ -151,7 +142,7 @@ export default function Login() {
 
               <div className="login-premium-feature-item">
                 <div className="login-premium-feature-icon" aria-hidden="true">
-                  <BarChart3 size={25} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.indicadores} size={25} />
                 </div>
 
                 <div>
@@ -170,7 +161,7 @@ export default function Login() {
 
         <section className="login-premium-card" aria-label="Acesso à conta">
           <div className="login-premium-card-icon" aria-hidden="true">
-            <Lock size={30} strokeWidth={2.2} />
+            <AppIcon icon={appIcons.senha} size={30} />
           </div>
 
           <div className="login-premium-card-head">
@@ -184,7 +175,7 @@ export default function Login() {
 
               <div className="login-premium-input-wrap">
                 <span className="login-premium-input-icon" aria-hidden="true">
-                  <Mail size={21} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.email} size={21} />
                 </span>
 
                 <input
@@ -206,7 +197,7 @@ export default function Login() {
 
               <div className="login-premium-input-wrap">
                 <span className="login-premium-input-icon" aria-hidden="true">
-                  <Lock size={21} strokeWidth={2.2} />
+                  <AppIcon icon={appIcons.senha} size={21} />
                 </span>
 
                 <input
@@ -227,9 +218,9 @@ export default function Login() {
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? (
-                    <EyeOff size={20} strokeWidth={2.2} />
+                    <AppIcon icon={appIcons.esconder} size={20} />
                   ) : (
-                    <Eye size={20} strokeWidth={2.2} />
+                    <AppIcon icon={appIcons.visualizar} size={20} />
                   )}
                 </button>
               </div>
@@ -245,7 +236,7 @@ export default function Login() {
 
           <div className="login-premium-security-note">
             <div className="login-premium-security-icon" aria-hidden="true">
-              <ShieldCheck size={24} strokeWidth={2.2} />
+              <AppIcon icon={appIcons.seguranca} size={24} />
             </div>
 
             <div>
