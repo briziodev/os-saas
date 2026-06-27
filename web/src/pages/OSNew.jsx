@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import "./OSNew.css";
 
 const MAX_RESULTADOS = 5;
+
+const OSNEW_ICON_MAP = {
+  "arrow-left": appIcons.voltar,
+  grid: appIcons.dashboard,
+  user: appIcons.usuario,
+  "user-plus": appIcons.convidarUsuario,
+  search: appIcons.pesquisar,
+  car: appIcons.veiculo,
+  clipboard: appIcons.os,
+  receipt: appIcons.financeiro,
+  plus: appIcons.adicionar,
+  x: appIcons.fechar,
+  save: appIcons.salvar,
+  check: appIcons.sucesso,
+  alert: appIcons.alerta,
+  loader: appIcons.atualizar,
+  refresh: appIcons.atualizar,
+  dot: appIcons.info,
+};
 
 export default function OSNew() {
   const token = useMemo(() => localStorage.getItem("token"), []);
@@ -748,121 +769,14 @@ function SummaryItem({ ok, label, value }) {
 }
 
 function SvgIcon({ name }) {
-  const icons = {
-    "arrow-left": (
-      <>
-        <path d="M19 12H5" />
-        <path d="m12 19-7-7 7-7" />
-      </>
-    ),
-    grid: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </>
-    ),
-    user: (
-      <>
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21a8 8 0 0 1 16 0" />
-      </>
-    ),
-    "user-plus": (
-      <>
-        <circle cx="9" cy="8" r="4" />
-        <path d="M3 21a6 6 0 0 1 12 0" />
-        <path d="M19 8v6" />
-        <path d="M16 11h6" />
-      </>
-    ),
-    search: (
-      <>
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-3.5-3.5" />
-      </>
-    ),
-    car: (
-      <>
-        <path d="M5 17h14" />
-        <path d="M6 17v-5l2-5h8l2 5v5" />
-        <circle cx="8" cy="17" r="2" />
-        <circle cx="16" cy="17" r="2" />
-      </>
-    ),
-    clipboard: (
-      <>
-        <path d="M9 4h6" />
-        <path d="M9 4a3 3 0 0 0 6 0" />
-        <rect x="5" y="4" width="14" height="17" rx="2" />
-        <path d="M8 12h8" />
-        <path d="M8 16h5" />
-      </>
-    ),
-    receipt: (
-      <>
-        <path d="M6 2v20l3-2 3 2 3-2 3 2V2Z" />
-        <path d="M9 7h6" />
-        <path d="M9 11h6" />
-        <path d="M9 15h4" />
-      </>
-    ),
-    plus: (
-      <>
-        <path d="M12 5v14" />
-        <path d="M5 12h14" />
-      </>
-    ),
-    x: (
-      <>
-        <path d="M18 6 6 18" />
-        <path d="m6 6 12 12" />
-      </>
-    ),
-    save: (
-      <>
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
-        <path d="M17 21v-8H7v8" />
-        <path d="M7 3v5h8" />
-      </>
-    ),
-    check: <path d="m5 12 4 4L19 6" />,
-    alert: (
-      <>
-        <path d="M12 9v4" />
-        <path d="M12 17h.01" />
-        <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" />
-      </>
-    ),
-    loader: (
-      <>
-        <path d="M21 12a9 9 0 1 1-6.2-8.56" />
-      </>
-    ),
-    refresh: (
-      <>
-        <path d="M21 12a9 9 0 0 1-15.3 6.4" />
-        <path d="M3 12a9 9 0 0 1 15.3-6.4" />
-        <path d="M3 3v6h6" />
-        <path d="M21 21v-6h-6" />
-      </>
-    ),
-    dot: <circle cx="12" cy="12" r="3" />,
-  };
-
   return (
-    <svg
-      className="osnew-premium-svg-icon"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {icons[name] || icons.dot}
-    </svg>
+    <AppIcon
+      icon={OSNEW_ICON_MAP[name] || appIcons.info}
+      className="osnew-premium-iconify-icon"
+      size={20}
+    />
   );
 }
-
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
 }
