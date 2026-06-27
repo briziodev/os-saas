@@ -2767,3 +2767,160 @@
   outline: 3px solid rgba(37, 99, 235, 0.35);
   outline-offset: 4px;
 }
+
+/* Iconify Dashboard - bell button only */
+.dashboard-premium-notification-button,
+.dashboard-premium-mobile-bell {
+  position: relative !important;
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  line-height: 1 !important;
+}
+
+.dashboard-premium-bell-icon {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translate(-50%, -50%) !important;
+  line-height: 0 !important;
+  pointer-events: none !important;
+}
+
+.dashboard-premium-bell-icon .app-icon {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+}
+
+.dashboard-premium-bell-badge {
+  position: absolute !important;
+  top: -8px !important;
+  right: -8px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  z-index: 3 !important;
+}
+
+/* Iconify Dashboard - notification card text containment */
+.dashboard-premium-notification-item {
+  min-height: auto !important;
+  height: auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+.dashboard-premium-notification-item-body {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+}
+
+.dashboard-premium-notification-item-body strong,
+.dashboard-premium-notification-item-body small {
+  display: block !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.dashboard-premium-notification-item-body strong {
+  line-height: 1.15 !important;
+  margin-bottom: 3px !important;
+}
+
+.dashboard-premium-notification-item-body small {
+  line-height: 1.25 !important;
+}
+
+.dashboard-premium-notification-item-icon {
+  flex: 0 0 48px !important;
+}
+
+.dashboard-premium-notification-count {
+  flex: 0 0 auto !important;
+}
+
+/* Iconify Dashboard - notification panel item layout */
+.dashboard-premium-notification-item {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) 44px !important;
+  align-items: center !important;
+  column-gap: 12px !important;
+  min-height: 76px !important;
+  height: auto !important;
+  padding: 10px 12px !important;
+  overflow: hidden !important;
+}
+
+.dashboard-premium-notification-item-icon {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+
+.dashboard-premium-notification-item-body {
+  min-width: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-self: center !important;
+  gap: 3px !important;
+  overflow: hidden !important;
+}
+
+.dashboard-premium-notification-item-body strong {
+  display: block !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.dashboard-premium-notification-item-body small {
+  display: block !important;
+  line-height: 1.25 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.dashboard-premium-notification-item > .dashboard-premium-notification-count {
+  position: static !important;
+  align-self: center !important;
+  justify-self: end !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+}
