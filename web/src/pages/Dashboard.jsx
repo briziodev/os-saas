@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import "./Dashboard.css";
 
 const STATUS_LABEL = {
@@ -262,7 +264,7 @@ export default function Dashboard() {
             />
 
             <SmallMetricCard
-              icon="▣"
+              icon={appIcons.osAbertas}
               title="OS abertas"
               value={cards?.abertas_periodo ?? 0}
               hint="Serviços registrados no período"
@@ -272,7 +274,7 @@ export default function Dashboard() {
             />
 
             <SmallMetricCard
-              icon="↻"
+              icon={appIcons.osAndamento}
               title="Em andamento"
               value={cards?.em_andamento ?? 0}
               hint="OS ainda em execução"
@@ -282,7 +284,7 @@ export default function Dashboard() {
             />
 
             <SmallMetricCard
-              icon="⚠"
+              icon={appIcons.orcamentosPendentes}
               title="Orçamentos pendentes"
               value={cards?.orcamentos_pendentes ?? 0}
               hint="Aguardando aprovação"
@@ -292,7 +294,7 @@ export default function Dashboard() {
             />
 
             <SmallMetricCard
-              icon="✓"
+              icon={appIcons.finalizados}
               title="Finalizadas"
               value={cards?.finalizados_no_periodo ?? 0}
               hint="Concluídas no período"
@@ -359,11 +361,11 @@ function DesktopSidebar({ user, isAdmin, onLogout }) {
       </div>
 
       <nav className="dashboard-premium-menu">
-        <SidebarLink to="/dashboard" icon="▦" label="Dashboard" active />
-        <SidebarLink to="/os" icon="▤" label="OS" />
-        <SidebarLink to="/kanban" icon="▥" label="Quadro de OS" />
-        <SidebarLink to="/clientes" icon="◎" label="Clientes" />
-        {isAdmin ? <SidebarLink to="/usuarios" icon="◌" label="Usuários" /> : null}
+        <SidebarLink to="/dashboard" icon={appIcons.dashboard} label="Dashboard" active />
+        <SidebarLink to="/os" icon={appIcons.os} label="OS" />
+        <SidebarLink to="/kanban" icon={appIcons.kanban} label="Quadro de OS" />
+        <SidebarLink to="/clientes" icon={appIcons.clientes} label="Clientes" />
+        {isAdmin ? <SidebarLink to="/usuarios" icon={appIcons.usuarios} label="Usuários" /> : null}
       </nav>
 
       <div className="dashboard-premium-sidebar-footer">
@@ -391,7 +393,7 @@ function SidebarLink({ to, icon, label, active = false }) {
       to={to}
       className={`dashboard-premium-menu-item ${active ? "is-active" : ""}`}
     >
-      <span aria-hidden="true">{icon}</span>
+      <AppIcon icon={icon} size={18} />
       {label}
     </Link>
   );
@@ -437,7 +439,7 @@ function TopHeader({
             aria-expanded={isNotificationOpen}
             onClick={onToggleNotifications}
           >
-            🔔
+            <AppIcon icon={appIcons.alertas} size={18} />
             {notificationTotal > 0 ? <span>{notificationTotal}</span> : null}
           </button>
 
@@ -481,8 +483,10 @@ function MobileHeader({
           className="dashboard-premium-mobile-bell"
           onClick={onToggleNotifications}
         >
-          🔔
-          {notificationTotal > 0 ? <span>{notificationTotal}</span> : null}
+          <i className="dashboard-premium-bell-icon" aria-hidden="true">
+            <AppIcon icon={appIcons.alertas} size={18} />
+          </i>
+          {notificationTotal > 0 ? <span className="dashboard-premium-bell-badge">{notificationTotal}</span> : null}
         </button>
 
         {isNotificationOpen ? (
@@ -522,7 +526,7 @@ function NotificationPanel({ notifications, mobile = false }) {
               className={`dashboard-premium-notification-item is-${item.severity || "info"}`}
             >
               <span className="dashboard-premium-notification-item-icon" aria-hidden="true">
-                {notificationIcon(item.key)}
+                <AppIcon icon={notificationIcon(item.key)} size={18} />
               </span>
               <span className="dashboard-premium-notification-item-body">
                 <strong>{item.title}</strong>
@@ -560,7 +564,7 @@ function MobileNotificationSummary({
         onClick={onToggleNotifications}
       >
         <span className="dashboard-mobile-notification-icon" aria-hidden="true">
-          🔔
+          <AppIcon icon={appIcons.alertas} size={18} />
           {notificationTotal > 0 ? <em>{notificationTotal}</em> : null}
         </span>
         <span>
@@ -577,13 +581,13 @@ function MobileNotificationSummary({
 }
 
 function notificationIcon(key) {
-  if (key === "aguardando_aprovacao" || key === "orcamento_enviado") return "⚠";
-  if (key === "aguardando_peca") return "▣";
-  if (key === "pronto_retirada") return "✓";
-  if (key === "em_execucao") return "↻";
-  if (key === "em_analise") return "⌕";
-  if (key === "aprovado") return "✓";
-  return "•";
+  if (key === "aguardando_aprovacao" || key === "orcamento_enviado") return appIcons.orcamentosPendentes;
+  if (key === "aguardando_peca") return appIcons.aguardandoPeca;
+  if (key === "pronto_retirada") return appIcons.finalizados;
+  if (key === "em_execucao") return appIcons.emExecucao;
+  if (key === "em_analise") return appIcons.emAnalise;
+  if (key === "aprovado") return appIcons.aprovado;
+  return appIcons.alertas;
 }
 
 function MobileMenuOverlay({ isOpen, user, isAdmin, onClose, onLogout }) {
@@ -619,12 +623,12 @@ function MobileMenuOverlay({ isOpen, user, isAdmin, onClose, onLogout }) {
         </div>
 
         <nav className="dashboard-premium-mobile-menu-links">
-          <MobileMenuLink to="/dashboard" label="Dashboard" icon="▦" active onClose={onClose} />
-          <MobileMenuLink to="/os" label="OS" icon="▤" onClose={onClose} />
-          <MobileMenuLink to="/kanban" label="Quadro de OS" icon="▥" onClose={onClose} />
-          <MobileMenuLink to="/clientes" label="Clientes" icon="◎" onClose={onClose} />
+          <MobileMenuLink to="/dashboard" label="Dashboard" icon={appIcons.dashboard} active onClose={onClose} />
+          <MobileMenuLink to="/os" label="OS" icon={appIcons.os} onClose={onClose} />
+          <MobileMenuLink to="/kanban" label="Quadro de OS" icon={appIcons.kanban} onClose={onClose} />
+          <MobileMenuLink to="/clientes" label="Clientes" icon={appIcons.clientes} onClose={onClose} />
           {isAdmin ? (
-            <MobileMenuLink to="/usuarios" label="Usuários" icon="◌" onClose={onClose} />
+            <MobileMenuLink to="/usuarios" label="Usuários" icon={appIcons.usuarios} onClose={onClose} />
           ) : null}
         </nav>
 
@@ -657,7 +661,7 @@ function MobileMenuLink({ to, label, icon, active = false, onClose }) {
       onClick={onClose}
       className={`dashboard-premium-mobile-menu-link ${active ? "is-active" : ""}`}
     >
-      <span aria-hidden="true">{icon}</span>
+      <AppIcon icon={icon} size={18} />
       {label}
     </Link>
   );
@@ -676,7 +680,7 @@ function PeriodControls({
   return (
     <div className={`dashboard-premium-period ${compact ? "is-compact" : ""}`}>
       <div className="dashboard-premium-period-select">
-        <span aria-hidden="true">📅</span>
+        <AppIcon icon={appIcons.calendario} size={18} />
         <select value={period} onChange={(e) => setPeriod(e.target.value)}>
           {PERIOD_OPTIONS.map((item) => (
             <option key={item.value} value={item.value}>
@@ -748,7 +752,7 @@ function MainMetricCard({
           }
           title={isFinancialVisible ? "Ocultar faturamento" : "Mostrar faturamento"}
         >
-          {isFinancialVisible ? <EyeOffIcon /> : <EyeIcon />}
+          {isFinancialVisible ? <AppIcon icon={appIcons.esconder} size={18} /> : <AppIcon icon={appIcons.visualizar} size={18} />}
         </button>
       </div>
       <strong className={isFinancialVisible ? "" : "is-hidden-money"}>
@@ -771,7 +775,7 @@ function SmallMetricCard({ icon, title, value, hint, tone, to, ariaLabel }) {
   const content = (
     <>
       <div className="dashboard-premium-small-icon" aria-hidden="true">
-        {icon}
+        <AppIcon icon={icon} size={22} />
       </div>
       <div>
         <span>{title}</span>
@@ -909,54 +913,6 @@ function OrderMobileCard({ os, canShowFinancials }) {
 }
 
 
-function EyeIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M10.6 10.6a2 2 0 0 0 2.8 2.8"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.1 7.5C4.1 9.2 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.8 0 3.3-.4 4.6-1.1"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 5.5c6 0 9.5 6.5 9.5 6.5a15.6 15.6 0 0 1-2.2 2.8"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function MobileBottomNav({ isAdmin, onLogout }) {
   return (
