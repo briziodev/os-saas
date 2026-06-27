@@ -1,30 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  BarChart3,
-  CheckCircle2,
-  ClipboardList,
-  Copy,
-  Filter,
-  Headphones,
-  Info,
-  LayoutDashboard,
-  Mail,
-  MessageCircle,
-  Phone,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Send,
-  ShieldCheck,
-  UserCheck,
-  UserCog,
-  UserPlus,
-  UserX,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import { apiFetch } from "../api";
 import "./Usuarios.css";
 
@@ -285,34 +262,34 @@ export default function Usuarios() {
 
         <nav className="usuarios-status-menu" aria-label="Navegação">
           <Link to="/dashboard">
-            <LayoutDashboard size={19} />
+            <AppIcon icon={appIcons.dashboard} size={19} />
             <span>Dashboard</span>
           </Link>
 
           <Link to="/os">
-            <ClipboardList size={19} />
+            <AppIcon icon={appIcons.os} size={19} />
             <span>OS</span>
           </Link>
 
           <Link to="/kanban">
-            <BarChart3 size={19} />
+            <AppIcon icon={appIcons.kanban} size={19} />
             <span>Quadro de OS</span>
           </Link>
 
           <Link to="/clientes">
-            <Users size={19} />
+            <AppIcon icon={appIcons.clientes} size={19} />
             <span>Clientes</span>
           </Link>
 
           <Link to="/usuarios" className="is-active">
-            <UserCog size={19} />
+            <AppIcon icon={appIcons.usuarios} size={19} />
             <span>Usuários</span>
           </Link>
         </nav>
 
         <div className="usuarios-status-sidebar-footer">
           <div className="usuarios-status-side-card">
-            <ShieldCheck size={18} />
+            <AppIcon icon={appIcons.seguranca} size={18} />
             <div>
               <strong>Administração</strong>
               <span>Acessos e permissões</span>
@@ -340,7 +317,7 @@ export default function Usuarios() {
           </div>
 
           <Link to="/dashboard" className="usuarios-status-mobile-dashboard">
-            <LayoutDashboard size={18} />
+            <AppIcon icon={appIcons.dashboard} size={18} />
             <span>Dashboard</span>
           </Link>
 
@@ -360,12 +337,12 @@ export default function Usuarios() {
 
             <div className="usuarios-status-header-actions">
               <Link to="/dashboard" className="usuarios-status-button is-light">
-                <LayoutDashboard size={17} />
+                <AppIcon icon={appIcons.dashboard} size={17} />
                 Dashboard
               </Link>
 
               <a href="#usuarios-convite" className="usuarios-status-button is-primary">
-                <UserPlus size={17} />
+                <AppIcon icon={appIcons.convidarUsuario} size={17} />
                 Convidar usuário
               </a>
             </div>
@@ -373,24 +350,24 @@ export default function Usuarios() {
 
           {error ? (
             <div className="usuarios-status-alert is-error">
-              <AlertTriangle size={18} />
+              <AppIcon icon={appIcons.alerta} size={18} />
               <span>Erro: {error}</span>
             </div>
           ) : null}
 
           {notice ? (
             <div className="usuarios-status-alert is-success">
-              <CheckCircle2 size={18} />
+              <AppIcon icon={appIcons.sucesso} size={18} />
               <span>{notice}</span>
             </div>
           ) : null}
 
           <section className="usuarios-status-stats" aria-label="Resumo dos usuários">
-            <StatCard icon={<Users size={24} />} label="Total" value={stats.total} helper="Usuários cadastrados" active={statusFilter === "all"} onClick={() => setStatusFilter("all")} tone="blue" />
-            <StatCard icon={<UserCheck size={24} />} label="Ativos" value={stats.active} helper="Com acesso ativo" active={statusFilter === "active"} onClick={() => setStatusFilter("active")} tone="green" />
-            <StatCard icon={<Info size={24} />} label="Pendentes" value={stats.pending} helper="Convite válido" active={statusFilter === "pending"} onClick={() => setStatusFilter("pending")} tone="orange" />
-            <StatCard icon={<AlertTriangle size={24} />} label="Expirados" value={stats.expired} helper="Precisa reenviar" active={statusFilter === "expired"} onClick={() => setStatusFilter("expired")} tone="red" />
-            <StatCard icon={<UserX size={24} />} label="Inativos" value={stats.inactive} helper="Já ativados antes" active={statusFilter === "inactive"} onClick={() => setStatusFilter("inactive")} tone="gray" />
+            <StatCard icon={<AppIcon icon={appIcons.usuarios} size={24} />} label="Total" value={stats.total} helper="Usuários cadastrados" active={statusFilter === "all"} onClick={() => setStatusFilter("all")} tone="blue" />
+            <StatCard icon={<AppIcon icon={appIcons.usuarioAtivo} size={24} />} label="Ativos" value={stats.active} helper="Com acesso ativo" active={statusFilter === "active"} onClick={() => setStatusFilter("active")} tone="green" />
+            <StatCard icon={<AppIcon icon={appIcons.info} size={24} />} label="Pendentes" value={stats.pending} helper="Convite válido" active={statusFilter === "pending"} onClick={() => setStatusFilter("pending")} tone="orange" />
+            <StatCard icon={<AppIcon icon={appIcons.alerta} size={24} />} label="Expirados" value={stats.expired} helper="Precisa reenviar" active={statusFilter === "expired"} onClick={() => setStatusFilter("expired")} tone="red" />
+            <StatCard icon={<AppIcon icon={appIcons.usuarioInativo} size={24} />} label="Inativos" value={stats.inactive} helper="Já ativados antes" active={statusFilter === "inactive"} onClick={() => setStatusFilter("inactive")} tone="gray" />
           </section>
 
           {inviteResult ? (
@@ -408,13 +385,13 @@ export default function Usuarios() {
 
               <div className="usuarios-status-result-actions">
                 <button type="button" className="usuarios-status-button is-light" onClick={copyInviteLink}>
-                  <Copy size={16} />
+                  <AppIcon icon={appIcons.copiar} size={16} />
                   {copiedInvite ? "Copiado!" : "Copiar link"}
                 </button>
 
                 {inviteResult.whatsapp_link ? (
                   <a href={inviteResult.whatsapp_link} target="_blank" rel="noreferrer" className="usuarios-status-button is-primary">
-                    <MessageCircle size={16} />
+                    <AppIcon icon={appIcons.whatsapp} size={16} />
                     Abrir WhatsApp
                   </a>
                 ) : null}
@@ -425,7 +402,7 @@ export default function Usuarios() {
           <section className="usuarios-status-workgrid">
             <form id="usuarios-convite" className="usuarios-status-panel" onSubmit={handleInvite}>
               <div className="usuarios-status-panel-title">
-                <UserPlus size={20} />
+                <AppIcon icon={appIcons.convidarUsuario} size={20} />
                 <strong>Convidar novo usuário</strong>
               </div>
 
@@ -443,7 +420,7 @@ export default function Usuarios() {
                 <label>
                   <span>Telefone para WhatsApp (opcional)</span>
                   <div className="usuarios-status-input-icon">
-                    <Phone size={17} />
+                    <AppIcon icon={appIcons.telefone} size={17} />
                     <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Ex.: 44999887766" />
                   </div>
                 </label>
@@ -459,33 +436,33 @@ export default function Usuarios() {
 
               <div className="usuarios-status-role-help">
                 <div>
-                  <ShieldCheck size={18} />
+                  <AppIcon icon={appIcons.seguranca} size={18} />
                   <strong>Admin</strong>
                   <span>Acesso total ao sistema.</span>
                 </div>
 
                 <div>
-                  <Headphones size={18} />
+                  <AppIcon icon={appIcons.atendimento} size={18} />
                   <strong>Atendimento</strong>
                   <span>Cria clientes e acompanha OS.</span>
                 </div>
 
                 <div>
-                  <Wrench size={18} />
+                  <AppIcon icon={appIcons.tecnico} size={18} />
                   <strong>Técnico</strong>
                   <span>Atualiza andamento das OS.</span>
                 </div>
               </div>
 
               <button type="submit" disabled={submitting} className="usuarios-status-button is-primary is-full">
-                <Send size={17} />
+                <AppIcon icon={appIcons.enviar} size={17} />
                 {submitting ? "Enviando..." : "Enviar convite"}
               </button>
             </form>
 
             <section className="usuarios-status-panel">
               <div className="usuarios-status-panel-title">
-                <Filter size={20} />
+                <AppIcon icon={appIcons.filtrar} size={20} />
                 <strong>Filtros</strong>
               </div>
 
@@ -493,7 +470,7 @@ export default function Usuarios() {
                 <label className="is-full">
                   <span>Buscar por nome, email ou telefone</span>
                   <div className="usuarios-status-input-icon">
-                    <Search size={17} />
+                    <AppIcon icon={appIcons.pesquisar} size={17} />
                     <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Digite nome, email ou telefone" />
                   </div>
                 </label>
@@ -517,18 +494,18 @@ export default function Usuarios() {
                 </label>
 
                 <button type="button" className="usuarios-status-button is-primary">
-                  <Filter size={16} />
+                  <AppIcon icon={appIcons.filtrar} size={16} />
                   Aplicar filtros
                 </button>
 
                 <button type="button" className="usuarios-status-button is-light" onClick={clearFilters}>
-                  <RotateCcw size={16} />
+                  <AppIcon icon={appIcons.resetar} size={16} />
                   Limpar
                 </button>
               </div>
 
               <div className="usuarios-status-note">
-                <Info size={17} />
+                <AppIcon icon={appIcons.info} size={17} />
                 <span>Convite pendente ou expirado não deve ser ativado manualmente. Use Reenviar convite.</span>
               </div>
             </section>
@@ -538,14 +515,14 @@ export default function Usuarios() {
             <div className="usuarios-status-list-head">
               <div>
                 <div className="usuarios-status-panel-title">
-                  <Users size={20} />
+                  <AppIcon icon={appIcons.usuarios} size={20} />
                   <strong>Usuários da empresa</strong>
                 </div>
                 <p>Mostrando {filteredUsers.length} de {users.length} usuários</p>
               </div>
 
               <button type="button" className="usuarios-status-button is-light" onClick={loadUsers}>
-                <RefreshCw size={16} />
+                <AppIcon icon={appIcons.atualizar} size={16} />
                 Atualizar
               </button>
             </div>
@@ -612,22 +589,22 @@ export default function Usuarios() {
 
         <nav className="usuarios-status-bottom-nav" aria-label="Navegação mobile">
           <Link to="/dashboard">
-            <LayoutDashboard size={21} />
+            <AppIcon icon={appIcons.dashboard} size={21} />
             <span>Dashboard</span>
           </Link>
 
           <Link to="/os">
-            <ClipboardList size={21} />
+            <AppIcon icon={appIcons.os} size={21} />
             <span>OS</span>
           </Link>
 
           <Link to="/clientes">
-            <Users size={21} />
+            <AppIcon icon={appIcons.clientes} size={21} />
             <span>Clientes</span>
           </Link>
 
           <Link to="/usuarios" className="is-active">
-            <UserCog size={21} />
+            <AppIcon icon={appIcons.usuarios} size={21} />
             <span>Usuários</span>
           </Link>
         </nav>
@@ -693,7 +670,7 @@ function UserMobileCard({ user, currentUser, copiedUserId, busyId, onChangeRole,
       </div>
 
       <div className="usuarios-status-mobile-line">
-        <Mail size={15} />
+        <AppIcon icon={appIcons.email} size={15} />
         <span>{user.email || "-"}</span>
       </div>
 
@@ -772,7 +749,7 @@ function PhoneValue({ phone }) {
 
   return (
     <a className="usuarios-status-whatsapp" href={buildWhatsappProfileLink(phone)} target="_blank" rel="noreferrer">
-      <MessageCircle size={15} />
+      <AppIcon icon={appIcons.whatsapp} size={15} />
       <span>{formatPhone(phone)}</span>
     </a>
   );
@@ -785,7 +762,7 @@ function Badge({ className, children }) {
 function AccessPill({ user, state, mobile = false }) {
   return (
     <div className={`usuarios-status-access ${state.accessClass} ${mobile ? "is-mobile" : ""}`}>
-      {state.requiresInviteActivation ? <AlertTriangle size={15} /> : user?.is_active ? <CheckCircle2 size={15} /> : <UserX size={15} />}
+      {state.requiresInviteActivation ? <AppIcon icon={appIcons.alerta} size={15} /> : user?.is_active ? <AppIcon icon={appIcons.sucesso} size={15} /> : <AppIcon icon={appIcons.usuarioInativo} size={15} />}
       <span>{getAccessText(user, state)}</span>
     </div>
   );
