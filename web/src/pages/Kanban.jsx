@@ -1,98 +1,58 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import "./Kanban.css";
 
 const INITIAL_VISIBLE_PER_COLUMN = 4;
 
 
-const ICON_PATHS = {
-  dashboard: [
-    "M3 3h7v7H3z",
-    "M14 3h7v7h-7z",
-    "M14 14h7v7h-7z",
-    "M3 14h7v7H3z",
-  ],
-  clipboard: [
-    "M9 5h6",
-    "M9 3h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1V5a2 2 0 0 1 2-2z",
-    "M9 12h6",
-    "M9 16h6",
-  ],
-  kanban: [
-    "M4 5h16",
-    "M6 9h4v10H6z",
-    "M12 9h4v7h-4z",
-    "M18 9h2v4h-2z",
-  ],
-  users: [
-    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
-    "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    "M22 21v-2a4 4 0 0 0-3-3.87",
-    "M16 3.13a4 4 0 0 1 0 7.75",
-  ],
-  userCog: [
-    "M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
-    "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    "M19 8v4",
-    "M21 10h-4",
-    "M19 5.5v.01",
-    "M19 14.5v.01",
-  ],
-  plus: ["M12 5v14", "M5 12h14"],
-  refresh: [
-    "M21 12a9 9 0 0 1-15.5 6.2",
-    "M3 12a9 9 0 0 1 15.5-6.2",
-    "M18 3v4h-4",
-    "M6 21v-4h4",
-  ],
-  bell: [
-    "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9",
-    "M13.73 21a2 2 0 0 1-3.46 0",
-  ],
-  search: ["M21 21l-4.35-4.35", "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"],
-  filter: ["M4 6h16", "M7 12h10", "M10 18h4"],
-  close: ["M18 6 6 18", "M6 6l12 12"],
-  more: ["M12 5h.01", "M12 12h.01", "M12 19h.01"],
-  arrowUpRight: ["M7 17 17 7", "M7 7h10v10"],
-  logout: ["M10 17l5-5-5-5", "M15 12H3", "M21 3v18"],
-  triage: ["M8 6h8", "M8 10h8", "M8 14h5", "M5 3h14v18H5z"],
-  analysis: ["M21 21l-4.35-4.35", "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z", "M11 8v3l2 2"],
-  clock: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z", "M12 6v6l4 2"],
-  check: ["M20 6 9 17l-5-5"],
-  wrench: ["M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5L15 12l-3-3z"],
-  package: ["M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z", "M3.3 7 12 12l8.7-5", "M12 22V12"],
-  arrowRightCircle: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z", "M8 12h8", "M13 8l4 4-4 4"],
-  square: ["M5 5h14v14H5z"],
+const KANBAN_ICON_MAP = {
+  dashboard: appIcons.dashboard,
+  clipboard: appIcons.os,
+  kanban: appIcons.kanban,
+  users: appIcons.clientes,
+  userCog: appIcons.usuarios,
+  plus: appIcons.adicionar,
+  refresh: appIcons.atualizar,
+  bell: appIcons.alertas,
+  search: appIcons.pesquisar,
+  filter: appIcons.filtrar,
+  close: appIcons.fechar,
+  more: appIcons.visualizar,
+  arrowUpRight: appIcons.visualizar,
+  logout: appIcons.sair,
+  triage: appIcons.triagem,
+  analysis: appIcons.emAnalise,
+  clock: appIcons.aguardandoAprovacao,
+  check: appIcons.sucesso,
+  approved: appIcons.aprovado,
+  vehicleReady: appIcons.veiculo,
+  closed: appIcons.encerrado,
+  wrench: appIcons.emExecucao,
+  package: appIcons.aguardandoPeca,
+  square: appIcons.kanban,
 };
 
 function Icon({ name, className = "" }) {
-  const paths = ICON_PATHS[name] || ICON_PATHS.kanban;
-
   return (
-    <svg
-      className={`kanban-premium-svg-icon ${className}`.trim()}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
+    <AppIcon
+      icon={KANBAN_ICON_MAP[name] || appIcons.kanban}
+      className={`kanban-premium-iconify-icon ${className}`.trim()}
+      size={20}
+    />
   );
 }
-
-
 const COLUMNS = [
   { key: "triagem", title: "Triagem", icon: "triage", tone: "gray" },
   { key: "em_analise", title: "Em análise", icon: "analysis", tone: "blue" },
   { key: "aguardando_aprovacao", title: "Aguardando aprovação", shortTitle: "Aguard. aprovação", icon: "clock", tone: "orange" },
-  { key: "aprovado", title: "Aprovado", icon: "check", tone: "cyan" },
+  { key: "aprovado", title: "Aprovado", icon: "approved", tone: "cyan" },
   { key: "em_execucao", title: "Em execução", icon: "wrench", tone: "purple" },
   { key: "aguardando_peca", title: "Aguardando peça", icon: "package", tone: "brown" },
-  { key: "pronto_retirada", title: "Pronto para retirada", icon: "arrowRightCircle", tone: "teal" },
-  { key: "encerrado", title: "Encerrado", pluralTitle: "Encerradas", icon: "check", tone: "green" },
+  { key: "pronto_retirada", title: "Pronto para retirada", icon: "vehicleReady", tone: "teal" },
+  { key: "encerrado", title: "Encerrado", pluralTitle: "Encerradas", icon: "closed", tone: "green" },
   { key: "cancelado", title: "Cancelado", pluralTitle: "Canceladas", icon: "close", tone: "red" },
 ];
 
@@ -514,7 +474,7 @@ export default function Kanban() {
     { label: "Em execução", value: metrics.countByStatus.em_execucao, icon: "wrench", tone: "purple" },
     period === "active"
       ? { label: "Aguard. peça", value: metrics.countByStatus.aguardando_peca, icon: "package", tone: "orange" }
-      : { label: "Encerradas", value: metrics.countByStatus.encerrado, icon: "check", tone: "green" },
+      : { label: "Encerradas", value: metrics.countByStatus.encerrado, icon: "closed", tone: "green" },
   ];
 
   if (!token) {
