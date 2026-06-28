@@ -1,91 +1,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, clearToken, getUser } from "../api";
+import { AppIcon } from "../components/AppIcon";
+import { appIcons } from "../config/icons";
 import "./OSDetail.css";
 
 
-const ICON_PATHS = {
-  home: ["M3 11.5 12 4l9 7.5", "M5 10.5V20h14v-9.5", "M9 20v-6h6v6"],
-  list: ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"],
-  board: ["M4 5h16v14H4z", "M9 5v14", "M15 5v14", "M4 11h16"],
-  users: ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M9 7a4 4 0 1 0 0 8", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
-  user: [
-    "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z",
-    "M4 21v-1.5c0-3.05 3.58-5.5 8-5.5s8 2.45 8 5.5V21",
-  ],
-  clipboard: ["M9 4h6l1 2h3v16H5V6h3z", "M9 4a3 3 0 0 1 6 0", "M8 11h8", "M8 15h8"],
-  car: [
-    "M5 13l1.6-4.2A3 3 0 0 1 9.4 7h5.2a3 3 0 0 1 2.8 1.8L19 13",
-    "M4 13h16v5H4z",
-    "M7 18v2",
-    "M17 18v2",
-    "M7.5 16h.01",
-    "M16.5 16h.01",
-  ],
-  plate: ["M4 7h16v10H4z", "M7 11h4", "M13 11h4", "M7 14h10"],
-  clock: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 6v6l4 2"],
-  calendar: ["M7 3v4", "M17 3v4", "M4 8h16", "M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1"],
-  dollar: ["M12 2v20", "M17 7.5A4 4 0 0 0 9.5 6c-2.2.5-3.5 2.7-2 4.3 1.1 1.2 2.9 1.5 5 1.9 2.7.5 4.3 1.4 4.3 3.5 0 2-1.7 3.5-4.5 3.5-2.2 0-4.2-.8-5.5-2.1"],
-  file: [
-    "M8 3h7l4 4v14H5V3h3",
-    "M15 3v5h5",
-    "M8 12h8",
-    "M8 16h6",
-  ],
-  trend: [
-    "M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6",
-    "M4 14a8 8 0 1 1 16 0",
-    "M12 14l4-4",
-    "M5 19h14",
-  ],
-  parts: [
-    "M21 16V8l-9-5-9 5v8l9 5 9-5Z",
-    "M3.3 7.8 12 13l8.7-5.2",
-    "M12 22V13",
-    "M17 10v6",
-    "M14 13h6",
-  ],
-  edit: [
-    "M12 20h9",
-    "M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z",
-    "M15 5l4 4",
-  ],
-  box: ["M21 16V8l-9-5-9 5v8l9 5z", "M3.3 7.8 12 13l8.7-5.2", "M12 22V13"],
-  filter: ["M4 5h16l-6 7v5l-4 2v-7z"],
-  save: ["M5 3h12l2 2v16H5z", "M8 3v6h8V3", "M8 21v-7h8v7"],
-  arrowLeft: ["M19 12H5", "M12 19l-7-7 7-7"],
-  grid: [
-    "M4 4h7v10H4z",
-    "M13 4h7v6h-7z",
-    "M13 12h7v8h-7z",
-    "M4 16h7v4H4z",
-  ],
-  phone: [
-    "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6A8.38 8.38 0 0 1 12.5 3H13a8.48 8.48 0 0 1 8 8.5Z",
-    "M8.5 10.5c.8 2 2.3 3.6 4.3 4.3l1.4-1.1c.3-.2.7-.3 1-.1.7.2 1.4.4 2.1.4",
-  ],
-  logOut: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
-  check: ["M20 6 9 17l-5-5"],
+const OSDETAIL_ICON_MAP = {
+  home: appIcons.dashboard,
+  list: appIcons.os,
+  board: appIcons.kanban,
+  users: appIcons.clientes,
+  user: appIcons.usuario,
+  clipboard: appIcons.os,
+  car: appIcons.veiculo,
+  plate: appIcons.veiculo,
+  clock: appIcons.historico,
+  calendar: appIcons.calendario,
+  dollar: appIcons.financeiro,
+  file: appIcons.os,
+  trend: appIcons.osAndamento,
+  parts: appIcons.pecas,
+  edit: appIcons.editar,
+  box: appIcons.pecas,
+  filter: appIcons.filtrar,
+  save: appIcons.salvar,
+  arrowLeft: appIcons.voltar,
+  grid: appIcons.dashboard,
+  phone: appIcons.whatsapp,
+  logOut: appIcons.sair,
+  check: appIcons.sucesso,
 };
 
 function Icon({ name, className = "" }) {
-  const paths = ICON_PATHS[name] || ICON_PATHS.file;
-
   return (
-    <svg
-      className={`osdetail-premium-svg-icon ${className}`.trim()}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
+    <AppIcon
+      icon={OSDETAIL_ICON_MAP[name] || appIcons.os}
+      className={`osdetail-premium-iconify-icon ${className}`.trim()}
+      size={20}
+    />
   );
 }
-
 const STATUS = [
   "triagem",
   "em_analise",
