@@ -2890,3 +2890,20 @@
   }
 }
 
+/* Iconify OSDetail - evita herdar peso/efeitos do SVG antigo */
+.osdetail-premium-iconify-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  line-height: 1;
+  vertical-align: middle;
+  transform: none;
+  filter: none;
+}
+
+.osdetail-premium-iconify-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
