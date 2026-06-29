@@ -50,7 +50,7 @@ const COLUMNS = [
   { key: "aguardando_aprovacao", title: "Aguardando aprovação", shortTitle: "Aguard. aprovação", icon: "clock", tone: "orange" },
   { key: "aprovado", title: "Aprovado", icon: "approved", tone: "cyan" },
   { key: "em_execucao", title: "Em execução", icon: "wrench", tone: "purple" },
-  { key: "aguardando_peca", title: "Aguardando peça", icon: "package", tone: "brown" },
+  { key: "aguardando_peca", title: "Aguardando peça", shortTitle: "Aguard. peça", icon: "package", tone: "brown" },
   { key: "pronto_retirada", title: "Pronto para retirada", icon: "vehicleReady", tone: "teal" },
   { key: "encerrado", title: "Encerrado", pluralTitle: "Encerradas", icon: "closed", tone: "green" },
   { key: "cancelado", title: "Cancelado", pluralTitle: "Canceladas", icon: "close", tone: "red" },
