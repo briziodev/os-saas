@@ -404,3 +404,73 @@
     font-size: 9px;
   }
 }
+
+/* ==========================================================
+   MOBILE BOTTOM NAV - MENU MAIS ADMIN
+   Escopo: complemento do AppShell mobile.
+   ========================================================== */
+
+.app-shell-bottom-more-panel {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .app-shell-bottom-more-panel {
+    position: fixed !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(94px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 10000 !important;
+
+    width: min(260px, calc(100vw - 24px)) !important;
+    display: grid !important;
+    gap: 6px !important;
+    padding: 10px !important;
+
+    background: #ffffff !important;
+    border: 1px solid rgba(203, 213, 225, 0.92) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 24px 52px rgba(15, 23, 42, 0.28) !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-bottom-more-panel a,
+  .app-shell-bottom-more-panel button {
+    width: 100% !important;
+    min-height: 46px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+
+    border: 0 !important;
+    border-radius: 14px !important;
+    padding: 0 12px !important;
+
+    background: transparent !important;
+    color: #0f172a !important;
+    text-decoration: none !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+  }
+
+  .app-shell-bottom-more-panel a:hover,
+  .app-shell-bottom-more-panel button:hover,
+  .app-shell-bottom-more-panel a.is-active {
+    background: #edf5ff !important;
+    color: #0f62fe !important;
+  }
+
+  .app-shell-bottom-more-panel svg {
+    flex: 0 0 auto !important;
+  }
+
+  .app-shell-bottom-more-panel span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
