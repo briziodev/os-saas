@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { appIcons } from "../config/icons";
@@ -83,13 +84,14 @@ export default function AppShell({ children }) {
   const user = getUser();
   const role = user?.role || "";
   const path = location.pathname;
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   const navItems = PAGE_META.filter((item) => canSeeItem(item, role));
   const activeItem = navItems.find((item) => item.match(path)) || navItems[0];
   const canCreateOS = role === "admin" || role === "atendimento";
   const bottomItems = navItems.filter((item) => {
     if (role === "admin") {
-      return ["dashboard", "os", "clientes", "usuarios"].includes(item.key);
+      return ["dashboard", "os", "clientes"].includes(item.key);
     }
 
     if (role === "atendimento") {
@@ -98,6 +100,19 @@ export default function AppShell({ children }) {
 
     return ["os", "kanban"].includes(item.key);
   });
+
+  const adminMobileMoreItems =
+    role === "admin"
+      ? navItems.filter((item) => ["kanban", "usuarios"].includes(item.key))
+      : [];
+
+  const adminMobileMoreActive =
+    role === "admin" &&
+    (mobileMoreOpen || adminMobileMoreItems.some((item) => item.match(path)));
+
+  useEffect(() => {
+    setMobileMoreOpen(false);
+  }, [path]);
 
   function logout() {
     clearToken();
@@ -213,6 +228,18 @@ export default function AppShell({ children }) {
             );
           }) : null}
 
+          {role === "admin" ? (
+            <button
+              type="button"
+              className={adminMobileMoreActive ? "app-shell-bottom-more-trigger is-active" : "app-shell-bottom-more-trigger"}
+              onClick={() => setMobileMoreOpen((value) => !value)}
+              aria-expanded={mobileMoreOpen}
+              aria-label="Abrir menu Mais"
+            >
+              <AppIcon icon={appIcons.filtrosAvancados} size={21} />
+              <span>Mais</span>
+            </button>
+          ) : null}
           {!canCreateOS ? (
             <button type="button" onClick={logout}>
               <AppIcon icon={appIcons.sair} size={21} />
@@ -220,6 +247,32 @@ export default function AppShell({ children }) {
             </button>
           ) : null}
         </nav>
+
+        {role === "admin" && mobileMoreOpen ? (
+          <div className="app-shell-bottom-more-panel" role="menu" aria-label="Menu Mais">
+            {adminMobileMoreItems.map((item) => {
+              const active = item.match(path);
+
+              return (
+                <Link
+                  key={item.key}
+                  to={item.to}
+                  className={active ? "is-active" : ""}
+                  role="menuitem"
+                  onClick={() => setMobileMoreOpen(false)}
+                >
+                  <AppIcon icon={item.icon} size={20} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+
+            <button type="button" role="menuitem" onClick={logout}>
+              <AppIcon icon={appIcons.sair} size={20} />
+              <span>Sair</span>
+            </button>
+          </div>
+        ) : null}
       </main>
     </div>
   );
