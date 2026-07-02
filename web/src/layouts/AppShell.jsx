@@ -95,20 +95,22 @@ export default function AppShell({ children }) {
     }
 
     if (role === "atendimento") {
-      return ["dashboard", "os", "kanban", "clientes"].includes(item.key);
+      return ["dashboard", "os", "clientes"].includes(item.key);
     }
 
     return ["os", "kanban"].includes(item.key);
   });
 
-  const adminMobileMoreItems =
+  const mobileMoreItems =
     role === "admin"
       ? navItems.filter((item) => ["kanban", "usuarios"].includes(item.key))
-      : [];
+      : role === "atendimento"
+        ? navItems.filter((item) => ["kanban"].includes(item.key))
+        : [];
 
-  const adminMobileMoreActive =
-    role === "admin" &&
-    (mobileMoreOpen || adminMobileMoreItems.some((item) => item.match(path)));
+  const mobileMoreActive =
+    mobileMoreItems.length > 0 &&
+    (mobileMoreOpen || mobileMoreItems.some((item) => item.match(path)));
 
   useEffect(() => {
     setMobileMoreOpen(false);
@@ -228,10 +230,10 @@ export default function AppShell({ children }) {
             );
           }) : null}
 
-          {role === "admin" ? (
+          {mobileMoreItems.length > 0 ? (
             <button
               type="button"
-              className={adminMobileMoreActive ? "app-shell-bottom-more-trigger is-active" : "app-shell-bottom-more-trigger"}
+              className={mobileMoreActive ? "app-shell-bottom-more-trigger is-active" : "app-shell-bottom-more-trigger"}
               onClick={() => setMobileMoreOpen((value) => !value)}
               aria-expanded={mobileMoreOpen}
               aria-label="Abrir menu Mais"
@@ -248,9 +250,9 @@ export default function AppShell({ children }) {
           ) : null}
         </nav>
 
-        {role === "admin" && mobileMoreOpen ? (
+        {mobileMoreItems.length > 0 && mobileMoreOpen ? (
           <div className="app-shell-bottom-more-panel" role="menu" aria-label="Menu Mais">
-            {adminMobileMoreItems.map((item) => {
+            {mobileMoreItems.map((item) => {
               const active = item.match(path);
 
               return (
