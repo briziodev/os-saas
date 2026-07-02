@@ -59,7 +59,7 @@ export const appIcons = {
   aprovado: "mdi:check-circle-outline",
   emExecucao: "mdi:tools",
   aguardandoPeca: "mdi:cog-clockwise",
-  prontoRetirada: "mdi:car-check",
+  prontoRetirada: "mdi:car-outline",
   encerrado: "mdi:check-decagram-outline",
   cancelado: "mdi:close-circle-outline",
 

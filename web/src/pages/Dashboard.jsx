@@ -583,7 +583,7 @@ function MobileNotificationSummary({
 function notificationIcon(key) {
   if (key === "aguardando_aprovacao" || key === "orcamento_enviado") return appIcons.orcamentosPendentes;
   if (key === "aguardando_peca") return appIcons.aguardandoPeca;
-  if (key === "pronto_retirada") return appIcons.finalizados;
+  if (key === "pronto_retirada") return appIcons.prontoRetirada;
   if (key === "em_execucao") return appIcons.emExecucao;
   if (key === "em_analise") return appIcons.emAnalise;
   if (key === "aprovado") return appIcons.aprovado;
