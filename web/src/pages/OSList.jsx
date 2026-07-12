@@ -32,6 +32,13 @@ const STATUS_LABEL = {
   em_andamento: "Em andamento",
 };
 
+const WHATSAPP_ALLOWED_STATUSES = new Set([
+  "triagem",
+  "em_analise",
+  "aguardando_aprovacao",
+  "orcamento_enviado",
+]);
+
 const PERIOD_OPTIONS = [
   { value: "all", label: "Todo o período" },
   { value: "today", label: "Hoje" },
@@ -75,6 +82,7 @@ export default function OSList() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationStats, setNotificationStats] = useState(null);
+  const [sendingWhatsappId, setSendingWhatsappId] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParamString);
@@ -212,18 +220,43 @@ export default function OSList() {
   }
 
   async function abrirWhatsapp(id) {
+    if (sendingWhatsappId !== null) return;
+
+    const whatsappWindow = openWhatsappLoadingWindow();
     setMsg("");
 
     try {
-      const data = await apiFetch(`/os/${id}/whatsapp-link`);
-      window.open(data.whatsapp_url, "_blank", "noopener,noreferrer");
+      setSendingWhatsappId(id);
+
+      const data = await apiFetch(`/os/${id}/enviar-orcamento`, {
+        method: "POST",
+      });
+
+      if (whatsappWindow) {
+        whatsappWindow.location.replace(data.whatsapp_url);
+      } else {
+        window.location.assign(data.whatsapp_url);
+        return;
+      }
+
+      await loadOS();
+
+      setMsg(
+        data.status_changed
+          ? `Orçamento preparado. A OS #${id} foi movida para Aguardando aprovação.`
+          : `Orçamento da OS #${id} preparado novamente.`
+      );
     } catch (e) {
+      whatsappWindow?.close();
+
       if (e.message === "Sessão expirada. Faça login novamente.") {
         clearToken();
         window.location.href = "/login";
         return;
       }
       setMsg(e.message);
+    } finally {
+      setSendingWhatsappId(null);
     }
   }
 
@@ -590,6 +623,7 @@ export default function OSList() {
                   toggleDetalhes={toggleDetalhes}
                   mudarStatus={mudarStatus}
                   abrirWhatsapp={abrirWhatsapp}
+                  sendingWhatsappId={sendingWhatsappId}
                   isTecnico={isTecnico}
                 />
 
@@ -600,6 +634,7 @@ export default function OSList() {
                   toggleDetalhes={toggleDetalhes}
                   mudarStatus={mudarStatus}
                   abrirWhatsapp={abrirWhatsapp}
+                  sendingWhatsappId={sendingWhatsappId}
                   isTecnico={isTecnico}
                 />
               </>
@@ -617,6 +652,18 @@ export default function OSList() {
       />
     </div>
   );
+}
+
+function openWhatsappLoadingWindow() {
+  const popup = window.open("", "_blank");
+
+  if (!popup) return null;
+
+  popup.opener = null;
+  popup.document.title = "Preparando orçamento";
+  popup.document.body.textContent = "Preparando orçamento no WhatsApp...";
+
+  return popup;
 }
 
 function StatePage({ message }) {
@@ -707,7 +754,16 @@ function FilterPanel({
   );
 }
 
-function DesktopTable({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mudarStatus, abrirWhatsapp, isTecnico }) {
+function DesktopTable({
+  osList,
+  canSeeMoney,
+  detalhesAbertos,
+  toggleDetalhes,
+  mudarStatus,
+  abrirWhatsapp,
+  sendingWhatsappId,
+  isTecnico,
+}) {
   return (
     <div className={`oslist-premium-table ${canSeeMoney ? "" : "is-no-money"}`}>
       <div className="oslist-premium-table-head">
@@ -758,12 +814,20 @@ function DesktopTable({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mu
 
                 {!isTecnico ? (
                   <div className="oslist-premium-inline-action-box">
-                    {os.status === "aguardando_aprovacao" ? (
-                      <button type="button" onClick={() => abrirWhatsapp(os.id)}>
-                        Enviar orçamento no WhatsApp
+                    {canSendWhatsapp(os.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirWhatsapp(os.id)}
+                        disabled={sendingWhatsappId !== null}
+                      >
+                        {sendingWhatsappId === os.id
+                          ? "Preparando orçamento..."
+                          : whatsappButtonLabel(os.status)}
                       </button>
                     ) : (
-                      <span>WhatsApp disponível somente em “Aguardando aprovação”.</span>
+                      <span>
+                        WhatsApp indisponível para OS em {statusLabel(os.status)}.
+                      </span>
                     )}
                   </div>
                 ) : null}
@@ -776,7 +840,16 @@ function DesktopTable({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mu
   );
 }
 
-function MobileCards({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mudarStatus, abrirWhatsapp, isTecnico }) {
+function MobileCards({
+  osList,
+  canSeeMoney,
+  detalhesAbertos,
+  toggleDetalhes,
+  mudarStatus,
+  abrirWhatsapp,
+  sendingWhatsappId,
+  isTecnico,
+}) {
   return (
     <div className="oslist-premium-mobile-list">
       {osList.map((os) => {
@@ -832,9 +905,15 @@ function MobileCards({ osList, canSeeMoney, detalhesAbertos, toggleDetalhes, mud
                   ))}
                 </select>
 
-                {!isTecnico && os.status === "aguardando_aprovacao" ? (
-                  <button type="button" onClick={() => abrirWhatsapp(os.id)}>
-                    Enviar orçamento no WhatsApp
+                {!isTecnico && canSendWhatsapp(os.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => abrirWhatsapp(os.id)}
+                    disabled={sendingWhatsappId !== null}
+                  >
+                    {sendingWhatsappId === os.id
+                      ? "Preparando orçamento..."
+                      : whatsappButtonLabel(os.status)}
                   </button>
                 ) : null}
               </div>
@@ -1184,6 +1263,16 @@ function getInitialStatus(params) {
 function getInitialPeriod(params) {
   const period = params.get("period") || "all";
   return PERIOD_OPTIONS.some((item) => item.value === period) ? period : "all";
+}
+
+function canSendWhatsapp(status) {
+  return WHATSAPP_ALLOWED_STATUSES.has(status);
+}
+
+function whatsappButtonLabel(status) {
+  return status === "aguardando_aprovacao" || status === "orcamento_enviado"
+    ? "Reenviar orçamento no WhatsApp"
+    : "Enviar orçamento no WhatsApp";
 }
 
 function statusLabel(status) {

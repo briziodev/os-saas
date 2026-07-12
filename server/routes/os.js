@@ -35,6 +35,10 @@ function sanitizePhoneBR(phone) {
   return clean;
 }
 
+function isValidWhatsappPhoneBR(phone) {
+  return /^55\d{10,11}$/.test(String(phone || ""));
+}
+
 
 const OS_IN_PROGRESS_STATUSES = [
   "aprovado",
@@ -138,10 +142,10 @@ function parseOSDateFilter(query) {
   };
 }
 
-async function getCompanyDisplayColumn() {
+async function getCompanyDisplayColumn(db = pool) {
   const candidates = ["name", "nome", "nome_fantasia", "razao_social"];
 
-  const result = await pool.query(
+  const result = await db.query(
     `SELECT column_name
      FROM information_schema.columns
      WHERE table_schema = 'public'
@@ -152,8 +156,8 @@ async function getCompanyDisplayColumn() {
   return candidates.find((column) => existing.has(column)) || null;
 }
 
-async function getPecasOS(osId, companyId) {
-  const result = await pool.query(
+async function getPecasOS(osId, companyId, db = pool) {
+  const result = await db.query(
     `SELECT id, nome, quantidade, valor_unitario, valor_total
      FROM os_pecas
      WHERE os_id = $1 AND company_id = $2
@@ -165,6 +169,13 @@ async function getPecasOS(osId, companyId) {
 }
 
 const BUDGET_VALIDITY_DAYS = 5;
+const BUDGET_TARGET_STATUS = "aguardando_aprovacao";
+const BUDGET_ALLOWED_STATUSES = new Set([
+  "triagem",
+  "em_analise",
+  "aguardando_aprovacao",
+  "orcamento_enviado",
+]);
 
 function cleanWhatsappText(value, fallback = "Não informado") {
   const text = String(value ?? "").trim();
@@ -242,8 +253,13 @@ function buildWhatsappMessage(osData, pecas = []) {
   return linhas.join("\n");
 }
 
-async function getWhatsappOSData(osId, companyId) {
-  const companyDisplayColumn = await getCompanyDisplayColumn();
+async function getWhatsappOSData(
+  osId,
+  companyId,
+  db = pool,
+  { forUpdate = false } = {}
+) {
+  const companyDisplayColumn = await getCompanyDisplayColumn(db);
   const companySelect = companyDisplayColumn
     ? `, comp.${companyDisplayColumn} AS oficina_nome`
     : "";
@@ -267,9 +283,10 @@ async function getWhatsappOSData(osId, companyId) {
     LEFT JOIN companies comp
       ON comp.id = os.company_id
     WHERE os.id = $1 AND os.company_id = $2
+    ${forUpdate ? "FOR UPDATE OF os" : ""}
   `;
 
-  const result = await pool.query(query, [osId, companyId]);
+  const result = await db.query(query, [osId, companyId]);
   return result;
 }
 
@@ -388,22 +405,32 @@ function stripSensitiveEventMetadata(metadata, role) {
   return safeMetadata;
 }
 
-async function createOsEvent(req, { osId, eventType, title, description = null, metadata = null }) {
+async function insertOsEvent(
+  db,
+  req,
+  { osId, eventType, title, description = null, metadata = null }
+) {
+  await db.query(
+    `INSERT INTO os_events
+     (company_id, os_id, user_id, event_type, title, description, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      req.user.company_id,
+      osId,
+      req.user.id,
+      eventType,
+      title,
+      description,
+      metadata ? JSON.stringify(metadata) : null,
+    ]
+  );
+}
+
+async function createOsEvent(req, eventData) {
+  const { osId, eventType } = eventData;
+
   try {
-    await pool.query(
-      `INSERT INTO os_events
-       (company_id, os_id, user_id, event_type, title, description, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        req.user.company_id,
-        osId,
-        req.user.id,
-        eventType,
-        title,
-        description,
-        metadata ? JSON.stringify(metadata) : null,
-      ]
-    );
+    await insertOsEvent(pool, req, eventData);
   } catch (err) {
     logger.warn("OS_EVENT_CREATE_FAILED", "Falha ao registrar evento da OS", {
       requestId: req.requestId,
@@ -613,73 +640,14 @@ router.get(
 
 router.get(
   "/:id/whatsapp-link",
-  sensitiveActionLimiter,
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const result = await getWhatsappOSData(id, req.user.company_id);
-
-      if (result.rowCount === 0) {
-        logOSNotFound(req, "OS_WHATSAPP_LINK_NOT_FOUND", "Tentativa de gerar WhatsApp para OS inexistente", id);
-
-        return res.status(404).json({
-          error: "OS não encontrada",
-          requestId: req.requestId,
-        });
-      }
-
-      const osData = result.rows[0];
-
-      if (!osData.telefone) {
-        logger.warn("OS_WHATSAPP_LINK_BLOCKED_NO_PHONE", "Geração de WhatsApp bloqueada: cliente sem telefone", {
-          requestId: req.requestId,
-          userId: req.user.id,
-          companyId: req.user.company_id,
-          role: req.user.role,
-          osId: Number(id),
-          osStatus: osData.status,
-          ip: req.ip,
-        });
-
-        return res.status(400).json({
-          error: "Cliente sem telefone",
-          requestId: req.requestId,
-        });
-      }
-
-      const pecas = await getPecasOS(id, req.user.company_id);
-      const telefoneLimpo = sanitizePhoneBR(osData.telefone);
-      const mensagem = buildWhatsappMessage(osData, pecas);
-      const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
-
-      logger.info("OS_WHATSAPP_LINK_GENERATED", "Link de WhatsApp da OS gerado", {
-        requestId: req.requestId,
-        userId: req.user.id,
-        companyId: req.user.company_id,
-        role: req.user.role,
-        osId: Number(id),
-        osStatus: osData.status,
-        partsCount: pecas.length,
-        ip: req.ip,
-      });
-
-      await createOsEvent(req, {
-        osId: Number(id),
-        eventType: "whatsapp_quote_generated",
-        title: "Orçamento WhatsApp gerado",
-        description: "Link de orçamento da OS gerado para envio ao cliente.",
-        metadata: {
-          status: osData.status,
-          parts_count: pecas.length,
-        },
-      });
-
-      return res.json({ whatsapp_url: url });
-    } catch (err) {
-      return next(err);
-    }
+  (req, res) => {
+    return res.status(410).json({
+      error:
+        "Este fluxo foi desativado. Atualize a página e use o envio de orçamento pelo novo fluxo.",
+      requestId: req.requestId,
+    });
   }
 );
 
@@ -993,12 +961,30 @@ router.post(
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
   async (req, res, next) => {
+    const { id } = req.params;
+    const osId = Number(id);
+    let client;
+
     try {
-      const { id } = req.params;
-      const result = await getWhatsappOSData(id, req.user.company_id);
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      const result = await getWhatsappOSData(
+        id,
+        req.user.company_id,
+        client,
+        { forUpdate: true }
+      );
 
       if (result.rowCount === 0) {
-        logOSNotFound(req, "OS_BUDGET_SEND_NOT_FOUND", "Tentativa de enviar orçamento para OS inexistente", id);
+        await client.query("ROLLBACK");
+
+        logOSNotFound(
+          req,
+          "OS_BUDGET_SEND_NOT_FOUND",
+          "Tentativa de enviar orçamento para OS inexistente",
+          id
+        );
 
         return res.status(404).json({
           error: "OS não encontrada",
@@ -1007,17 +993,47 @@ router.post(
       }
 
       const osData = result.rows[0];
+      const oldStatus = osData.status;
+
+      if (!BUDGET_ALLOWED_STATUSES.has(oldStatus)) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_BUDGET_SEND_BLOCKED_STATUS",
+          "Envio de orçamento bloqueado pelo status da OS",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId,
+            osStatus: oldStatus,
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: `Não é possível enviar orçamento para uma OS com status ${formatStatusLabel(oldStatus)}.`,
+          requestId: req.requestId,
+        });
+      }
 
       if (!osData.telefone) {
-        logger.warn("OS_BUDGET_SEND_BLOCKED_NO_PHONE", "Envio de orçamento bloqueado: cliente sem telefone", {
-          requestId: req.requestId,
-          userId: req.user.id,
-          companyId: req.user.company_id,
-          role: req.user.role,
-          osId: Number(id),
-          osStatus: osData.status,
-          ip: req.ip,
-        });
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_BUDGET_SEND_BLOCKED_NO_PHONE",
+          "Envio de orçamento bloqueado: cliente sem telefone",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId,
+            osStatus: oldStatus,
+            ip: req.ip,
+          }
+        );
 
         return res.status(400).json({
           error: "Cliente sem telefone",
@@ -1025,75 +1041,123 @@ router.post(
         });
       }
 
-      const oldStatus = osData.status;
-      const targetStatus = "aguardando_aprovacao";
+      const telefoneLimpo = sanitizePhoneBR(osData.telefone);
 
-      if (osData.status !== targetStatus) {
-        await pool.query(
-          `UPDATE ordens_servico
-           SET status = $3, updated_at = now()
-           WHERE id = $1 AND company_id = $2`,
-          [id, req.user.company_id, targetStatus]
+      if (!isValidWhatsappPhoneBR(telefoneLimpo)) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_BUDGET_SEND_BLOCKED_INVALID_PHONE",
+          "Envio de orçamento bloqueado: telefone inválido",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId,
+            osStatus: oldStatus,
+            ip: req.ip,
+          }
         );
 
-        osData.status = targetStatus;
-
-        logger.info("OS_STATUS_UPDATED", "Status da OS atualizado pelo envio de orçamento", {
+        return res.status(400).json({
+          error: "Telefone do cliente inválido para WhatsApp",
           requestId: req.requestId,
-          userId: req.user.id,
-          companyId: req.user.company_id,
-          role: req.user.role,
-          osId: Number(id),
-          oldStatus,
-          newStatus: targetStatus,
-          ip: req.ip,
         });
+      }
 
-        await createOsEvent(req, {
-          osId: Number(id),
+      const pecas = await getPecasOS(id, req.user.company_id, client);
+      const mensagem = buildWhatsappMessage(osData, pecas);
+      const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
+      const changedStatus = oldStatus !== BUDGET_TARGET_STATUS;
+
+      if (changedStatus) {
+        await client.query(
+          `UPDATE ordens_servico
+           SET status = $3,
+               updated_at = now(),
+               closed_at = NULL
+           WHERE id = $1 AND company_id = $2`,
+          [id, req.user.company_id, BUDGET_TARGET_STATUS]
+        );
+
+        await insertOsEvent(client, req, {
+          osId,
           eventType: "status_changed",
           title: "Status alterado pelo orçamento",
-          description: `De ${formatStatusLabel(oldStatus)} para ${formatStatusLabel(targetStatus)}.`,
+          description: `De ${formatStatusLabel(oldStatus)} para ${formatStatusLabel(BUDGET_TARGET_STATUS)}.`,
           metadata: {
             old_status: oldStatus,
-            new_status: targetStatus,
+            new_status: BUDGET_TARGET_STATUS,
             source: "budget_send",
           },
         });
       }
 
-      const pecas = await getPecasOS(id, req.user.company_id);
-      const telefoneLimpo = sanitizePhoneBR(osData.telefone);
-      const mensagem = buildWhatsappMessage(osData, pecas);
-      const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
-
-      logger.info("OS_BUDGET_SENT", "Orçamento da OS preparado para envio via WhatsApp", {
-        requestId: req.requestId,
-        userId: req.user.id,
-        companyId: req.user.company_id,
-        role: req.user.role,
-        osId: Number(id),
-        osStatus: osData.status,
-        partsCount: pecas.length,
-        changedStatus: oldStatus !== osData.status,
-        ip: req.ip,
-      });
-
-      await createOsEvent(req, {
-        osId: Number(id),
+      await insertOsEvent(client, req, {
+        osId,
         eventType: "whatsapp_quote_generated",
-        title: "Orçamento WhatsApp preparado",
-        description: "Orçamento da OS preparado para envio ao cliente pelo WhatsApp.",
+        title: changedStatus
+          ? "Orçamento WhatsApp preparado"
+          : "Orçamento WhatsApp preparado novamente",
+        description:
+          "Orçamento da OS preparado para envio ao cliente pelo WhatsApp.",
         metadata: {
-          status: osData.status,
+          status: BUDGET_TARGET_STATUS,
           parts_count: pecas.length,
-          changed_status: oldStatus !== osData.status,
+          changed_status: changedStatus,
         },
       });
 
-      return res.json({ whatsapp_url: url });
+      await client.query("COMMIT");
+
+      logger.info(
+        "OS_BUDGET_PREPARED",
+        "Orçamento da OS preparado para envio via WhatsApp",
+        {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId,
+          oldStatus,
+          newStatus: BUDGET_TARGET_STATUS,
+          partsCount: pecas.length,
+          changedStatus,
+          ip: req.ip,
+        }
+      );
+
+      return res.json({
+        whatsapp_url: url,
+        status: BUDGET_TARGET_STATUS,
+        status_changed: changedStatus,
+        requestId: req.requestId,
+      });
     } catch (err) {
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_BUDGET_ROLLBACK_FAILED",
+            "Falha ao reverter transação do orçamento",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId,
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
