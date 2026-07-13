@@ -2907,3 +2907,83 @@
   width: 100%;
   height: 100%;
 }
+
+/* ==========================================================
+   OSDETAIL — FECHAMENTO UX DO ORÇAMENTO WHATSAPP
+   Data: 2026-07-12
+   Escopo:
+   - diferencia visualmente botão habilitado/desabilitado;
+   - mostra o motivo do bloqueio sem depender de hover;
+   - mantém o aviso legível no desktop e no mobile.
+   ========================================================== */
+
+.osdetail-premium-whatsapp-action {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.osdetail-premium-whatsapp-action--header {
+  width: min(360px, 100%);
+  min-width: 290px;
+}
+
+.osdetail-premium-whatsapp-action--header .osdetail-premium-btn,
+.osdetail-premium-whatsapp-action--card .osdetail-premium-whatsapp-wide {
+  width: 100% !important;
+}
+
+.osdetail-premium-whatsapp-reason {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.osdetail-premium-btn--primary:disabled,
+.osdetail-premium-whatsapp-wide:disabled {
+  background: #e2e8f0 !important;
+  color: #64748b !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.osdetail-premium-btn--primary:disabled .osdetail-premium-iconify-icon,
+.osdetail-premium-whatsapp-wide:disabled .osdetail-premium-iconify-icon {
+  color: #64748b !important;
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .osdetail-premium-whatsapp-action--header {
+    width: min(420px, 100%);
+    min-width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .osdetail-premium-whatsapp-action--header,
+  .osdetail-premium-whatsapp-action--card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .osdetail-premium-whatsapp-reason {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}

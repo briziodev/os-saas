@@ -65,6 +65,13 @@ const STATUS_LABEL = {
   cancelado: "Cancelado",
 };
 
+const WHATSAPP_ALLOWED_STATUSES = new Set([
+  "triagem",
+  "em_analise",
+  "aguardando_aprovacao",
+  "orcamento_enviado",
+]);
+
 export default function OSDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -81,6 +88,7 @@ export default function OSDetail() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [addingPiece, setAddingPiece] = useState(false);
   const [removingPieceId, setRemovingPieceId] = useState(null);
   const [msg, setMsg] = useState("");
@@ -111,7 +119,21 @@ export default function OSDetail() {
   );
 
   const whatsappDisabled =
-    saving || addingPiece || form.status === "encerrado" || form.status === "cancelado";
+    saving ||
+    addingPiece ||
+    sendingWhatsapp ||
+    hasUnsavedChanges ||
+    !WHATSAPP_ALLOWED_STATUSES.has(form.status);
+
+  const whatsappDisabledReason = useMemo(() => {
+    if (sendingWhatsapp) return "Preparando orçamento...";
+    if (saving || addingPiece) return "Aguarde a operação atual terminar.";
+    if (hasUnsavedChanges) return "Salve as alterações da OS antes de preparar o orçamento.";
+    if (!WHATSAPP_ALLOWED_STATUSES.has(form.status)) {
+      return `Envio indisponível para OS com status ${statusLabel(form.status)}.`;
+    }
+    return "";
+  }, [addingPiece, form.status, hasUnsavedChanges, saving, sendingWhatsapp]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -171,19 +193,8 @@ export default function OSDetail() {
     }
   }
 
-  async function loadEventos() {
-    try {
-      setEventsLoading(true);
-      const eventosData = await apiFetch(`/os/${id}/events`);
-      setEventos(Array.isArray(eventosData) ? eventosData : []);
-    } catch (error) {
-      setEventos([]);
-    } finally {
-      setEventsLoading(false);
-    }
-  }
-
   function handleChange(field, value) {
+    setMsg("");
     setForm((prev) => ({
       ...prev,
       [field]: field === "placa" ? value.toUpperCase() : value,
@@ -191,6 +202,7 @@ export default function OSDetail() {
   }
 
   function handleMoneyChange(field, value) {
+    setMsg("");
     setForm((prev) => ({
       ...prev,
       [field]: sanitizeMoneyInput(value),
@@ -362,15 +374,40 @@ export default function OSDetail() {
   }
 
   async function abrirWhatsapp() {
-    if (whatsappDisabled) return;
+    if (whatsappDisabled) {
+      if (whatsappDisabledReason) setMsg(whatsappDisabledReason);
+      return;
+    }
+
+    const whatsappWindow = openWhatsappLoadingWindow();
 
     try {
+      setSendingWhatsapp(true);
       setMsg("");
-      const data = await apiFetch(`/os/${id}/whatsapp-link`);
-      window.open(data.whatsapp_url, "_blank");
-      await loadEventos();
+
+      const data = await apiFetch(`/os/${id}/enviar-orcamento`, {
+        method: "POST",
+      });
+
+      if (whatsappWindow) {
+        whatsappWindow.location.replace(data.whatsapp_url);
+      } else {
+        window.location.assign(data.whatsapp_url);
+        return;
+      }
+
+      await loadOS({ preserveMessage: true, silent: true });
+
+      setMsg(
+        data.status_changed
+          ? `Orçamento preparado. A OS #${id} foi movida para Aguardando aprovação.`
+          : `Orçamento da OS #${id} preparado novamente.`
+      );
     } catch (error) {
+      whatsappWindow?.close();
       setMsg(error.message);
+    } finally {
+      setSendingWhatsapp(false);
     }
   }
 
@@ -422,6 +459,8 @@ export default function OSDetail() {
             hasUnsavedChanges={hasUnsavedChanges}
             canSeeDashboard={canSeeDashboard}
             whatsappDisabled={whatsappDisabled}
+            whatsappDisabledReason={whatsappDisabledReason}
+            sendingWhatsapp={sendingWhatsapp}
             onBack={() => goTo("/os")}
             onDashboard={() => goTo("/dashboard")}
             onWhatsapp={abrirWhatsapp}
@@ -439,6 +478,8 @@ export default function OSDetail() {
               total={total}
               isTecnico={isTecnico}
               whatsappDisabled={whatsappDisabled}
+              whatsappDisabledReason={whatsappDisabledReason}
+              sendingWhatsapp={sendingWhatsapp}
               onWhatsapp={abrirWhatsapp}
             />
           </section>
@@ -573,6 +614,8 @@ function DesktopHeader({
   hasUnsavedChanges,
   canSeeDashboard,
   whatsappDisabled,
+  whatsappDisabledReason,
+  sendingWhatsapp,
   onBack,
   onDashboard,
   onWhatsapp,
@@ -601,14 +644,32 @@ function DesktopHeader({
         ) : null}
 
         {!isTecnico ? (
-          <button
-            type="button"
-            className="osdetail-premium-btn osdetail-premium-btn--primary"
-            onClick={onWhatsapp}
-            disabled={whatsappDisabled}
-          >
-            <Icon name="phone" /> Enviar orçamento no WhatsApp
-          </button>
+          <div className="osdetail-premium-whatsapp-action osdetail-premium-whatsapp-action--header">
+            <button
+              type="button"
+              className="osdetail-premium-btn osdetail-premium-btn--primary"
+              onClick={onWhatsapp}
+              disabled={whatsappDisabled}
+              title={whatsappDisabledReason || "Preparar orçamento no WhatsApp"}
+              aria-describedby={
+                whatsappDisabledReason && !sendingWhatsapp
+                  ? "osdetail-whatsapp-header-reason"
+                  : undefined
+              }
+            >
+              <Icon name="phone" /> {whatsappButtonLabel(form.status, sendingWhatsapp)}
+            </button>
+
+            {whatsappDisabledReason && !sendingWhatsapp ? (
+              <small
+                id="osdetail-whatsapp-header-reason"
+                className="osdetail-premium-whatsapp-reason"
+                role="status"
+              >
+                {whatsappDisabledReason}
+              </small>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -712,7 +773,16 @@ function ResumoCard({ os, form }) {
   );
 }
 
-function SituacaoCard({ os, form, total, isTecnico, whatsappDisabled, onWhatsapp }) {
+function SituacaoCard({
+  os,
+  form,
+  total,
+  isTecnico,
+  whatsappDisabled,
+  whatsappDisabledReason,
+  sendingWhatsapp,
+  onWhatsapp,
+}) {
   return (
     <section className="osdetail-premium-card osdetail-premium-card--situation">
       <CardTitle icon="trend" title="Situação da OS" subtitle="Acompanhe datas, status e orçamento." />
@@ -725,15 +795,32 @@ function SituacaoCard({ os, form, total, isTecnico, whatsappDisabled, onWhatsapp
       </div>
 
       {!isTecnico ? (
-        <button
-          type="button"
-          className="osdetail-premium-whatsapp-wide"
-          onClick={onWhatsapp}
-          disabled={whatsappDisabled}
-          title={whatsappDisabled ? "Envio indisponível para OS encerrada ou cancelada." : "Enviar orçamento no WhatsApp"}
-        >
-          <Icon name="phone" /> Enviar orçamento no WhatsApp
-        </button>
+        <div className="osdetail-premium-whatsapp-action osdetail-premium-whatsapp-action--card">
+          <button
+            type="button"
+            className="osdetail-premium-whatsapp-wide"
+            onClick={onWhatsapp}
+            disabled={whatsappDisabled}
+            title={whatsappDisabledReason || "Preparar orçamento no WhatsApp"}
+            aria-describedby={
+              whatsappDisabledReason && !sendingWhatsapp
+                ? "osdetail-whatsapp-card-reason"
+                : undefined
+            }
+          >
+            <Icon name="phone" /> {whatsappButtonLabel(form.status, sendingWhatsapp)}
+          </button>
+
+          {whatsappDisabledReason && !sendingWhatsapp ? (
+            <small
+              id="osdetail-whatsapp-card-reason"
+              className="osdetail-premium-whatsapp-reason"
+              role="status"
+            >
+              {whatsappDisabledReason}
+            </small>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
@@ -1052,6 +1139,28 @@ function AlertMessage({ message }) {
       {message}
     </div>
   );
+}
+
+function whatsappButtonLabel(status, sendingWhatsapp) {
+  if (sendingWhatsapp) return "Preparando...";
+
+  if (status === "aguardando_aprovacao" || status === "orcamento_enviado") {
+    return "Reenviar orçamento no WhatsApp";
+  }
+
+  return "Enviar orçamento no WhatsApp";
+}
+
+function openWhatsappLoadingWindow() {
+  const popup = window.open("", "_blank");
+
+  if (!popup) return null;
+
+  popup.opener = null;
+  popup.document.title = "Preparando orçamento";
+  popup.document.body.textContent = "Preparando orçamento no WhatsApp...";
+
+  return popup;
 }
 
 function emptyForm() {
