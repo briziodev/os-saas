@@ -78,6 +78,7 @@ export default function OSDetail() {
   const token = useMemo(() => localStorage.getItem("token"), []);
   const user = getUser();
   const isTecnico = user?.role === "tecnico";
+  const isAdmin = user?.role === "admin";
   const canSeeDashboard = !isTecnico;
   const canSeeClientes = !isTecnico;
   const canSeeUsers = user?.role === "admin";
@@ -91,6 +92,10 @@ export default function OSDetail() {
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [addingPiece, setAddingPiece] = useState(false);
   const [removingPieceId, setRemovingPieceId] = useState(null);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopening, setReopening] = useState(false);
+  const [reopenFeedback, setReopenFeedback] = useState("");
   const [msg, setMsg] = useState("");
   const [pieceFeedback, setPieceFeedback] = useState(null);
   const [initialForm, setInitialForm] = useState(emptyForm());
@@ -100,6 +105,8 @@ export default function OSDetail() {
     quantidade: "1",
     valor_unitario: "",
   });
+
+  const isCancelled = os?.status === "cancelado";
 
   const total = useMemo(
     () => parseMoneyInput(form.mao_obra) + parseMoneyInput(form.valor_pecas),
@@ -186,6 +193,9 @@ export default function OSDetail() {
       setEventos(Array.isArray(eventosData) ? eventosData : []);
       setForm(nextForm);
       setInitialForm(nextForm);
+      setReopenOpen(false);
+      setReopenReason("");
+      setReopenFeedback("");
     } catch (error) {
       setMsg(error.message);
     } finally {
@@ -261,6 +271,11 @@ export default function OSDetail() {
   }
 
   async function salvarAlteracoes() {
+    if (isCancelled) {
+      setMsg("Esta OS está cancelada e só pode ser alterada após reabertura.");
+      return;
+    }
+
     const problemaRelatado = form.problema_relatado.trim();
 
     if (!problemaRelatado) {
@@ -300,6 +315,11 @@ export default function OSDetail() {
   }
 
   async function adicionarPeca() {
+    if (isCancelled) {
+      setPieceFeedback({ type: "error", message: "OS cancelada: não é possível adicionar peças." });
+      return;
+    }
+
     if (hasUnsavedChanges) {
       setPieceFeedback({ type: "error", message: "Salve as alterações da OS antes de adicionar peças." });
       return;
@@ -348,6 +368,11 @@ export default function OSDetail() {
   }
 
   async function removerPeca(pecaId) {
+    if (isCancelled) {
+      setPieceFeedback({ type: "error", message: "OS cancelada: não é possível remover peças." });
+      return;
+    }
+
     if (hasUnsavedChanges) {
       setPieceFeedback({ type: "error", message: "Salve as alterações da OS antes de remover peças." });
       return;
@@ -370,6 +395,60 @@ export default function OSDetail() {
       setPieceFeedback({ type: "error", message: error.message });
     } finally {
       setRemovingPieceId(null);
+    }
+  }
+
+  function abrirPainelReabertura() {
+    setMsg("");
+    setReopenFeedback("");
+    setReopenReason("");
+    setReopenOpen(true);
+  }
+
+  function fecharPainelReabertura() {
+    if (reopening) return;
+    setReopenOpen(false);
+    setReopenFeedback("");
+    setReopenReason("");
+  }
+
+  async function reabrirOS() {
+    const motivo = String(reopenReason || "").trim();
+
+    if (motivo.length < 10) {
+      setReopenFeedback("Informe um motivo com pelo menos 10 caracteres.");
+      return;
+    }
+
+    if (motivo.length > 500) {
+      setReopenFeedback("O motivo deve ter no máximo 500 caracteres.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Confirma a reabertura desta OS? Ela voltará para Triagem e poderá ser editada novamente."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setReopening(true);
+      setReopenFeedback("");
+      setMsg("");
+
+      await apiFetch(`/os/${id}/reabrir`, {
+        method: "POST",
+        body: JSON.stringify({ motivo }),
+      });
+
+      setReopenOpen(false);
+      setReopenReason("");
+      await loadOS({ preserveMessage: true, silent: true });
+      setMsg(`OS #${id} reaberta com sucesso e movida para Triagem.`);
+    } catch (error) {
+      setReopenFeedback(error.message);
+    } finally {
+      setReopening(false);
     }
   }
 
@@ -468,6 +547,23 @@ export default function OSDetail() {
 
           {msg ? <AlertMessage message={msg} /> : null}
 
+          {isCancelled ? (
+            <CancelledOSBanner
+              isAdmin={isAdmin}
+              reopenOpen={reopenOpen}
+              reopenReason={reopenReason}
+              reopenFeedback={reopenFeedback}
+              reopening={reopening}
+              onOpen={abrirPainelReabertura}
+              onClose={fecharPainelReabertura}
+              onReasonChange={(value) => {
+                setReopenReason(value);
+                setReopenFeedback("");
+              }}
+              onConfirm={reabrirOS}
+            />
+          ) : null}
+
           <DesktopMetaStrip os={os} form={form} total={total} isTecnico={isTecnico} />
 
           <section className="osdetail-premium-grid-main">
@@ -495,6 +591,7 @@ export default function OSDetail() {
                 pieceFeedback={pieceFeedback}
                 addingPiece={addingPiece}
                 removingPieceId={removingPieceId}
+                readOnly={isCancelled}
                 onPieceChange={handlePieceFieldChange}
                 onPieceMoneyBlur={handlePieceMoneyBlur}
                 onAddPiece={adicionarPeca}
@@ -506,6 +603,7 @@ export default function OSDetail() {
                 total={total}
                 saving={saving}
                 isTecnico={isTecnico}
+                readOnly={isCancelled}
                 onChange={handleChange}
                 onMoneyChange={handleMoneyChange}
                 onMoneyBlur={handleMoneyBlur}
@@ -520,6 +618,7 @@ export default function OSDetail() {
                 total={total}
                 saving={saving}
                 isTecnico={isTecnico}
+                readOnly={isCancelled}
                 onChange={handleChange}
                 onMoneyChange={handleMoneyChange}
                 onMoneyBlur={handleMoneyBlur}
@@ -537,6 +636,85 @@ export default function OSDetail() {
         </div>
       </main>
     </div>
+  );
+}
+
+function CancelledOSBanner({
+  isAdmin,
+  reopenOpen,
+  reopenReason,
+  reopenFeedback,
+  reopening,
+  onOpen,
+  onClose,
+  onReasonChange,
+  onConfirm,
+}) {
+  return (
+    <section className="osdetail-premium-cancelled-banner" role="status">
+      <div className="osdetail-premium-cancelled-banner-copy">
+        <strong>OS cancelada — somente leitura</strong>
+        <p>
+          Dados, valores, peças, status e orçamento estão bloqueados para preservar a rastreabilidade.
+        </p>
+        {!isAdmin ? (
+          <small>Somente um administrador pode reabrir esta OS.</small>
+        ) : null}
+      </div>
+
+      {isAdmin && !reopenOpen ? (
+        <button
+          type="button"
+          className="osdetail-premium-reopen-button"
+          onClick={onOpen}
+        >
+          Reabrir OS
+        </button>
+      ) : null}
+
+      {isAdmin && reopenOpen ? (
+        <div className="osdetail-premium-reopen-panel">
+          <label htmlFor="os-reopen-reason">Motivo da reabertura</label>
+          <textarea
+            id="os-reopen-reason"
+            rows={4}
+            value={reopenReason}
+            onChange={(event) => onReasonChange(event.target.value)}
+            maxLength={500}
+            disabled={reopening}
+            placeholder="Ex.: Cliente autorizou a retomada do diagnóstico."
+          />
+          <div className="osdetail-premium-reopen-counter">
+            {reopenReason.trim().length}/500 caracteres
+          </div>
+
+          {reopenFeedback ? (
+            <div className="osdetail-premium-reopen-feedback">
+              {reopenFeedback}
+            </div>
+          ) : null}
+
+          <div className="osdetail-premium-reopen-actions">
+            <button
+              type="button"
+              className="osdetail-premium-btn osdetail-premium-btn--ghost"
+              onClick={onClose}
+              disabled={reopening}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="osdetail-premium-btn osdetail-premium-btn--primary"
+              onClick={onConfirm}
+              disabled={reopening || reopenReason.trim().length < 10}
+            >
+              {reopening ? "Reabrindo..." : "Confirmar reabertura"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -835,14 +1013,29 @@ function PecasCard({
   pieceFeedback,
   addingPiece,
   removingPieceId,
+  readOnly,
   onPieceChange,
   onPieceMoneyBlur,
   onAddPiece,
   onRemovePiece,
 }) {
   return (
-    <section className="osdetail-premium-card osdetail-premium-card--pieces">
-      <CardTitle icon="parts" title="Peças da OS" subtitle="Adicione peças para montar o orçamento completo." />
+    <section className={`osdetail-premium-card osdetail-premium-card--pieces ${readOnly ? "is-readonly" : ""}`}>
+      <CardTitle
+        icon="parts"
+        title="Peças da OS"
+        subtitle={
+          readOnly
+            ? "OS cancelada: peças preservadas apenas para consulta."
+            : "Adicione peças para montar o orçamento completo."
+        }
+      />
+
+      {readOnly ? (
+        <div className="osdetail-premium-readonly-note">
+          OS cancelada — inclusão, alteração e remoção de peças estão bloqueadas.
+        </div>
+      ) : null}
 
       {pieceFeedback?.message ? (
         <div className={`osdetail-premium-piece-feedback is-${pieceFeedback.type || "success"}`}>
@@ -858,6 +1051,7 @@ function PecasCard({
             value={pieceForm.nome}
             onChange={(event) => onPieceChange("nome", event.target.value)}
             placeholder="Ex.: Filtro de óleo"
+            disabled={readOnly}
           />
         </div>
 
@@ -870,6 +1064,7 @@ function PecasCard({
             value={pieceForm.quantidade}
             onChange={(event) => onPieceChange("quantidade", event.target.value)}
             placeholder="1"
+            disabled={readOnly}
           />
         </div>
 
@@ -882,6 +1077,7 @@ function PecasCard({
             onBlur={onPieceMoneyBlur}
             inputMode="decimal"
             placeholder="0,00"
+            disabled={readOnly}
           />
         </div>
 
@@ -890,7 +1086,12 @@ function PecasCard({
           <strong>{money(pieceSubtotal)}</strong>
         </div>
 
-        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--primary" onClick={onAddPiece} disabled={addingPiece}>
+        <button
+          type="button"
+          className="osdetail-premium-btn osdetail-premium-btn--primary"
+          onClick={onAddPiece}
+          disabled={addingPiece || readOnly}
+        >
           {addingPiece ? "Adicionando..." : (<><Icon name="parts" /> Adicionar peça</>)}
         </button>
       </div>
@@ -913,7 +1114,11 @@ function PecasCard({
               <span>{Number(peca.quantidade)}</span>
               <span>{money(peca.valor_unitario)}</span>
               <b>{money(peca.valor_total)}</b>
-              <button type="button" onClick={() => onRemovePiece(peca.id)} disabled={removingPieceId === peca.id}>
+              <button
+                type="button"
+                onClick={() => onRemovePiece(peca.id)}
+                disabled={readOnly || removingPieceId === peca.id}
+              >
                 {removingPieceId === peca.id ? "Removendo..." : "Remover"}
               </button>
             </div>
@@ -929,8 +1134,8 @@ function PecasCard({
             icon="parts"
             label={peca.nome}
             value={`${Number(peca.quantidade)}x ${money(peca.valor_unitario)} = ${money(peca.valor_total)}`}
-            action={() => onRemovePiece(peca.id)}
-            actionLabel={removingPieceId === peca.id ? "..." : "Remover"}
+            action={readOnly ? undefined : () => onRemovePiece(peca.id)}
+            actionLabel={readOnly ? undefined : removingPieceId === peca.id ? "..." : "Remover"}
           />
         ))}
       </div>
@@ -989,14 +1194,26 @@ function HistoricoCard({ eventos, loading, isTecnico }) {
   );
 }
 
-function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
+function EditarCard({ form, total, saving, isTecnico, readOnly, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
   return (
-    <section className="osdetail-premium-card osdetail-premium-card--edit">
+    <section className={`osdetail-premium-card osdetail-premium-card--edit ${readOnly ? "is-readonly" : ""}`}>
       <CardTitle
         icon="edit"
-        title="Editar OS"
-        subtitle={isTecnico ? "Atualize a descrição técnica e o status do serviço." : "Atualize dados, valores e andamento do serviço."}
+        title={readOnly ? "OS em modo somente leitura" : "Editar OS"}
+        subtitle={
+          readOnly
+            ? "Esta OS está cancelada. Reabra-a antes de fazer qualquer alteração."
+            : isTecnico
+              ? "Atualize a descrição técnica e o status do serviço."
+              : "Atualize dados, valores e andamento do serviço."
+        }
       />
+
+      {readOnly ? (
+        <div className="osdetail-premium-readonly-note">
+          Campos, valores e status estão bloqueados enquanto a OS permanecer cancelada.
+        </div>
+      ) : null}
 
       <div className="osdetail-premium-form-field">
         <label>Descrição do serviço</label>
@@ -1005,6 +1222,7 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
           value={form.problema_relatado}
           onChange={(event) => onChange("problema_relatado", event.target.value)}
           placeholder="Descreva o serviço, diagnóstico ou observações técnicas..."
+          disabled={readOnly}
         />
       </div>
 
@@ -1017,6 +1235,7 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
               value={form.modelo}
               onChange={(event) => onChange("modelo", event.target.value)}
               placeholder="Ex.: Gol, Uno, Civic..."
+              disabled={readOnly}
             />
           </div>
 
@@ -1028,6 +1247,7 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
               onChange={(event) => onChange("placa", event.target.value)}
               placeholder="ABC1D23"
               maxLength={8}
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -1044,6 +1264,7 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
               onBlur={() => onMoneyBlur("mao_obra")}
               inputMode="decimal"
               placeholder="0,00"
+              disabled={readOnly}
             />
           </div>
 
@@ -1058,8 +1279,12 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
       <div className="osdetail-premium-form-grid-2">
         <div className="osdetail-premium-form-field">
           <label>Status</label>
-          <select value={form.status} onChange={(event) => onChange("status", event.target.value)}>
-            {STATUS.map((status) => (
+          <select
+            value={form.status}
+            onChange={(event) => onChange("status", event.target.value)}
+            disabled={readOnly}
+          >
+            {STATUS.filter((status) => !(isTecnico && !readOnly && status === "cancelado")).map((status) => (
               <option key={status} value={status}>
                 {statusLabel(status)}
               </option>
@@ -1071,7 +1296,12 @@ function EditarCard({ form, total, saving, isTecnico, onChange, onMoneyChange, o
       </div>
 
       <div className="osdetail-premium-edit-actions">
-        <button type="button" className="osdetail-premium-btn osdetail-premium-btn--primary" onClick={onSave} disabled={saving}>
+        <button
+          type="button"
+          className="osdetail-premium-btn osdetail-premium-btn--primary"
+          onClick={onSave}
+          disabled={saving || readOnly}
+        >
           <Icon name="save" /> {saving ? "Salvando..." : "Salvar alterações"}
         </button>
 
@@ -1258,6 +1488,7 @@ function eventIcon(eventType) {
   if (eventType === "vehicle_updated") return "car";
   if (eventType === "piece_added" || eventType === "piece_updated" || eventType === "piece_removed") return "parts";
   if (eventType === "whatsapp_quote_generated") return "phone";
+  if (eventType === "os_reopened") return "trend";
   if (eventType === "financial_updated") return "dollar";
   return "clock";
 }
@@ -1267,6 +1498,7 @@ function eventTone(eventType) {
   if (eventType === "piece_added" || eventType === "piece_updated") return "is-blue";
   if (eventType === "whatsapp_quote_generated") return "is-green";
   if (eventType === "financial_updated") return "is-warning";
+  if (eventType === "os_reopened") return "is-blue";
   if (eventType === "status_changed") return "is-purple";
   return "is-gray";
 }
@@ -1283,6 +1515,7 @@ function eventTitle(eventType) {
     piece_updated: "Peça atualizada",
     piece_removed: "Peça removida",
     whatsapp_quote_generated: "Orçamento WhatsApp gerado",
+    os_reopened: "OS reaberta",
   };
 
   return titles[eventType] || "Movimentação registrada";

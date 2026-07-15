@@ -139,6 +139,16 @@ const osUpdateSchema = z
     message: "Informe pelo menos um campo para atualizar.",
   });
 
+const osReopenSchema = z
+  .object({
+    motivo: z
+      .string()
+      .trim()
+      .min(10, "Motivo da reabertura deve ter pelo menos 10 caracteres.")
+      .max(500, "Motivo da reabertura muito longo."),
+  })
+  .strict();
+
 const osPecaCreateSchema = z
   .object({
     nome: z
@@ -195,6 +205,7 @@ module.exports = {
   osPecaParamSchema,
   osCreateSchema,
   osUpdateSchema,
+  osReopenSchema,
   osPecaCreateSchema,
   osPecaUpdateSchema,
 };

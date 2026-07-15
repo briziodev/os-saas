@@ -5134,3 +5134,37 @@
     overflow: hidden !important;
   }
 }
+
+/* ==========================================================
+   OS CANCELADA — BLOQUEIO DE AÇÕES NA LISTA
+   ========================================================== */
+
+.oslist-premium-cancelled-lock {
+  min-height: 54px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 10px 13px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+}
+
+.oslist-premium-cancelled-lock strong {
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.oslist-premium-cancelled-lock span {
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+@media (max-width: 767px) {
+  .oslist-premium-cancelled-lock {
+    width: 100%;
+  }
+}

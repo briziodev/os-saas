@@ -201,6 +201,18 @@ export default function OSList() {
   async function mudarStatus(id, novoStatus) {
     setMsg("");
 
+    const currentOS = osList.find((item) => Number(item.id) === Number(id));
+
+    if (currentOS?.status === "cancelado") {
+      setMsg(`OS #${id} está cancelada. A reabertura deve ser feita nos detalhes por um administrador.`);
+      return;
+    }
+
+    if (isTecnico && novoStatus === "cancelado") {
+      setMsg("Somente administrador ou atendimento pode cancelar uma OS.");
+      return;
+    }
+
     try {
       await apiFetch(`/os/${id}`, {
         method: "PUT",
@@ -625,6 +637,7 @@ export default function OSList() {
                   abrirWhatsapp={abrirWhatsapp}
                   sendingWhatsappId={sendingWhatsappId}
                   isTecnico={isTecnico}
+                  isAdmin={isAdmin}
                 />
 
                 <MobileCards
@@ -636,6 +649,7 @@ export default function OSList() {
                   abrirWhatsapp={abrirWhatsapp}
                   sendingWhatsappId={sendingWhatsappId}
                   isTecnico={isTecnico}
+                  isAdmin={isAdmin}
                 />
               </>
             )}
@@ -763,6 +777,7 @@ function DesktopTable({
   abrirWhatsapp,
   sendingWhatsappId,
   isTecnico,
+  isAdmin,
 }) {
   return (
     <div className={`oslist-premium-table ${canSeeMoney ? "" : "is-no-money"}`}>
@@ -801,16 +816,27 @@ function DesktopTable({
 
             {aberto ? (
               <div className="oslist-premium-inline-actions">
-                <div className="oslist-premium-field">
-                  <label>Atualizar status</label>
-                  <select value={os.status} onChange={(event) => mudarStatus(os.id, event.target.value)}>
-                    {STATUS.map((status) => (
-                      <option key={status} value={status}>
-                        {statusLabel(status)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {os.status === "cancelado" ? (
+                  <div className="oslist-premium-cancelled-lock">
+                    <strong>OS cancelada — somente leitura</strong>
+                    <span>
+                      {isAdmin
+                        ? "Use Ver detalhes para reabrir esta OS com motivo obrigatório."
+                        : "Somente um administrador pode reabrir esta OS pelos detalhes."}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="oslist-premium-field">
+                    <label>Atualizar status</label>
+                    <select value={os.status} onChange={(event) => mudarStatus(os.id, event.target.value)}>
+                      {STATUS.filter((status) => !(isTecnico && status === "cancelado")).map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {!isTecnico ? (
                   <div className="oslist-premium-inline-action-box">
@@ -849,6 +875,7 @@ function MobileCards({
   abrirWhatsapp,
   sendingWhatsappId,
   isTecnico,
+  isAdmin,
 }) {
   return (
     <div className="oslist-premium-mobile-list">
@@ -890,20 +917,37 @@ function MobileCards({
             <div className="oslist-premium-mobile-actions-row">
               <Link to={`/os/${os.id}`}>Ver detalhes</Link>
               <button type="button" onClick={() => toggleDetalhes(os.id)}>
-                {aberto ? "Fechar" : "Atualizar OS"}
-              </button>
+  {aberto
+    ? "Fechar"
+    : os.status === "cancelado"
+      ? "Ver restrições"
+      : "Atualizar OS"}
+</button>
             </div>
 
             {aberto ? (
               <div className="oslist-premium-mobile-update">
-                <label>Atualizar status</label>
-                <select value={os.status} onChange={(event) => mudarStatus(os.id, event.target.value)}>
-                  {STATUS.map((status) => (
-                    <option key={status} value={status}>
-                      {statusLabel(status)}
-                    </option>
-                  ))}
-                </select>
+                {os.status === "cancelado" ? (
+                  <div className="oslist-premium-cancelled-lock">
+                    <strong>OS cancelada — somente leitura</strong>
+                    <span>
+                      {isAdmin
+                        ? "Abra os detalhes para reabrir com motivo obrigatório."
+                        : "Somente um administrador pode reabrir esta OS."}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <label>Atualizar status</label>
+                    <select value={os.status} onChange={(event) => mudarStatus(os.id, event.target.value)}>
+                      {STATUS.filter((status) => !(isTecnico && status === "cancelado")).map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
 
                 {!isTecnico && canSendWhatsapp(os.status) ? (
                   <button

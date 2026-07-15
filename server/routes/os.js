@@ -12,6 +12,7 @@ const {
   osPecaParamSchema,
   osCreateSchema,
   osUpdateSchema,
+  osReopenSchema,
   osPecaCreateSchema,
   osPecaUpdateSchema,
 } = require("../validators/osSchemas");
@@ -168,6 +169,8 @@ async function getPecasOS(osId, companyId, db = pool) {
   return result.rows;
 }
 
+const CANCELLED_STATUS = "cancelado";
+const REOPEN_TARGET_STATUS = "triagem";
 const BUDGET_VALIDITY_DAYS = 5;
 const BUDGET_TARGET_STATUS = "aguardando_aprovacao";
 const BUDGET_ALLOWED_STATUSES = new Set([
@@ -290,8 +293,8 @@ async function getWhatsappOSData(
   return result;
 }
 
-async function recalcularTotaisOS(osId, companyId) {
-  const pecasResult = await pool.query(
+async function recalcularTotaisOS(osId, companyId, db = pool) {
+  const pecasResult = await db.query(
     `SELECT COALESCE(SUM(valor_total), 0) AS total_pecas
      FROM os_pecas
      WHERE os_id = $1 AND company_id = $2`,
@@ -300,7 +303,7 @@ async function recalcularTotaisOS(osId, companyId) {
 
   const totalPecas = Number(pecasResult.rows[0].total_pecas || 0);
 
-  const osResult = await pool.query(
+  const osResult = await db.query(
     `SELECT mao_obra
      FROM ordens_servico
      WHERE id = $1 AND company_id = $2`,
@@ -316,7 +319,7 @@ async function recalcularTotaisOS(osId, companyId) {
   const maoObra = Number(osResult.rows[0].mao_obra || 0);
   const valorTotal = maoObra + totalPecas;
 
-  await pool.query(
+  await db.query(
     `UPDATE ordens_servico
      SET valor_pecas = $1,
          valor_total = $2,
@@ -597,6 +600,7 @@ router.get(
         "status_changed",
         "description_updated",
         "vehicle_updated",
+        "os_reopened",
       ];
       let eventFilter = "";
 
@@ -886,6 +890,26 @@ router.put(
             requestId: req.requestId,
           });
         }
+
+        if (status === CANCELLED_STATUS) {
+          logger.warn(
+            "OS_CANCEL_BLOCKED_FOR_TECHNICIAN",
+            "Técnico tentou cancelar uma OS",
+            {
+              requestId: req.requestId,
+              userId: req.user.id,
+              companyId: req.user.company_id,
+              role: req.user.role,
+              osId: Number(id),
+              ip: req.ip,
+            }
+          );
+
+          return res.status(403).json({
+            error: "Somente administrador ou atendimento pode cancelar uma OS.",
+            requestId: req.requestId,
+          });
+        }
       }
 
       const current = await pool.query(
@@ -905,6 +929,27 @@ router.put(
       }
 
       const cur = current.rows[0];
+
+      if (cur.status === CANCELLED_STATUS) {
+        logger.warn(
+          "OS_UPDATE_BLOCKED_CANCELLED",
+          "Tentativa de alterar OS cancelada pelo fluxo comum",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            attemptedFields: Object.keys(req.body),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS está cancelada e não pode ser alterada. Use a ação de reabertura.",
+          requestId: req.requestId,
+        });
+      }
 
       const newMao =
         req.user.role === "tecnico"
@@ -927,11 +972,13 @@ router.put(
            placa = COALESCE($6, placa),
            updated_at = now(),
            closed_at = CASE
-             WHEN COALESCE($4, status) IN ('encerrado','finalizado')
+             WHEN COALESCE($4, status) IN ('encerrado','finalizado','cancelado')
              THEN COALESCE(closed_at, now())
              ELSE NULL
            END
-         WHERE id = $7 AND company_id = $8
+         WHERE id = $7
+           AND company_id = $8
+           AND status <> 'cancelado'
          RETURNING *`,
         [
           problema_relatado ?? null,
@@ -944,6 +991,26 @@ router.put(
           req.user.company_id,
         ]
       );
+
+      if (result.rowCount === 0) {
+        logger.warn(
+          "OS_UPDATE_BLOCKED_CANCELLED_RACE",
+          "Atualização bloqueada porque a OS foi cancelada durante a operação",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS foi cancelada e não pode ser alterada. Atualize a página.",
+          requestId: req.requestId,
+        });
+      }
 
       const updatedOS = result.rows[0];
 
@@ -1036,16 +1103,67 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await pool.query(
-        "DELETE FROM ordens_servico WHERE id = $1 AND company_id = $2 RETURNING id, cliente_id, status, company_id",
+      const current = await pool.query(
+        `SELECT id, status
+         FROM ordens_servico
+         WHERE id = $1 AND company_id = $2`,
         [id, req.user.company_id]
       );
 
-      if (result.rowCount === 0) {
+      if (current.rowCount === 0) {
         logOSNotFound(req, "OS_DELETE_NOT_FOUND", "Tentativa de excluir OS inexistente", id);
 
         return res.status(404).json({
           error: "OS não encontrada",
+          requestId: req.requestId,
+        });
+      }
+
+      if (current.rows[0].status === CANCELLED_STATUS) {
+        logger.warn(
+          "OS_DELETE_BLOCKED_CANCELLED",
+          "Tentativa de excluir OS cancelada",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS está cancelada e não pode ser excluída. Reabra-a antes de qualquer ação administrativa.",
+          requestId: req.requestId,
+        });
+      }
+
+      const result = await pool.query(
+        `DELETE FROM ordens_servico
+         WHERE id = $1
+           AND company_id = $2
+           AND status <> 'cancelado'
+         RETURNING id, cliente_id, status, company_id`,
+        [id, req.user.company_id]
+      );
+
+      if (result.rowCount === 0) {
+        logger.warn(
+          "OS_DELETE_BLOCKED_CANCELLED_RACE",
+          "Exclusão bloqueada porque a OS foi cancelada durante a operação",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS foi cancelada e não pode ser excluída. Atualize a página.",
           requestId: req.requestId,
         });
       }
@@ -1066,6 +1184,146 @@ router.delete(
       return res.json({ deleted: deletedOS, requestId: req.requestId });
     } catch (err) {
       return next(err);
+    }
+  }
+);
+
+router.post(
+  "/:id/reabrir",
+  sensitiveActionLimiter,
+  requireRole("admin"),
+  validate(osIdParamSchema, "params"),
+  validate(osReopenSchema),
+  async (req, res, next) => {
+    const { id } = req.params;
+    const osId = Number(id);
+    const motivo = String(req.body.motivo || "").trim();
+    let client;
+
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      const current = await client.query(
+        `SELECT id, status, closed_at
+         FROM ordens_servico
+         WHERE id = $1 AND company_id = $2
+         FOR UPDATE`,
+        [id, req.user.company_id]
+      );
+
+      if (current.rowCount === 0) {
+        await client.query("ROLLBACK");
+
+        logOSNotFound(
+          req,
+          "OS_REOPEN_NOT_FOUND",
+          "Tentativa de reabrir OS inexistente",
+          id
+        );
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
+      }
+
+      const currentOS = current.rows[0];
+
+      if (currentOS.status !== CANCELLED_STATUS) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_REOPEN_BLOCKED_INVALID_STATUS",
+          "Tentativa de reabrir OS que não está cancelada",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId,
+            osStatus: currentOS.status,
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: `Somente OS cancelada pode ser reaberta. Status atual: ${formatStatusLabel(currentOS.status)}.`,
+          requestId: req.requestId,
+        });
+      }
+
+      const updated = await client.query(
+        `UPDATE ordens_servico
+         SET status = $3,
+             updated_at = now(),
+             closed_at = NULL
+         WHERE id = $1 AND company_id = $2
+         RETURNING *`,
+        [id, req.user.company_id, REOPEN_TARGET_STATUS]
+      );
+
+      await insertOsEvent(client, req, {
+        osId,
+        eventType: "os_reopened",
+        title: "OS reaberta",
+        description: `De ${formatStatusLabel(CANCELLED_STATUS)} para ${formatStatusLabel(REOPEN_TARGET_STATUS)}. Motivo: ${motivo}`,
+        metadata: {
+          old_status: CANCELLED_STATUS,
+          new_status: REOPEN_TARGET_STATUS,
+          reason: motivo,
+          source: "controlled_reopen",
+        },
+      });
+
+      await client.query("COMMIT");
+
+      logger.warn(
+        "OS_REOPENED",
+        "OS cancelada reaberta por administrador",
+        {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId: req.user.company_id,
+          role: req.user.role,
+          osId,
+          oldStatus: CANCELLED_STATUS,
+          newStatus: REOPEN_TARGET_STATUS,
+          reasonLength: motivo.length,
+          ip: req.ip,
+        }
+      );
+
+      return res.json({
+        message: "OS reaberta com sucesso.",
+        status: REOPEN_TARGET_STATUS,
+        os: updated.rows[0],
+        requestId: req.requestId,
+      });
+    } catch (err) {
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_REOPEN_ROLLBACK_FAILED",
+            "Falha ao reverter transação de reabertura da OS",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId,
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
+      return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
@@ -1318,16 +1576,25 @@ router.post(
   validate(osIdParamSchema, "params"),
   validate(osPecaCreateSchema),
   async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { nome, quantidade, valor_unitario } = req.body;
+    const { id } = req.params;
+    const { nome, quantidade, valor_unitario } = req.body;
+    let client;
 
-      const osCheck = await pool.query(
-        "SELECT id FROM ordens_servico WHERE id = $1 AND company_id = $2",
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      const osCheck = await client.query(
+        `SELECT id, status
+         FROM ordens_servico
+         WHERE id = $1 AND company_id = $2
+         FOR UPDATE`,
         [id, req.user.company_id]
       );
 
       if (osCheck.rowCount === 0) {
+        await client.query("ROLLBACK");
+
         logOSNotFound(req, "OS_PART_CREATE_NOT_FOUND", "Tentativa de adicionar peça em OS inexistente", id);
 
         return res.status(404).json({
@@ -1336,29 +1603,40 @@ router.post(
         });
       }
 
-      const result = await pool.query(
+      if (osCheck.rows[0].status === CANCELLED_STATUS) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_PART_CREATE_BLOCKED_CANCELLED",
+          "Tentativa de adicionar peça em OS cancelada",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS está cancelada e não permite adicionar peças.",
+          requestId: req.requestId,
+        });
+      }
+
+      const result = await client.query(
         `INSERT INTO os_pecas (os_id, company_id, nome, quantidade, valor_unitario)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, nome, quantidade, valor_unitario, valor_total, created_at`,
         [id, req.user.company_id, nome, quantidade, valor_unitario]
       );
 
-      await recalcularTotaisOS(id, req.user.company_id);
+      await recalcularTotaisOS(id, req.user.company_id, client);
 
       const createdPart = result.rows[0];
 
-      logger.info("OS_PART_CREATED", "Peça adicionada à OS", {
-        requestId: req.requestId,
-        userId: req.user.id,
-        companyId: req.user.company_id,
-        role: req.user.role,
-        osId: Number(id),
-        partId: createdPart.id,
-        quantity: Number(createdPart.quantidade),
-        ip: req.ip,
-      });
-
-      await createOsEvent(req, {
+      await insertOsEvent(client, req, {
         osId: Number(id),
         eventType: "piece_added",
         title: "Peça adicionada",
@@ -1372,9 +1650,44 @@ router.post(
         },
       });
 
+      await client.query("COMMIT");
+
+      logger.info("OS_PART_CREATED", "Peça adicionada à OS", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        partId: createdPart.id,
+        quantity: Number(createdPart.quantidade),
+        ip: req.ip,
+      });
+
       return res.status(201).json(createdPart);
     } catch (err) {
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_PART_CREATE_ROLLBACK_FAILED",
+            "Falha ao reverter inclusão de peça",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId: Number(id),
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
@@ -1385,11 +1698,57 @@ router.put(
   validate(osPecaParamSchema, "params"),
   validate(osPecaUpdateSchema),
   async (req, res, next) => {
-    try {
-      const { id, pecaId } = req.params;
-      const { nome, quantidade, valor_unitario } = req.body;
+    const { id, pecaId } = req.params;
+    const { nome, quantidade, valor_unitario } = req.body;
+    let client;
 
-      const result = await pool.query(
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      const osCheck = await client.query(
+        `SELECT id, status
+         FROM ordens_servico
+         WHERE id = $1 AND company_id = $2
+         FOR UPDATE`,
+        [id, req.user.company_id]
+      );
+
+      if (osCheck.rowCount === 0) {
+        await client.query("ROLLBACK");
+
+        logOSNotFound(req, "OS_PART_UPDATE_OS_NOT_FOUND", "Tentativa de atualizar peça de OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
+      }
+
+      if (osCheck.rows[0].status === CANCELLED_STATUS) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_PART_UPDATE_BLOCKED_CANCELLED",
+          "Tentativa de atualizar peça em OS cancelada",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            partId: Number(pecaId),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS está cancelada e não permite alterar peças.",
+          requestId: req.requestId,
+        });
+      }
+
+      const result = await client.query(
         `UPDATE os_pecas
          SET nome = $1,
              quantidade = $2,
@@ -1400,6 +1759,8 @@ router.put(
       );
 
       if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
+
         logger.warn("OS_PART_UPDATE_NOT_FOUND", "Tentativa de atualizar peça inexistente", {
           requestId: req.requestId,
           userId: req.user.id,
@@ -1416,22 +1777,11 @@ router.put(
         });
       }
 
-      await recalcularTotaisOS(id, req.user.company_id);
+      await recalcularTotaisOS(id, req.user.company_id, client);
 
       const updatedPart = result.rows[0];
 
-      logger.info("OS_PART_UPDATED", "Peça da OS atualizada", {
-        requestId: req.requestId,
-        userId: req.user.id,
-        companyId: req.user.company_id,
-        role: req.user.role,
-        osId: Number(id),
-        partId: updatedPart.id,
-        quantity: Number(updatedPart.quantidade),
-        ip: req.ip,
-      });
-
-      await createOsEvent(req, {
+      await insertOsEvent(client, req, {
         osId: Number(id),
         eventType: "piece_updated",
         title: "Peça atualizada",
@@ -1445,9 +1795,45 @@ router.put(
         },
       });
 
+      await client.query("COMMIT");
+
+      logger.info("OS_PART_UPDATED", "Peça da OS atualizada", {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId: Number(id),
+        partId: updatedPart.id,
+        quantity: Number(updatedPart.quantidade),
+        ip: req.ip,
+      });
+
       return res.json(updatedPart);
     } catch (err) {
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_PART_UPDATE_ROLLBACK_FAILED",
+            "Falha ao reverter atualização de peça",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId: Number(id),
+              partId: Number(pecaId),
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
@@ -1457,10 +1843,56 @@ router.delete(
   requireRole("admin", "atendimento"),
   validate(osPecaParamSchema, "params"),
   async (req, res, next) => {
-    try {
-      const { id, pecaId } = req.params;
+    const { id, pecaId } = req.params;
+    let client;
 
-      const result = await pool.query(
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      const osCheck = await client.query(
+        `SELECT id, status
+         FROM ordens_servico
+         WHERE id = $1 AND company_id = $2
+         FOR UPDATE`,
+        [id, req.user.company_id]
+      );
+
+      if (osCheck.rowCount === 0) {
+        await client.query("ROLLBACK");
+
+        logOSNotFound(req, "OS_PART_DELETE_OS_NOT_FOUND", "Tentativa de remover peça de OS inexistente", id);
+
+        return res.status(404).json({
+          error: "OS não encontrada",
+          requestId: req.requestId,
+        });
+      }
+
+      if (osCheck.rows[0].status === CANCELLED_STATUS) {
+        await client.query("ROLLBACK");
+
+        logger.warn(
+          "OS_PART_DELETE_BLOCKED_CANCELLED",
+          "Tentativa de remover peça de OS cancelada",
+          {
+            requestId: req.requestId,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            role: req.user.role,
+            osId: Number(id),
+            partId: Number(pecaId),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error: "Esta OS está cancelada e não permite remover peças.",
+          requestId: req.requestId,
+        });
+      }
+
+      const result = await client.query(
         `DELETE FROM os_pecas
          WHERE id = $1 AND os_id = $2 AND company_id = $3
          RETURNING id, os_id, company_id, nome, quantidade`,
@@ -1468,6 +1900,8 @@ router.delete(
       );
 
       if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
+
         logger.warn("OS_PART_DELETE_NOT_FOUND", "Tentativa de excluir peça inexistente", {
           requestId: req.requestId,
           userId: req.user.id,
@@ -1484,9 +1918,23 @@ router.delete(
         });
       }
 
-      await recalcularTotaisOS(id, req.user.company_id);
+      await recalcularTotaisOS(id, req.user.company_id, client);
 
       const deletedPart = result.rows[0];
+
+      await insertOsEvent(client, req, {
+        osId: Number(id),
+        eventType: "piece_removed",
+        title: "Peça removida",
+        description: `Peça removida: ${deletedPart.nome} (${Number(deletedPart.quantidade)}x).`,
+        metadata: {
+          part_id: deletedPart.id,
+          part_name: deletedPart.nome,
+          quantity: Number(deletedPart.quantidade),
+        },
+      });
+
+      await client.query("COMMIT");
 
       logger.warn("OS_PART_DELETED", "Peça removida da OS", {
         requestId: req.requestId,
@@ -1499,21 +1947,32 @@ router.delete(
         ip: req.ip,
       });
 
-      await createOsEvent(req, {
-        osId: Number(id),
-        eventType: "piece_removed",
-        title: "Peça removida",
-        description: `Peça removida: ${deletedPart.nome} (${Number(deletedPart.quantidade)}x).`,
-        metadata: {
-          part_id: deletedPart.id,
-          part_name: deletedPart.nome,
-          quantity: Number(deletedPart.quantidade),
-        },
-      });
-
       return res.json({ deleted: deletedPart, requestId: req.requestId });
     } catch (err) {
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_PART_DELETE_ROLLBACK_FAILED",
+            "Falha ao reverter remoção de peça",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId: Number(id),
+              partId: Number(pecaId),
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
