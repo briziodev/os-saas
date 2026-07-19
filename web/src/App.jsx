@@ -11,6 +11,7 @@ import Clientes from "./pages/Clientes";
 import Usuarios from "./pages/Usuarios";
 import AtivarConta from "./pages/AtivarConta";
 import Kanban from "./pages/Kanban";
+import MinhaConta from "./pages/MinhaConta";
 import "./layouts/AppShellOverrides.css";
 
 function PrivateRoute({ children }) {
@@ -119,6 +120,15 @@ export default function App() {
               <Navigate to="/os" replace />
             </PrivateRoute>
           )
+        }
+      />
+
+      <Route
+        path="/minha-conta"
+        element={
+          <PrivateShell>
+            <MinhaConta />
+          </PrivateShell>
         }
       />
 

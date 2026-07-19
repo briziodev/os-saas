@@ -249,3 +249,75 @@ Observação operacional:
 
 A implementação não foi aplicada em produção. O backend atualizado depende das colunas session_version e password_changed_at e da tabela password_reset_tokens. A migration deve ser aplicada no PostgreSQL 18 antes de qualquer deploy desta branch.
 
+## Tela Minha Conta e validação integrada — 2026-07-19
+
+### Implementação
+
+Foi adicionada a rota autenticada `/minha-conta`, disponível para admin, atendimento e tecnico.
+
+A página apresenta nome, e-mail e perfil em modo somente leitura e permite alterar a senha mediante confirmação da senha atual.
+
+A política de novas senhas exige:
+
+- mínimo de 10 caracteres;
+- máximo de 72 bytes em UTF-8, compatível com o bcrypt;
+- bloqueio de senha composta somente por espaços;
+- bloqueio de caractere NUL;
+- confirmação idêntica;
+- senha nova diferente da senha atual.
+
+### Segurança de sessões
+
+Após uma troca válida:
+
+1. `users.session_version` é incrementado;
+2. JWTs anteriores são revogados;
+3. a sessão atual recebe um JWT novo;
+4. `password_changed_at` é atualizado;
+5. tokens de recuperação pendentes são revogados.
+
+JWT sem `session_version` é rejeitado.
+
+### Tratamento de HTTP 401
+
+O frontend somente trata um HTTP 401 como sessão expirada quando a chamada exige autenticação.
+
+No login público, credenciais incorretas preservam a mensagem segura do backend: `Credenciais inválidas`.
+
+### Proteção de logs
+
+O sanitizador central remove segredos incorporados em caminhos e query strings.
+
+Exemplos:
+
+```text
+/auth/invite/[REDACTED]
+/rota?token=[REDACTED]
+```
+
+Também são protegidos parâmetros como `invite_token`, `reset_token`, `access_token`, `refresh_token`, `authorization` e JWT.
+
+### Validação local concluída
+
+Foram aprovados:
+
+- acesso à Minha Conta pelos três perfis;
+- validações do formulário;
+- troca real de senha;
+- preservação da sessão atual;
+- revogação das sessões anteriores;
+- rejeição da senha antiga;
+- autenticação com a senha nova;
+- layout desktop e mobile;
+- sanitização unitária e HTTP integrada dos logs;
+- ausência de senha e token nos logs;
+- remoção segura do usuário temporário;
+- build Vite.
+
+### Restrição de produção
+
+Esta implementação permanece somente no ambiente local.
+
+Antes do deploy é obrigatório concluir o backup e restore P0 do PostgreSQL 18, aplicar a migration no Neon, validar o schema e somente então publicar o backend e o frontend.
+
+O fluxo de recuperação por e-mail ainda depende da configuração de um provedor de envio seguro.

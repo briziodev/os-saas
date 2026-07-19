@@ -1836,7 +1836,7 @@
   }
 
   .app-shell-bottom-nav.has-secondary-action {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .app-shell-bottom-nav a,
@@ -1955,7 +1955,7 @@
   }
 
   .app-shell-bottom-nav.has-secondary-action {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .app-shell-bottom-nav a,

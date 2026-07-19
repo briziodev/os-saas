@@ -51,6 +51,15 @@ const PAGE_META = [
     roles: ["admin"],
     match: (path) => path.startsWith("/usuarios"),
   },
+  {
+    key: "minhaConta",
+    label: "Minha conta",
+    description: "Perfil e segurança da sua conta.",
+    to: "/minha-conta",
+    icon: appIcons.seguranca,
+    roles: ["admin", "atendimento", "tecnico"],
+    match: (path) => path.startsWith("/minha-conta"),
+  },
 ];
 
 function getInitials(value) {
@@ -103,10 +112,16 @@ export default function AppShell({ children }) {
 
   const mobileMoreItems =
     role === "admin"
-      ? navItems.filter((item) => ["kanban", "usuarios"].includes(item.key))
+      ? navItems.filter((item) =>
+          ["kanban", "usuarios", "minhaConta"].includes(item.key)
+        )
       : role === "atendimento"
-        ? navItems.filter((item) => ["kanban"].includes(item.key))
-        : [];
+        ? navItems.filter((item) =>
+            ["kanban", "minhaConta"].includes(item.key)
+          )
+        : navItems.filter((item) =>
+            ["minhaConta"].includes(item.key)
+          );
 
   const mobileMoreActive =
     mobileMoreItems.length > 0 &&
@@ -269,10 +284,19 @@ export default function AppShell({ children }) {
               );
             })}
 
-            <button type="button" role="menuitem" onClick={logout}>
-              <AppIcon icon={appIcons.sair} size={20} />
-              <span>Sair</span>
-            </button>
+            {canCreateOS ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={logout}
+              >
+                <AppIcon
+                  icon={appIcons.sair}
+                  size={20}
+                />
+                <span>Sair</span>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </main>

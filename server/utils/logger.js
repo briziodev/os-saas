@@ -21,6 +21,26 @@ const BLOCKED_KEYS = new Set([
   "databaseurl",
 ]);
 
+const SENSITIVE_URL_PARAM_KEYS = new Set([
+  "token",
+  "invitetoken",
+  "resettoken",
+  "accesstoken",
+  "refreshtoken",
+  "idtoken",
+  "authorization",
+  "jwt",
+  "otp",
+  "verificationcode",
+  "password",
+  "senha",
+]);
+
+const SENSITIVE_PATH_PATTERNS = [
+  /(\/auth\/invite\/)[^/?#\s]+/gi,
+  /(\/auth\/(?:activate|reset-password|password-reset|verify-email)\/)[^/?#\s]+/gi,
+];
+
 function safeString(value, maxLength = 500) {
   if (value === undefined || value === null) return undefined;
 
@@ -60,6 +80,65 @@ function normalizeKey(key) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+function normalizeUrlParameterKey(key) {
+  let decodedKey = String(key);
+
+  try {
+    decodedKey = decodeURIComponent(decodedKey);
+  } catch {
+    // Mantém o valor original quando houver encoding inválido.
+  }
+
+  return normalizeKey(decodedKey);
+}
+
+function redactSensitiveUrlParameters(text) {
+  return text.replace(
+    /([?&#])([^=&#\s]+)=([^&#\s]*)/g,
+    (fullMatch, separator, rawKey) => {
+      const normalizedKey =
+        normalizeUrlParameterKey(rawKey);
+
+      if (
+        !SENSITIVE_URL_PARAM_KEYS.has(
+          normalizedKey
+        )
+      ) {
+        return fullMatch;
+      }
+
+      return `${separator}${rawKey}=[REDACTED]`;
+    }
+  );
+}
+
+function sanitizeLogString(
+  value,
+  maxLength = 500
+) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return undefined;
+  }
+
+  let text = String(value);
+
+  for (
+    const pattern of SENSITIVE_PATH_PATTERNS
+  ) {
+    text = text.replace(
+      pattern,
+      "$1[REDACTED]"
+    );
+  }
+
+  text = redactSensitiveUrlParameters(text);
+
+  return safeString(text, maxLength);
+}
+
 function sanitizeValue(value, depth, seen) {
   if (value === undefined || value === null) {
     return value;
@@ -81,7 +160,7 @@ function sanitizeValue(value, depth, seen) {
   }
 
   if (typeof value === "string") {
-    return safeString(value);
+    return sanitizeLogString(value);
   }
 
   if (
@@ -173,8 +252,8 @@ function writeLog(level, event, message, meta = {}) {
     service: SERVICE_NAME,
     env: NODE_ENV,
     level,
-    event,
-    message,
+    event: sanitizeLogString(event, 120),
+    message: sanitizeLogString(message, 500),
     ...sanitizeMeta(meta),
   };
 
@@ -212,4 +291,5 @@ module.exports = {
   logger,
   maskEmail,
   maskToken,
+  sanitizeLogString,
 };
