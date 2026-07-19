@@ -1,4 +1,7 @@
-const { rateLimit } = require("express-rate-limit");
+const {
+  rateLimit,
+  ipKeyGenerator,
+} = require("express-rate-limit");
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -6,7 +9,8 @@ const apiLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: {
-    error: "Muitas requisições. Tente novamente em alguns minutos.",
+    error:
+      "Muitas requisições. Tente novamente em alguns minutos.",
   },
 });
 
@@ -17,7 +21,8 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true,
   message: {
-    error: "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.",
+    error:
+      "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.",
   },
 });
 
@@ -27,7 +32,35 @@ const sensitiveActionLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: {
-    error: "Muitas ações sensíveis em pouco tempo. Tente novamente em alguns minutos.",
+    error:
+      "Muitas ações sensíveis em pouco tempo. Tente novamente em alguns minutos.",
+  },
+});
+
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+
+  keyGenerator(req) {
+    const userId = Number(req.user?.id);
+
+    if (Number.isInteger(userId) && userId > 0) {
+      return `user:${userId}`;
+    }
+
+    const ip =
+      typeof req.ip === "string" && req.ip
+        ? req.ip
+        : "0.0.0.0";
+
+    return `ip:${ipKeyGenerator(ip)}`;
+  },
+
+  message: {
+    error:
+      "Muitas tentativas de alteração de senha. Aguarde alguns minutos.",
   },
 });
 
@@ -35,4 +68,5 @@ module.exports = {
   apiLimiter,
   loginLimiter,
   sensitiveActionLimiter,
+  passwordChangeLimiter,
 };

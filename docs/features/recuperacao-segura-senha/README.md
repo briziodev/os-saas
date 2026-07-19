@@ -199,3 +199,53 @@ Resultados:
 - Buffer foi representado somente pelo tamanho;
 - BigInt foi convertido para texto antes da serialização;
 - nenhum valor secreto usado no teste apareceu na saída.
+
+## Troca autenticada de senha — implementação e validação local
+
+Data: 2026-07-19
+
+Status: implementado e validado somente no ambiente local.
+
+Implementação:
+
+- criada política central para novas senhas no backend;
+- criada política equivalente e reutilizável no frontend;
+- senha nova exige no mínimo 10 caracteres;
+- limite máximo seguro de 72 bytes UTF-8 para bcrypt;
+- senha composta somente por espaços é bloqueada;
+- caractere nulo é bloqueado;
+- login continua aceitando senhas legadas com mínimo de 6 caracteres;
+- ativação de conta passou a usar a nova política;
+- criada rota POST /auth/change-password;
+- rota protegida por authRequired, loadUser e limiter específico;
+- senha atual é obrigatória e validada com bcrypt;
+- reutilização da senha atual é bloqueada;
+- operação usa transação e SELECT FOR UPDATE;
+- query utiliza id, company_id e session_version do usuário autenticado;
+- password_hash e password_changed_at são atualizados;
+- session_version é incrementada;
+- tokens de recuperação pendentes são revogados;
+- um novo JWT é emitido para preservar somente a sessão atual;
+- JWTs anteriores deixam de funcionar imediatamente.
+
+Validações executadas:
+
+- confirmação divergente bloqueada com HTTP 400;
+- senha atual incorreta bloqueada sem invalidar uma sessão válida;
+- troca válida concluída com HTTP 200;
+- session_version incrementada de 1 para 2 no usuário temporário;
+- JWT anterior rejeitado com HTTP 401;
+- JWT novo aceito em /auth/me;
+- senha antiga deixou de autenticar;
+- senha nova passou a autenticar;
+- password_changed_at persistido;
+- token de recuperação pendente revogado;
+- reutilização da senha atual bloqueada com HTTP 409;
+- usuário e token temporários removidos ao final;
+- política frontend validada para caracteres e bytes UTF-8;
+- build do frontend aprovado com Vite.
+
+Observação operacional:
+
+A implementação não foi aplicada em produção. O backend atualizado depende das colunas session_version e password_changed_at e da tabela password_reset_tokens. A migration deve ser aplicada no PostgreSQL 18 antes de qualquer deploy desta branch.
+
