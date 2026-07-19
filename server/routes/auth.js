@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const { signAuthToken } = require("../utils/authToken");
 const { authRequired, loadUser } = require("../middlewares/auth");
 const validate = require("../middlewares/validate");
 const {
@@ -48,7 +48,8 @@ router.post("/login", loginLimiter, validate(loginSchema), async (req, res, next
          password_hash,
          company_id,
          role,
-         is_active
+         is_active,
+         session_version
        FROM users
        WHERE email = $1`,
       [emailNormalizado]
@@ -123,16 +124,7 @@ router.post("/login", loginLimiter, validate(loginSchema), async (req, res, next
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        company_id: user.company_id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+    const token = signAuthToken(user);
 
     logger.info("LOGIN_SUCCESS", "Usuário autenticado com sucesso", {
       requestId: req.requestId,

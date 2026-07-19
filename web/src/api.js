@@ -14,6 +14,7 @@ export function getToken() {
 
 export function clearToken() {
   localStorage.removeItem("token");
+  localStorage.removeItem("user");
 }
 
 export async function apiFetch(path, options = {}, config = {}) {

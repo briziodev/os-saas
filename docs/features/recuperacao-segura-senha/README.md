@@ -149,3 +149,53 @@ Backup pré-migration:
 Observação:
 
 Esta validação ocorreu somente no banco local. A migration ainda não foi aplicada no Neon de produção.
+## Validação local da sessão versionada
+
+Data: 2026-07-18
+
+Ambiente:
+
+- backend Node.js local;
+- PostgreSQL local 18.4;
+- API em http://localhost:3000;
+- usuário admin ativo da empresa 1.
+
+Resultados:
+
+- health da aplicação respondeu 200;
+- login emitiu JWT contendo session_version;
+- JWT versionado foi aceito em GET /auth/me;
+- session_version do JWT correspondeu ao banco;
+- JWT legado sem session_version foi bloqueado com 401;
+- session_version do usuário de teste foi incrementado de 1 para 2;
+- JWT emitido antes do incremento foi bloqueado com 401;
+- novo login recebeu session_version igual a 2;
+- novo JWT foi aceito em GET /auth/me;
+- eventos TOKEN_WITHOUT_SESSION_VERSION e TOKEN_SESSION_REVOKED foram registrados;
+- e-mail foi mascarado nos logs;
+- senha e JWT não apareceram nos logs;
+- session_version do usuário de teste permaneceu em 2 intencionalmente.
+
+Decisão de compatibilidade:
+
+- JWTs antigos sem session_version serão invalidados;
+- após o futuro deploy, usuários previamente autenticados precisarão fazer login novamente uma única vez;
+- versões de sessão nunca devem ser reduzidas.
+
+Observação:
+
+A implementação e os testes ocorreram somente no ambiente local. A migration e o backend ainda não foram aplicados em produção.
+## Validação do sanitizador de logs
+
+Data: 2026-07-19
+
+Resultados:
+
+- campos de senha aninhados foram substituídos por REDACTED;
+- authorization e tokens aninhados foram protegidos;
+- campo não sensível foi preservado;
+- objetos circulares foram tratados;
+- arrays circulares foram tratados;
+- Buffer foi representado somente pelo tamanho;
+- BigInt foi convertido para texto antes da serialização;
+- nenhum valor secreto usado no teste apareceu na saída.

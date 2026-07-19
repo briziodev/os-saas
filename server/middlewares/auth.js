@@ -120,6 +120,30 @@ async function loadUser(req, res, next) {
       });
     }
 
+    const tokenSessionVersion = Number(req.user?.session_version);
+
+    if (
+      !Number.isInteger(tokenSessionVersion) ||
+      tokenSessionVersion < 1
+    ) {
+      logger.warn(
+        "TOKEN_WITHOUT_SESSION_VERSION",
+        "Acesso bloqueado: token sem versão de sessão válida",
+        {
+          requestId: req.requestId,
+          method: req.method,
+          path: req.originalUrl,
+          ip: req.ip,
+          tokenUserId: userId,
+        }
+      );
+
+      return res.status(401).json({
+        error: "Token inválido ou expirado.",
+        requestId: req.requestId,
+      });
+    }
+
     const { rows } = await pool.query(
       `SELECT
          id,
@@ -127,7 +151,8 @@ async function loadUser(req, res, next) {
          email,
          role,
          company_id,
-         is_active
+         is_active,
+         session_version
        FROM users
        WHERE id = $1`,
       [userId]
@@ -149,6 +174,29 @@ async function loadUser(req, res, next) {
     }
 
     const dbUser = rows[0];
+
+    if (dbUser.session_version !== tokenSessionVersion) {
+      logger.warn(
+        "TOKEN_SESSION_REVOKED",
+        "Acesso bloqueado: sessão revogada",
+        {
+          requestId: req.requestId,
+          method: req.method,
+          path: req.originalUrl,
+          ip: req.ip,
+          userId: dbUser.id,
+          companyId: dbUser.company_id,
+          role: dbUser.role,
+          tokenSessionVersion,
+          currentSessionVersion: dbUser.session_version,
+        }
+      );
+
+      return res.status(401).json({
+        error: "Sessão expirada. Faça login novamente.",
+        requestId: req.requestId,
+      });
+    }
 
     if (!dbUser.is_active) {
       logger.warn("AUTH_USER_INACTIVE", "Acesso bloqueado: usuário inativo", {

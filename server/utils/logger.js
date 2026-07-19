@@ -1,6 +1,26 @@
 const SERVICE_NAME = process.env.SERVICE_NAME || "os-saas-api";
 const NODE_ENV = process.env.NODE_ENV || "development";
 
+const MAX_SANITIZE_DEPTH = 6;
+
+const BLOCKED_KEYS = new Set([
+  "password",
+  "senha",
+  "passwordhash",
+  "currentpassword",
+  "newpassword",
+  "confirmpassword",
+  "token",
+  "tokenhash",
+  "resettoken",
+  "jwt",
+  "authorization",
+  "invitetoken",
+  "secret",
+  "jwtsecret",
+  "databaseurl",
+]);
+
 function safeString(value, maxLength = 500) {
   if (value === undefined || value === null) return undefined;
 
@@ -33,47 +53,118 @@ function maskToken(token) {
   return `${text.slice(0, 4)}...${text.slice(-4)}`;
 }
 
-function sanitizeMeta(meta = {}) {
-  const blockedKeys = new Set([
-    "password",
-    "senha",
-    "password_hash",
-    "token",
-    "jwt",
-    "authorization",
-    "invite_token",
-    "secret",
-    "jwt_secret",
-  ]);
+function normalizeKey(key) {
+  return String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
 
-  const output = {};
-
-  for (const [key, value] of Object.entries(meta || {})) {
-    const normalizedKey = String(key).toLowerCase();
-
-    if (blockedKeys.has(normalizedKey)) {
-      output[key] = "[REDACTED]";
-      continue;
-    }
-
-    if (value instanceof Error) {
-      output[key] = {
-        name: value.name,
-        message: safeString(value.message),
-        stack: NODE_ENV === "production" ? undefined : safeString(value.stack, 2000),
-      };
-      continue;
-    }
-
-    if (typeof value === "string") {
-      output[key] = safeString(value);
-      continue;
-    }
-
-    output[key] = value;
+function sanitizeValue(value, depth, seen) {
+  if (value === undefined || value === null) {
+    return value;
   }
 
-  return output;
+  if (depth > MAX_SANITIZE_DEPTH) {
+    return "[MAX_DEPTH]";
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: safeString(value.name),
+      message: safeString(value.message),
+      stack:
+        NODE_ENV === "production"
+          ? undefined
+          : safeString(value.stack, 2000),
+    };
+  }
+
+  if (typeof value === "string") {
+    return safeString(value);
+  }
+
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return `[BUFFER:${value.length}]`;
+  }
+
+  if (Array.isArray(value)) {
+    if (seen.has(value)) {
+      return "[CIRCULAR]";
+    }
+
+    seen.add(value);
+
+    const output = value.map((item) =>
+      sanitizeValue(item, depth + 1, seen)
+    );
+
+    seen.delete(value);
+
+    return output;
+  }
+
+  if (typeof value === "object") {
+    if (seen.has(value)) {
+      return "[CIRCULAR]";
+    }
+
+    seen.add(value);
+
+    const output = {};
+
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (BLOCKED_KEYS.has(normalizeKey(key))) {
+        output[key] = "[REDACTED]";
+        continue;
+      }
+
+      output[key] = sanitizeValue(
+        nestedValue,
+        depth + 1,
+        seen
+      );
+    }
+
+    seen.delete(value);
+
+    return output;
+  }
+
+  return safeString(value);
+}
+
+function sanitizeMeta(meta = {}) {
+  const sanitized = sanitizeValue(
+    meta,
+    0,
+    new WeakSet()
+  );
+
+  if (
+    sanitized &&
+    typeof sanitized === "object" &&
+    !Array.isArray(sanitized)
+  ) {
+    return sanitized;
+  }
+
+  return {};
 }
 
 function writeLog(level, event, message, meta = {}) {
