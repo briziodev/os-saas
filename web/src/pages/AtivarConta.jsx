@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { apiFetch, clearToken } from "../api";
+import {
+  getNewPasswordError,
+} from "../utils/passwordPolicy";
 import "./AtivarConta.css";
 
 function formatarDataHora(valor) {
@@ -83,8 +86,11 @@ export default function AtivarConta() {
       return;
     }
 
-    if (!password || password.length < 6) {
-      setError("A senha precisa ter no mínimo 6 caracteres.");
+    const passwordError =
+      getNewPasswordError(password);
+
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -277,8 +283,12 @@ export default function AtivarConta() {
                   <label htmlFor="password">Nova senha</label>
                   <input
                     id="password"
+                    name="password"
                     type="password"
-                    placeholder="Mínimo de 6 caracteres"
+                    autoComplete="new-password"
+                    placeholder="Mínimo de 10 caracteres"
+                    minLength={10}
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={submitting}
@@ -289,8 +299,11 @@ export default function AtivarConta() {
                   <label htmlFor="confirmPassword">Confirmar senha</label>
                   <input
                     id="confirmPassword"
+                    name="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Repita a senha"
+                    required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={submitting}

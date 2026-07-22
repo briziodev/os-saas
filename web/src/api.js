@@ -8,12 +8,25 @@ export function setToken(token) {
   localStorage.setItem("token", token);
 }
 
+export function setUser(user) {
+  if (!user || typeof user !== "object") {
+    localStorage.removeItem("user");
+    return;
+  }
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(user)
+  );
+}
+
 export function getToken() {
   return localStorage.getItem("token");
 }
 
 export function clearToken() {
   localStorage.removeItem("token");
+  localStorage.removeItem("user");
 }
 
 export async function apiFetch(path, options = {}, config = {}) {
@@ -42,7 +55,7 @@ export async function apiFetch(path, options = {}, config = {}) {
     ? await response.json().catch(() => ({}))
     : await response.text();
 
-  if (response.status === 401) {
+  if (response.status === 401 && auth) {
     clearToken();
     throw new Error("Sessão expirada. Faça login novamente.");
   }

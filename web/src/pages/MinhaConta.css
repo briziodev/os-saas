@@ -1,0 +1,266 @@
+.minha-conta-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px;
+  color: #0f172a;
+}
+
+.minha-conta-page *,
+.minha-conta-page *::before,
+.minha-conta-page *::after {
+  box-sizing: border-box;
+}
+
+.minha-conta-feedback {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.minha-conta-feedback.is-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.minha-conta-feedback.is-success {
+  color: #166534;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.minha-conta-feedback.is-warning {
+  color: #854d0e;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.minha-conta-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(280px, 0.85fr)
+    minmax(360px, 1.15fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.minha-conta-card {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #dbe5f1;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+.minha-conta-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.minha-conta-card-heading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.minha-conta-card-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.minha-conta-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: #0757e7;
+  background: #eaf2ff;
+}
+
+.minha-conta-loading {
+  margin: 0;
+  color: #64748b;
+}
+
+.minha-conta-details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.minha-conta-details > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.minha-conta-details > div:first-child {
+  padding-top: 0;
+}
+
+.minha-conta-details dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.minha-conta-details dd {
+  min-width: 0;
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.minha-conta-security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 14px;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.minha-conta-security-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #0757e7;
+}
+
+.minha-conta-security-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.minha-conta-form {
+  display: grid;
+  gap: 18px;
+}
+
+.minha-conta-field {
+  display: grid;
+  gap: 8px;
+}
+
+.minha-conta-field label {
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.minha-conta-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+  outline: none;
+  color: #0f172a;
+  background: #ffffff;
+  font: inherit;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.minha-conta-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.minha-conta-field input:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  background: #f8fafc;
+}
+
+.minha-conta-field span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.minha-conta-submit {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 4px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, #1764ff, #0d4fce);
+  font: inherit;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(23, 100, 255, 0.22);
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease;
+}
+
+.minha-conta-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.minha-conta-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 900px) {
+  .minha-conta-page {
+    padding: 24px;
+  }
+
+  .minha-conta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .minha-conta-page {
+    padding:
+      20px
+      16px
+      calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .minha-conta-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .minha-conta-card-heading {
+    margin-bottom: 20px;
+  }
+
+  .minha-conta-submit {
+    width: 100%;
+  }
+}
