@@ -223,15 +223,18 @@ router.get(
         baseParams
       );
 
-      const faturamentoPeriodoQ = pool.query(
-        `SELECT COALESCE(SUM(os.valor_total), 0)::numeric(12,2) AS total
-         FROM ordens_servico os
-         WHERE os.company_id = $1
-         AND os.status IN ('encerrado', 'finalizado')
-         AND os.closed_at IS NOT NULL
-         ${range.closedClause}`,
-        baseParams
-      );
+      const faturamentoPeriodoQ =
+        req.user.role === "admin"
+          ? pool.query(
+              `SELECT COALESCE(SUM(os.valor_total), 0)::numeric(12,2) AS total
+               FROM ordens_servico os
+               WHERE os.company_id = $1
+               AND os.status IN ('encerrado', 'finalizado')
+               AND os.closed_at IS NOT NULL
+               ${range.closedClause}`,
+              baseParams
+            )
+          : Promise.resolve(null);
 
       const porStatusQ = pool.query(
         `SELECT os.status, COUNT(*)::int AS total
@@ -295,7 +298,12 @@ router.get(
           em_andamento: emAndamento.rows[0].total,
           orcamentos_pendentes: orcPendentes.rows[0].total,
           finalizados_no_periodo: finalizadosPeriodo.rows[0].total,
-          faturamento_periodo: faturamentoPeriodo.rows[0].total,
+          ...(req.user.role === "admin"
+            ? {
+                faturamento_periodo:
+                  faturamentoPeriodo.rows[0].total,
+              }
+            : {}),
         },
         por_status: porStatus.rows,
         notifications: buildActionNotifications(porStatus.rows, range),
