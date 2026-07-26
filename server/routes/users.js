@@ -357,41 +357,71 @@ router.patch(
   validate(userIdParamSchema, "params"),
   validate(updateUserRoleSchema),
   async (req, res, next) => {
-    try {
-      const targetId = getTargetId(req);
-      const { role } = req.body;
+    const targetId = getTargetId(req);
+    const { role } = req.body;
 
-      if (req.user.id === targetId) {
-        logger.warn("USER_ROLE_CHANGE_BLOCKED_SELF", "Admin tentou alterar o próprio perfil", {
+    if (req.user.id === targetId) {
+      logger.warn(
+        "USER_ROLE_CHANGE_BLOCKED_SELF",
+        "Admin tentou alterar o próprio perfil",
+        {
           requestId: req.requestId,
           adminUserId: req.user.id,
           companyId: req.user.company_id,
           attemptedRole: role,
           ip: req.ip,
-        });
-
-        return res.status(403).json({
-          error: "Você não pode alterar o próprio perfil.",
-          requestId: req.requestId,
-        });
-      }
-
-      const currentUser = await pool.query(
-        `SELECT id, email, role, company_id
-         FROM users
-         WHERE id = $1 AND company_id = $2`,
-        [targetId, req.user.company_id]
+        }
       );
 
-      if (currentUser.rowCount === 0) {
-        logger.warn("USER_ROLE_CHANGE_TARGET_NOT_FOUND", "Tentativa de alterar perfil de usuário inexistente", {
-          requestId: req.requestId,
-          adminUserId: req.user.id,
-          companyId: req.user.company_id,
-          targetUserId: targetId,
-          attemptedRole: role,
-          ip: req.ip,
-        });
+      return res.status(403).json({
+        error: "Você não pode alterar o próprio perfil.",
+        requestId: req.requestId,
+      });
+    }
+
+    let client;
+    let transactionOpen = false;
+
+    try {
+      client = await pool.connect();
+
+      await client.query("BEGIN");
+      transactionOpen = true;
+
+      const currentUserResult = await client.query(
+        `SELECT
+           id,
+           email,
+           role,
+           company_id,
+           is_active,
+           session_version
+         FROM users
+         WHERE id = $1
+           AND company_id = $2
+         FOR UPDATE`,
+        [
+          targetId,
+          req.user.company_id,
+        ]
+      );
+
+      if (currentUserResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logger.warn(
+          "USER_ROLE_CHANGE_TARGET_NOT_FOUND",
+          "Tentativa de alterar perfil de usuário inexistente",
+          {
+            requestId: req.requestId,
+            adminUserId: req.user.id,
+            companyId: req.user.company_id,
+            targetUserId: targetId,
+            attemptedRole: role,
+            ip: req.ip,
+          }
+        );
 
         return res.status(404).json({
           error: "Usuário não encontrado",
@@ -399,32 +429,126 @@ router.patch(
         });
       }
 
-      const targetUser = currentUser.rows[0];
+      const targetUser =
+        currentUserResult.rows[0];
 
-      await pool.query(
+      if (targetUser.role === role) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logger.info(
+          "USER_ROLE_UPDATE_NOOP",
+          "Perfil informado já estava aplicado",
+          {
+            requestId: req.requestId,
+            adminUserId: req.user.id,
+            companyId: req.user.company_id,
+            targetUserId: targetUser.id,
+            targetEmail:
+              maskEmail(targetUser.email),
+            role,
+            sessionVersion:
+              targetUser.session_version,
+            ip: req.ip,
+          }
+        );
+
+        return res.json({
+          message:
+            "O usuário já possui este perfil.",
+          sessions_revoked: false,
+          requestId: req.requestId,
+        });
+      }
+
+      const updatedResult = await client.query(
         `UPDATE users
-         SET role = $1
-         WHERE id = $2 AND company_id = $3`,
-        [role, targetId, req.user.company_id]
+         SET
+           role = $1,
+           session_version =
+             session_version + 1
+         WHERE id = $2
+           AND company_id = $3
+         RETURNING
+           id,
+           role,
+           is_active,
+           session_version`,
+        [
+          role,
+          targetId,
+          req.user.company_id,
+        ]
       );
 
-      logger.info("USER_ROLE_UPDATED", "Perfil de usuário atualizado", {
-        requestId: req.requestId,
-        adminUserId: req.user.id,
-        companyId: req.user.company_id,
-        targetUserId: targetUser.id,
-        targetEmail: maskEmail(targetUser.email),
-        oldRole: targetUser.role,
-        newRole: role,
-        ip: req.ip,
-      });
+      const updatedUser =
+        updatedResult.rows[0];
+
+      await client.query("COMMIT");
+      transactionOpen = false;
+
+      logger.info(
+        "USER_ROLE_UPDATED",
+        "Perfil de usuário atualizado",
+        {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetUser.id,
+          targetEmail:
+            maskEmail(targetUser.email),
+          oldRole: targetUser.role,
+          newRole: updatedUser.role,
+          previousSessionVersion:
+            targetUser.session_version,
+          currentSessionVersion:
+            updatedUser.session_version,
+          sessionsRevoked: true,
+          ip: req.ip,
+        }
+      );
+
+      logger.info(
+        "USER_SESSIONS_REVOKED",
+        "Sessões revogadas após alteração administrativa de perfil",
+        {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetUser.id,
+          reason: "role_changed",
+          previousSessionVersion:
+            targetUser.session_version,
+          currentSessionVersion:
+            updatedUser.session_version,
+          ip: req.ip,
+        }
+      );
 
       return res.json({
-        message: "Perfil atualizado",
+        message:
+          "Perfil atualizado. As sessões anteriores do usuário foram encerradas.",
+        user: {
+          id: updatedUser.id,
+          role: updatedUser.role,
+          is_active:
+            updatedUser.is_active,
+        },
+        sessions_revoked: true,
         requestId: req.requestId,
       });
     } catch (err) {
+      if (transactionOpen && client) {
+        await client
+          .query("ROLLBACK")
+          .catch(() => {});
+      }
+
       return next(err);
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   }
 );
@@ -434,44 +558,71 @@ router.patch(
   requireRole("admin"),
   validate(userIdParamSchema, "params"),
   async (req, res, next) => {
-    try {
-      const targetId = getTargetId(req);
+    const targetId = getTargetId(req);
 
-      if (req.user.id === targetId) {
-        logger.warn("USER_STATUS_CHANGE_BLOCKED_SELF", "Admin tentou alterar a própria conta", {
+    if (req.user.id === targetId) {
+      logger.warn(
+        "USER_STATUS_CHANGE_BLOCKED_SELF",
+        "Admin tentou alterar a própria conta",
+        {
           requestId: req.requestId,
           adminUserId: req.user.id,
           companyId: req.user.company_id,
           ip: req.ip,
-        });
+        }
+      );
 
-        return res.status(403).json({
-          error: "Você não pode alterar sua própria conta.",
-          requestId: req.requestId,
-        });
-      }
+      return res.status(403).json({
+        error:
+          "Você não pode alterar sua própria conta.",
+        requestId: req.requestId,
+      });
+    }
 
-      const user = await pool.query(
+    let client;
+    let transactionOpen = false;
+
+    try {
+      client = await pool.connect();
+
+      await client.query("BEGIN");
+      transactionOpen = true;
+
+      const userResult = await client.query(
         `SELECT
            id,
            email,
            role,
+           company_id,
            is_active,
            activated_at,
-           invite_expires_at
+           invite_expires_at,
+           session_version
          FROM users
-         WHERE id = $1 AND company_id = $2`,
-        [targetId, req.user.company_id]
+         WHERE id = $1
+           AND company_id = $2
+         FOR UPDATE`,
+        [
+          targetId,
+          req.user.company_id,
+        ]
       );
 
-      if (user.rowCount === 0) {
-        logger.warn("USER_STATUS_CHANGE_TARGET_NOT_FOUND", "Tentativa de alterar status de usuário inexistente", {
-          requestId: req.requestId,
-          adminUserId: req.user.id,
-          companyId: req.user.company_id,
-          targetUserId: targetId,
-          ip: req.ip,
-        });
+      if (userResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logger.warn(
+          "USER_STATUS_CHANGE_TARGET_NOT_FOUND",
+          "Tentativa de alterar status de usuário inexistente",
+          {
+            requestId: req.requestId,
+            adminUserId: req.user.id,
+            companyId: req.user.company_id,
+            targetUserId: targetId,
+            ip: req.ip,
+          }
+        );
 
         return res.status(404).json({
           error: "Usuário não encontrado",
@@ -479,58 +630,147 @@ router.patch(
         });
       }
 
-      const targetUser = user.rows[0];
-      const oldStatus = targetUser.is_active;
-      const newStatus = !targetUser.is_active;
+      const targetUser =
+        userResult.rows[0];
+
+      const oldStatus =
+        targetUser.is_active;
+
+      const newStatus =
+        !targetUser.is_active;
 
       const isPendingInvite =
         !targetUser.is_active &&
         !targetUser.activated_at &&
-        Boolean(targetUser.invite_expires_at);
+        Boolean(
+          targetUser.invite_expires_at
+        );
 
-      if (newStatus === true && isPendingInvite) {
-        logger.warn("USER_STATUS_CHANGE_BLOCKED_PENDING_INVITE", "Admin tentou ativar manualmente usuário com convite pendente", {
-          requestId: req.requestId,
-          adminUserId: req.user.id,
-          companyId: req.user.company_id,
-          targetUserId: targetUser.id,
-          targetEmail: maskEmail(targetUser.email),
-          targetRole: targetUser.role,
-          inviteExpiresAt: targetUser.invite_expires_at,
-          ip: req.ip,
-        });
+      if (
+        newStatus === true &&
+        isPendingInvite
+      ) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logger.warn(
+          "USER_STATUS_CHANGE_BLOCKED_PENDING_INVITE",
+          "Admin tentou ativar manualmente usuário com convite pendente",
+          {
+            requestId: req.requestId,
+            adminUserId: req.user.id,
+            companyId: req.user.company_id,
+            targetUserId: targetUser.id,
+            targetEmail:
+              maskEmail(targetUser.email),
+            targetRole: targetUser.role,
+            inviteExpiresAt:
+              targetUser.invite_expires_at,
+            ip: req.ip,
+          }
+        );
 
         return res.status(400).json({
-          error: "Usuário com convite pendente deve ativar a conta pelo link de convite. Reenvie o convite em vez de ativar manualmente.",
+          error:
+            "Usuário com convite pendente deve ativar a conta pelo link de convite. Reenvie o convite em vez de ativar manualmente.",
           requestId: req.requestId,
         });
       }
 
-      await pool.query(
+      const updatedResult = await client.query(
         `UPDATE users
-         SET is_active = $1
-         WHERE id = $2 AND company_id = $3`,
-        [newStatus, targetId, req.user.company_id]
+         SET
+           is_active = $1,
+           session_version =
+             session_version + 1
+         WHERE id = $2
+           AND company_id = $3
+         RETURNING
+           id,
+           role,
+           is_active,
+           activated_at,
+           invite_expires_at,
+           session_version`,
+        [
+          newStatus,
+          targetId,
+          req.user.company_id,
+        ]
       );
 
-      logger.info("USER_STATUS_UPDATED", "Status de usuário atualizado", {
-        requestId: req.requestId,
-        adminUserId: req.user.id,
-        companyId: req.user.company_id,
-        targetUserId: targetUser.id,
-        targetEmail: maskEmail(targetUser.email),
-        targetRole: targetUser.role,
-        oldStatus,
-        newStatus,
-        ip: req.ip,
-      });
+      const updatedUser =
+        updatedResult.rows[0];
+
+      await client.query("COMMIT");
+      transactionOpen = false;
+
+      logger.info(
+        "USER_STATUS_UPDATED",
+        "Status de usuário atualizado",
+        {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetUser.id,
+          targetEmail:
+            maskEmail(targetUser.email),
+          targetRole: targetUser.role,
+          oldStatus,
+          newStatus,
+          previousSessionVersion:
+            targetUser.session_version,
+          currentSessionVersion:
+            updatedUser.session_version,
+          sessionsRevoked: true,
+          ip: req.ip,
+        }
+      );
+
+      logger.info(
+        "USER_SESSIONS_REVOKED",
+        "Sessões revogadas após alteração administrativa de status",
+        {
+          requestId: req.requestId,
+          adminUserId: req.user.id,
+          companyId: req.user.company_id,
+          targetUserId: targetUser.id,
+          reason: newStatus
+            ? "user_reactivated"
+            : "user_deactivated",
+          previousSessionVersion:
+            targetUser.session_version,
+          currentSessionVersion:
+            updatedUser.session_version,
+          ip: req.ip,
+        }
+      );
 
       return res.json({
-        message: "Status atualizado",
+        message: newStatus
+          ? "Usuário ativado. As sessões anteriores permanecem revogadas."
+          : "Usuário desativado. As sessões anteriores foram encerradas.",
+        user: {
+          id: updatedUser.id,
+          role: updatedUser.role,
+          is_active:
+            updatedUser.is_active,
+        },
+        sessions_revoked: true,
         requestId: req.requestId,
       });
     } catch (err) {
+      if (transactionOpen && client) {
+        await client
+          .query("ROLLBACK")
+          .catch(() => {});
+      }
+
       return next(err);
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   }
 );

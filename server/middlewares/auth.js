@@ -175,6 +175,30 @@ async function loadUser(req, res, next) {
 
     const dbUser = rows[0];
 
+    if (!dbUser.is_active) {
+      logger.warn(
+        "AUTH_USER_INACTIVE",
+        "Acesso bloqueado: usuário inativo",
+        {
+          requestId: req.requestId,
+          method: req.method,
+          path: req.originalUrl,
+          ip: req.ip,
+          userId: dbUser.id,
+          companyId: dbUser.company_id,
+          role: dbUser.role,
+          email: maskEmail(dbUser.email),
+        }
+      );
+
+      return res.status(403).json({
+        error:
+          "Seu acesso está desativado. Entre em contato com o administrador da oficina.",
+        code: "USER_INACTIVE",
+        requestId: req.requestId,
+      });
+    }
+
     if (dbUser.session_version !== tokenSessionVersion) {
       logger.warn(
         "TOKEN_SESSION_REVOKED",
@@ -188,30 +212,15 @@ async function loadUser(req, res, next) {
           companyId: dbUser.company_id,
           role: dbUser.role,
           tokenSessionVersion,
-          currentSessionVersion: dbUser.session_version,
+          currentSessionVersion:
+            dbUser.session_version,
         }
       );
 
       return res.status(401).json({
-        error: "Sessão expirada. Faça login novamente.",
-        requestId: req.requestId,
-      });
-    }
-
-    if (!dbUser.is_active) {
-      logger.warn("AUTH_USER_INACTIVE", "Acesso bloqueado: usuário inativo", {
-        requestId: req.requestId,
-        method: req.method,
-        path: req.originalUrl,
-        ip: req.ip,
-        userId: dbUser.id,
-        companyId: dbUser.company_id,
-        role: dbUser.role,
-        email: maskEmail(dbUser.email),
-      });
-
-      return res.status(403).json({
-        error: "Usuário inativo.",
+        error:
+          "Sua sessão foi encerrada. Faça login novamente.",
+        code: "SESSION_REVOKED",
         requestId: req.requestId,
       });
     }
