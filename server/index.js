@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -15,8 +15,19 @@ const { apiLimiter } = require("./middlewares/rateLimiters");
 const requestLogger = require("./middlewares/requestLogger");
 const errorHandler = require("./middlewares/errorHandler");
 const { logger } = require("./utils/logger");
+const {
+  createSchemaReadinessChecker,
+} = require("./services/schemaReadiness");
 
 const app = express();
+
+const schemaReadinessChecker =
+  createSchemaReadinessChecker(
+    pool,
+    {
+      ttlMs: 30_000,
+    }
+  );
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -87,6 +98,84 @@ app.get("/health/db", async (req, res) => {
       status: "error",
       app: "running",
       database: "unavailable",
+      requestId: req.requestId,
+    });
+  }
+});
+
+app.get("/ready", async (req, res) => {
+  const startedAt = Date.now();
+
+  res.set("Cache-Control", "no-store");
+
+  try {
+    const schemaResult =
+      await schemaReadinessChecker.check();
+
+    const latencyMs =
+      Date.now() - startedAt;
+
+    if (!schemaResult.compatible) {
+      logger.error(
+        "SCHEMA_READINESS_INCOMPATIBLE",
+        "Schema do banco incompatível com a aplicação",
+        {
+          requestId: req.requestId,
+          latencyMs,
+          contractId:
+            schemaResult.contractId,
+          missingTables:
+            schemaResult.missingTables,
+          missingColumns:
+            schemaResult.missingColumns,
+          missingConstraints:
+            schemaResult.missingConstraints,
+          invalidConstraints:
+            schemaResult.invalidConstraints,
+          missingIndexes:
+            schemaResult.missingIndexes,
+        }
+      );
+
+      return res.status(503).json({
+        status: "not_ready",
+        app: "running",
+        database: "connected",
+        schema: "incompatible",
+        latencyMs,
+        requestId: req.requestId,
+      });
+    }
+
+    return res.json({
+      status: "ready",
+      app: "running",
+      database: "connected",
+      schema: "compatible",
+      latencyMs,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    const latencyMs =
+      Date.now() - startedAt;
+
+    logger.error(
+      "SCHEMA_READINESS_CHECK_FAILED",
+      "Falha técnica ao verificar compatibilidade do schema",
+      {
+        requestId: req.requestId,
+        latencyMs,
+        errorName: error.name,
+        errorCode: error.code,
+      }
+    );
+
+    return res.status(503).json({
+      status: "not_ready",
+      app: "running",
+      database: "unavailable",
+      schema: "unknown",
+      latencyMs,
       requestId: req.requestId,
     });
   }
