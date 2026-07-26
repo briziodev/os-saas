@@ -56,6 +56,8 @@ router.post("/login", loginLimiter, validate(loginSchema), async (req, res, next
          company_id,
          role,
          is_active,
+         activated_at,
+         invite_expires_at,
          session_version
        FROM users
        WHERE email = $1`,
@@ -74,61 +76,102 @@ router.post("/login", loginLimiter, validate(loginSchema), async (req, res, next
 
     const user = result.rows[0];
 
-    if (!user.is_active) {
-      logger.warn("LOGIN_BLOCKED_INACTIVE_USER", "Login bloqueado: usuário inativo", {
-        requestId: req.requestId,
-        userId: user.id,
-        companyId: user.company_id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
+    const senhaCorreta = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
 
-      return res.status(403).json({ error: "Sua conta ainda não foi ativada" });
+    if (!senhaCorreta) {
+      logger.warn(
+        "LOGIN_FAILED",
+        "Falha de login: senha inválida",
+        {
+          requestId: req.requestId,
+          userId: user.id,
+          companyId: user.company_id,
+          role: user.role,
+          email: maskEmail(user.email),
+          ip: req.ip,
+        }
+      );
+
+      return res.status(401).json({
+        error: "Credenciais inválidas",
+      });
+    }
+
+    if (!user.is_active) {
+      const pendingActivation =
+        !user.activated_at &&
+        Boolean(user.invite_expires_at);
+
+      logger.warn(
+        "LOGIN_BLOCKED_INACTIVE_USER",
+        "Login bloqueado: usuário inativo",
+        {
+          requestId: req.requestId,
+          userId: user.id,
+          companyId: user.company_id,
+          role: user.role,
+          email: maskEmail(user.email),
+          reason: pendingActivation
+            ? "pending_activation"
+            : "administratively_disabled",
+          ip: req.ip,
+        }
+      );
+
+      if (pendingActivation) {
+        return res.status(403).json({
+          error:
+            "Sua conta ainda não foi ativada.",
+          code: "ACCOUNT_PENDING_ACTIVATION",
+        });
+      }
+
+      return res.status(403).json({
+        error:
+          "Seu acesso está desativado. Entre em contato com o administrador da oficina.",
+        code: "USER_INACTIVE",
+      });
     }
 
     if (!user.company_id) {
-      logger.warn("LOGIN_BLOCKED_WITHOUT_COMPANY", "Login bloqueado: usuário sem empresa vinculada", {
-        requestId: req.requestId,
-        userId: user.id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
+      logger.warn(
+        "LOGIN_BLOCKED_WITHOUT_COMPANY",
+        "Login bloqueado: usuário sem empresa vinculada",
+        {
+          requestId: req.requestId,
+          userId: user.id,
+          role: user.role,
+          email: maskEmail(user.email),
+          ip: req.ip,
+        }
+      );
 
       return res.status(403).json({
-        error: "Usuário sem empresa vinculada. Acesse pelo fluxo de convite.",
+        error:
+          "Usuário sem empresa vinculada. Acesse pelo fluxo de convite.",
       });
     }
 
     if (!ALLOWED_ROLES.includes(user.role)) {
-      logger.warn("LOGIN_BLOCKED_INVALID_ROLE", "Login bloqueado: perfil inválido", {
-        requestId: req.requestId,
-        userId: user.id,
-        companyId: user.company_id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
+      logger.warn(
+        "LOGIN_BLOCKED_INVALID_ROLE",
+        "Login bloqueado: perfil inválido",
+        {
+          requestId: req.requestId,
+          userId: user.id,
+          companyId: user.company_id,
+          role: user.role,
+          email: maskEmail(user.email),
+          ip: req.ip,
+        }
+      );
 
       return res.status(403).json({
         error: "Perfil de usuário inválido.",
       });
-    }
-
-    const senhaCorreta = await bcrypt.compare(password, user.password_hash);
-
-    if (!senhaCorreta) {
-      logger.warn("LOGIN_FAILED", "Falha de login: senha inválida", {
-        requestId: req.requestId,
-        userId: user.id,
-        companyId: user.company_id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
-
-      return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
     const token = signAuthToken(user);

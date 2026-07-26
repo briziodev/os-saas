@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
+let authRedirectInProgress = false;
 
 export function getApiUrl() {
   return API_URL;
@@ -29,7 +33,104 @@ export function clearToken() {
   localStorage.removeItem("user");
 }
 
-export async function apiFetch(path, options = {}, config = {}) {
+function getResponseCode(data) {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+    return undefined;
+  }
+
+  return data.code;
+}
+
+function getRequestId(data) {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+    return undefined;
+  }
+
+  return data.requestId;
+}
+
+function createApiError(
+  message,
+  response,
+  data
+) {
+  const error = new Error(message);
+
+  error.name = "ApiError";
+  error.status = response.status;
+  error.code = getResponseCode(data);
+  error.requestId = getRequestId(data);
+
+  return error;
+}
+
+function buildErrorMessage(data) {
+  let message =
+    (
+      data &&
+      typeof data === "object" &&
+      data.error
+    ) ||
+    (
+      typeof data === "string" &&
+      data
+    ) ||
+    "Erro na requisição";
+
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray(data.details) &&
+    data.details.length > 0
+  ) {
+    const detailMessages = data.details
+      .map((item) => item?.message)
+      .filter(Boolean)
+      .join(" ");
+
+    if (detailMessages) {
+      message = `${message}: ${detailMessages}`;
+    }
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    data.requestId
+  ) {
+    message =
+      `${message} Código: ${data.requestId}`;
+  }
+
+  return message;
+}
+
+function invalidateSession() {
+  clearToken();
+
+  if (
+    typeof window === "undefined" ||
+    window.location.pathname === "/login" ||
+    authRedirectInProgress
+  ) {
+    return;
+  }
+
+  authRedirectInProgress = true;
+  window.location.replace("/login");
+}
+
+export async function apiFetch(
+  path,
+  options = {},
+  config = {}
+) {
   const { auth = true } = config;
   const token = getToken();
 
@@ -39,53 +140,57 @@ export async function apiFetch(path, options = {}, config = {}) {
   };
 
   if (auth && token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers.Authorization =
+      `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(
+    `${API_URL}${path}`,
+    {
+      ...options,
+      headers,
+    }
+  );
 
   const isJson = response.headers
     .get("content-type")
     ?.includes("application/json");
 
   const data = isJson
-    ? await response.json().catch(() => ({}))
+    ? await response
+        .json()
+        .catch(() => ({}))
     : await response.text();
 
-  if (response.status === 401 && auth) {
-    clearToken();
-    throw new Error("Sessão expirada. Faça login novamente.");
+  const responseCode =
+    getResponseCode(data);
+
+  const sessionMustBeInvalidated =
+    auth &&
+    (
+      response.status === 401 ||
+      responseCode === "SESSION_REVOKED" ||
+      responseCode === "USER_INACTIVE"
+    );
+
+  if (sessionMustBeInvalidated) {
+    const message = buildErrorMessage(data);
+
+    invalidateSession();
+
+    throw createApiError(
+      message,
+      response,
+      data
+    );
   }
 
   if (!response.ok) {
-    let message =
-      (typeof data === "object" && data?.error) ||
-      (typeof data === "string" && data) ||
-      "Erro na requisição";
-
-    if (
-      typeof data === "object" &&
-      Array.isArray(data?.details) &&
-      data.details.length > 0
-    ) {
-      const detailMessages = data.details
-        .map((item) => item?.message)
-        .filter(Boolean)
-        .join(" ");
-
-      if (detailMessages) {
-        message = `${message}: ${detailMessages}`;
-      }
-    }
-
-    if (typeof data === "object" && data?.requestId) {
-      message = `${message} Código: ${data.requestId}`;
-    }
-
-    throw new Error(message);
+    throw createApiError(
+      buildErrorMessage(data),
+      response,
+      data
+    );
   }
 
   return data;
@@ -93,8 +198,12 @@ export async function apiFetch(path, options = {}, config = {}) {
 
 export function getUser() {
   try {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
+    const raw =
+      localStorage.getItem("user");
+
+    return raw
+      ? JSON.parse(raw)
+      : null;
   } catch {
     return null;
   }
