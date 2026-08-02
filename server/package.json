@@ -6,7 +6,8 @@
     "start": "node index.js",
     "test": "node --test tests/*.test.js",
     "test:schema": "node --test tests/schemaReadiness.test.js",
-    "test:integration:os-cancelada": "node tests/integration/osCancelled.integration.js"
+    "test:integration:os-cancelada": "node tests/integration/osCancelled.integration.js",
+    "test:migrations": "node --test tests/migrationCatalog.test.js"
   },
   "keywords": [],
   "author": "",
