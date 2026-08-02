@@ -749,6 +749,39 @@ async function runRegression() {
     1
   );
 
+  const legacySnapshotBefore =
+    await getSnapshot();
+
+  const legacyResponse =
+    await apiRequest(
+      `/os/${fixture.osId}/whatsapp-link`,
+      {
+        token: tokens.admin,
+      }
+    );
+
+  assert.equal(
+    legacyResponse.status,
+    410
+  );
+
+  assert.equal(
+    legacyResponse.body?.code,
+    "WHATSAPP_LEGACY_ENDPOINT_GONE"
+  );
+
+  const legacySnapshotAfter =
+    await getSnapshot();
+
+  assert.deepEqual(
+    legacySnapshotAfter,
+    legacySnapshotBefore
+  );
+
+  pass(
+    "Endpoint legado GET do WhatsApp está descontinuado e não altera dados"
+  );
+
   await expectHttp(
     "Editar descrição de OS cancelada",
     apiRequest(
@@ -1111,9 +1144,9 @@ async function main() {
             : "failed",
 
         tests: {
-          total: 14,
+          total: 15,
           passed: passedChecks,
-          failed: 14 - passedChecks,
+          failed: 15 - passedChecks,
         },
       },
       null,
