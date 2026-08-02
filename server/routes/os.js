@@ -647,126 +647,36 @@ router.get(
   sensitiveActionLimiter,
   requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const osId = Number(id);
-      const result = await getWhatsappOSData(id, req.user.company_id);
+  (req, res) => {
+    const osId = Number(req.params.id);
 
-      if (result.rowCount === 0) {
-        logOSNotFound(
-          req,
-          "OS_WHATSAPP_LEGACY_NOT_FOUND",
-          "Tentativa de usar endpoint legado para OS inexistente",
-          id
-        );
-
-        return res.status(404).json({
-          error: "OS não encontrada",
-          requestId: req.requestId,
-        });
-      }
-
-      const osData = result.rows[0];
-
-      if (!BUDGET_ALLOWED_STATUSES.has(osData.status)) {
-        logger.warn(
-          "OS_WHATSAPP_LEGACY_BLOCKED_STATUS",
-          "Endpoint legado de WhatsApp bloqueado pelo status da OS",
-          {
-            requestId: req.requestId,
-            userId: req.user.id,
-            companyId: req.user.company_id,
-            role: req.user.role,
-            osId,
-            osStatus: osData.status,
-            ip: req.ip,
-          }
-        );
-
-        return res.status(409).json({
-          error: `Não é possível preparar orçamento para uma OS com status ${formatStatusLabel(osData.status)}.`,
-          requestId: req.requestId,
-        });
-      }
-
-      if (!osData.telefone) {
-        logger.warn(
-          "OS_WHATSAPP_LEGACY_BLOCKED_NO_PHONE",
-          "Endpoint legado de WhatsApp bloqueado: cliente sem telefone",
-          {
-            requestId: req.requestId,
-            userId: req.user.id,
-            companyId: req.user.company_id,
-            role: req.user.role,
-            osId,
-            osStatus: osData.status,
-            ip: req.ip,
-          }
-        );
-
-        return res.status(400).json({
-          error: "Cliente sem telefone",
-          requestId: req.requestId,
-        });
-      }
-
-      const telefoneLimpo = sanitizePhoneBR(osData.telefone);
-
-      if (!isValidWhatsappPhoneBR(telefoneLimpo)) {
-        logger.warn(
-          "OS_WHATSAPP_LEGACY_BLOCKED_INVALID_PHONE",
-          "Endpoint legado de WhatsApp bloqueado: telefone inválido",
-          {
-            requestId: req.requestId,
-            userId: req.user.id,
-            companyId: req.user.company_id,
-            role: req.user.role,
-            osId,
-            osStatus: osData.status,
-            ip: req.ip,
-          }
-        );
-
-        return res.status(400).json({
-          error: "Telefone do cliente inválido para WhatsApp",
-          requestId: req.requestId,
-        });
-      }
-
-      const pecas = await getPecasOS(id, req.user.company_id);
-      const mensagem = buildWhatsappMessage(osData, pecas);
-      const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
-
-      logger.warn(
-        "OS_WHATSAPP_LEGACY_ENDPOINT_USED",
-        "Endpoint GET legado de WhatsApp utilizado sem efeitos no banco",
-        {
-          requestId: req.requestId,
-          userId: req.user.id,
-          companyId: req.user.company_id,
-          role: req.user.role,
-          osId,
-          osStatus: osData.status,
-          partsCount: pecas.length,
-          ip: req.ip,
-        }
-      );
-
-      res.set("Deprecation", "true");
-      res.set(
-        "Warning",
-        '299 - "Endpoint legado. Use POST /os/:id/enviar-orcamento."'
-      );
-
-      return res.json({
-        whatsapp_url: url,
-        deprecated: true,
+    logger.warn(
+      "OS_WHATSAPP_LEGACY_GONE",
+      "Tentativa de uso do endpoint legado de WhatsApp descontinuado",
+      {
         requestId: req.requestId,
-      });
-    } catch (err) {
-      return next(err);
-    }
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId,
+        ip: req.ip,
+      }
+    );
+
+    res.set("Deprecation", "true");
+    res.set("Cache-Control", "no-store");
+    res.set(
+      "Warning",
+      '299 - "Endpoint descontinuado. Use POST /os/:id/enviar-orcamento."'
+    );
+
+    return res.status(410).json({
+      error:
+        "Endpoint descontinuado. Use POST /os/:id/enviar-orcamento.",
+      code:
+        "WHATSAPP_LEGACY_ENDPOINT_GONE",
+      requestId: req.requestId,
+    });
   }
 );
 
