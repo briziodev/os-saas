@@ -18,6 +18,7 @@ const TRANSACTION_CONTROL_PATTERN =
  * existentes.
  */
 const HISTORICAL_BASELINE_FILES = Object.freeze([
+  "20260802000000_baseline_current_schema.sql",
   "20260510_create_os_events.sql",
   "20260717_password_security_up.sql",
 ]);
