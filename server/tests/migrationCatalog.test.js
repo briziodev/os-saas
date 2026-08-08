@@ -298,6 +298,8 @@ test(
         {
           id:
             "20260510_create_os_events",
+          filename:
+            "20260510_create_os_events.sql",
           checksum:
             "a".repeat(64),
           baseline: true,
@@ -352,6 +354,8 @@ test(
       appliedRows: [
         {
           id: "20260802_example",
+          filename:
+            "20260802_example.sql",
           checksum:
             "b".repeat(64),
           baseline: false,
@@ -359,6 +363,8 @@ test(
         {
           id:
             "20260803_missing_file",
+          filename:
+            "20260803_missing_file.sql",
           checksum:
             "c".repeat(64),
           baseline: false,
@@ -379,6 +385,140 @@ test(
     assert.equal(
       plan.hasDrift,
       true
+    );
+  }
+);
+test(
+  "buildMigrationPlan detecta filename divergente",
+  () => {
+    const plan = buildMigrationPlan({
+      migrations: [
+        {
+          id: "20260802_example",
+          filename:
+            "20260802_example.sql",
+          checksum:
+            "a".repeat(64),
+          historicalBaseline: false,
+        },
+      ],
+      appliedRows: [
+        {
+          id: "20260802_example",
+          filename:
+            "20260802_outro_nome.sql",
+          checksum:
+            "a".repeat(64),
+          baseline: false,
+        },
+      ],
+    });
+
+    assert.equal(
+      plan.historyMismatches.length,
+      1
+    );
+
+    assert.deepEqual(
+      plan.historyMismatches[0].fields,
+      ["filename"]
+    );
+
+    assert.equal(
+      plan.applied.length,
+      0
+    );
+
+    assert.equal(
+      plan.hasDrift,
+      true
+    );
+  }
+);
+
+test(
+  "buildMigrationPlan detecta baseline divergente",
+  () => {
+    const plan = buildMigrationPlan({
+      migrations: [
+        {
+          id:
+            "20260802000000_baseline_current_schema",
+          filename:
+            "20260802000000_baseline_current_schema.sql",
+          checksum:
+            "a".repeat(64),
+          historicalBaseline: true,
+        },
+      ],
+      appliedRows: [
+        {
+          id:
+            "20260802000000_baseline_current_schema",
+          filename:
+            "20260802000000_baseline_current_schema.sql",
+          checksum:
+            "a".repeat(64),
+          baseline: false,
+        },
+      ],
+    });
+
+    assert.equal(
+      plan.historyMismatches.length,
+      1
+    );
+
+    assert.deepEqual(
+      plan.historyMismatches[0].fields,
+      ["baseline"]
+    );
+
+    assert.equal(
+      plan.applied.length,
+      0
+    );
+
+    assert.equal(
+      plan.hasDrift,
+      true
+    );
+  }
+);
+
+test(
+  "buildMigrationPlan rejeita baseline textual no historico aplicado",
+  () => {
+    assert.throws(
+      () =>
+        buildMigrationPlan({
+          migrations: [],
+          appliedRows: [
+            {
+              id:
+                "20260802_example",
+              filename:
+                "20260802_example.sql",
+              checksum:
+                "a".repeat(64),
+              baseline:
+                "false",
+            },
+          ],
+        }),
+      (error) => {
+        assert.ok(
+          error instanceof
+            MigrationCatalogError
+        );
+
+        assert.equal(
+          error.code,
+          "INVALID_APPLIED_MIGRATION_ROW"
+        );
+
+        return true;
+      }
     );
   }
 );

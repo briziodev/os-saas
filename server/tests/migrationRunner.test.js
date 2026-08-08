@@ -563,3 +563,55 @@ test(
     );
   }
 );
+
+test(
+  "assertMigrationPlanSafe rejeita divergencia semantica do historico",
+  () => {
+    assert.throws(
+      () =>
+        assertMigrationPlanSafe({
+          hasDrift: false,
+          checksumMismatches: [],
+          historyMismatches: [
+            {
+              id:
+                "20260804190000_example",
+              fields: [
+                "filename",
+              ],
+            },
+          ],
+          missingFiles: [],
+          baselinePending: [],
+          executablePending: [],
+        }),
+      (error) => {
+        assert.ok(
+          error instanceof
+            MigrationRunnerError
+        );
+
+        assert.equal(
+          error.code,
+          "MIGRATION_DRIFT_DETECTED"
+        );
+
+        assert.deepEqual(
+          error.details
+            .historyMismatches,
+          [
+            {
+              id:
+                "20260804190000_example",
+              fields: [
+                "filename",
+              ],
+            },
+          ]
+        );
+
+        return true;
+      }
+    );
+  }
+);

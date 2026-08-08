@@ -204,6 +204,12 @@ function normalizeAppliedRow(row) {
     row && row.id ? row.id : ""
   ).trim();
 
+  const filename = String(
+    row && row.filename
+      ? row.filename
+      : ""
+  ).trim();
+
   const checksum = String(
     row && row.checksum
       ? row.checksum
@@ -212,21 +218,33 @@ function normalizeAppliedRow(row) {
     .trim()
     .toLowerCase();
 
-  if (!id || !checksum) {
+  const baseline =
+    row && typeof row === "object"
+      ? row.baseline
+      : undefined;
+
+  if (
+    !id ||
+    !filename ||
+    !/^[a-f0-9]{64}$/.test(checksum) ||
+    typeof baseline !== "boolean"
+  ) {
     throw new MigrationCatalogError(
       "INVALID_APPLIED_MIGRATION_ROW",
       "Registro aplicado inválido.",
       {
-        row,
+        id: id || null,
+        filename:
+          filename || null,
       }
     );
   }
 
   return {
     id,
+    filename,
     checksum,
-    baseline:
-      Boolean(row.baseline),
+    baseline,
     appliedAt:
       row.applied_at ||
       row.appliedAt ||
@@ -268,6 +286,7 @@ function buildMigrationPlan(options = {}) {
   const baselinePending = [];
   const executablePending = [];
   const checksumMismatches = [];
+  const historyMismatches = [];
   const missingFiles = [];
 
   for (const migration of migrations) {
@@ -286,6 +305,8 @@ function buildMigrationPlan(options = {}) {
       continue;
     }
 
+    let migrationHasMismatch = false;
+
     if (
       appliedRow.checksum !==
       migration.checksum.toLowerCase()
@@ -299,6 +320,54 @@ function buildMigrationPlan(options = {}) {
           migration.checksum.toLowerCase(),
       });
 
+      migrationHasMismatch = true;
+    }
+
+    const mismatchFields = [];
+
+    if (
+      appliedRow.filename !==
+      migration.filename
+    ) {
+      mismatchFields.push(
+        "filename"
+      );
+    }
+
+    const expectedBaseline =
+      migration.historicalBaseline ===
+      true;
+
+    if (
+      appliedRow.baseline !==
+      expectedBaseline
+    ) {
+      mismatchFields.push(
+        "baseline"
+      );
+    }
+
+    if (mismatchFields.length > 0) {
+      historyMismatches.push({
+        id: migration.id,
+        filename:
+          migration.filename,
+        fields:
+          mismatchFields,
+        appliedFilename:
+          appliedRow.filename,
+        catalogFilename:
+          migration.filename,
+        appliedBaseline:
+          appliedRow.baseline,
+        catalogBaseline:
+          expectedBaseline,
+      });
+
+      migrationHasMismatch = true;
+    }
+
+    if (migrationHasMismatch) {
       continue;
     }
 
@@ -320,9 +389,11 @@ function buildMigrationPlan(options = {}) {
     baselinePending,
     executablePending,
     checksumMismatches,
+    historyMismatches,
     missingFiles,
     hasDrift:
       checksumMismatches.length > 0 ||
+      historyMismatches.length > 0 ||
       missingFiles.length > 0,
   };
 }

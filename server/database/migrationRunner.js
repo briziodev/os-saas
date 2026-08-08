@@ -159,6 +159,13 @@ function assertMigrationPlanSafe(
       ? plan.missingFiles
       : [];
 
+  const historyMismatches =
+    Array.isArray(
+      plan.historyMismatches
+    )
+      ? plan.historyMismatches
+      : [];
+
   const baselinePending =
     Array.isArray(plan.baselinePending)
       ? plan.baselinePending
@@ -174,6 +181,7 @@ function assertMigrationPlanSafe(
   const hasDrift =
     plan.hasDrift === true ||
     checksumMismatches.length > 0 ||
+    historyMismatches.length > 0 ||
     missingFiles.length > 0;
 
   if (hasDrift) {
@@ -188,6 +196,18 @@ function assertMigrationPlanSafe(
         missingFiles:
           missingFiles.map(
             (item) => item.id
+          ),
+        historyMismatches:
+          historyMismatches.map(
+            (item) => ({
+              id: item.id,
+              fields:
+                Array.isArray(
+                  item.fields
+                )
+                  ? item.fields
+                  : [],
+            })
           ),
       }
     );
