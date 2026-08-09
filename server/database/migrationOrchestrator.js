@@ -1,7 +1,6 @@
 const path = require("node:path");
 
 const {
-  HISTORICAL_BASELINE_FILES,
   buildMigrationPlan,
   discoverMigrations,
 } = require("./migrationCatalog");
@@ -19,23 +18,6 @@ const {
 
 const CANONICAL_BASELINE_FILENAME =
   "20260802000000_baseline_current_schema.sql";
-
-const LEGACY_HISTORICAL_FILENAMES =
-  Object.freeze(
-    HISTORICAL_BASELINE_FILES.filter(
-      (filename) =>
-        filename !==
-        CANONICAL_BASELINE_FILENAME
-    )
-  );
-
-const DEFAULT_LEGACY_MIGRATIONS_DIRECTORY =
-  path.join(
-    __dirname,
-    "..",
-    "migrations",
-    "legacy"
-  );
 
 const DEFAULT_VERSION_MIGRATIONS_DIRECTORY =
   path.join(
@@ -266,82 +248,18 @@ function summarizePlan(plan) {
 async function discoverMigrationCatalog(
   options = {}
 ) {
-  const legacyDirectory =
-    options.legacyDirectory ||
-    DEFAULT_LEGACY_MIGRATIONS_DIRECTORY;
-
   const versionsDirectory =
     options.versionsDirectory ||
     DEFAULT_VERSION_MIGRATIONS_DIRECTORY;
 
-  const [
-    legacyMigrations,
-    versionMigrations,
-  ] = await Promise.all([
-    discoverMigrations({
-      migrationsDirectory:
-        legacyDirectory,
-    }),
-
-    discoverMigrations({
+  const migrations =
+    await discoverMigrations({
       migrationsDirectory:
         versionsDirectory,
-    }),
-  ]);
-
-  const unsafeLegacy =
-    legacyMigrations.filter(
-      (migration) =>
-        migration
-          .historicalBaseline !==
-        true
-    );
-
-  if (unsafeLegacy.length > 0) {
-    throw new MigrationOrchestratorError(
-      "UNSAFE_LEGACY_MIGRATION",
-      "O diretório legacy contém migration que não pertence ao histórico de baseline.",
-      {
-        migrations:
-          unsafeLegacy.map(
-            (migration) =>
-              migration.filename
-          ),
-      }
-    );
-  }
-
-  const legacyFilenameSet =
-    new Set(
-      legacyMigrations.map(
-        (migration) =>
-          migration.filename
-      )
-    );
-
-  const missingLegacyHistory =
-    LEGACY_HISTORICAL_FILENAMES.filter(
-      (filename) =>
-        !legacyFilenameSet.has(
-          filename
-        )
-    );
-
-  if (
-    missingLegacyHistory.length > 0
-  ) {
-    throw new MigrationOrchestratorError(
-      "MISSING_LEGACY_HISTORY_FILE",
-      "Arquivos históricos obrigatórios estão ausentes do diretório legacy.",
-      {
-        files:
-          missingLegacyHistory,
-      }
-    );
-  }
+    });
 
   const canonicalBaseline =
-    versionMigrations.find(
+    migrations.find(
       (migration) =>
         migration.filename ===
         CANONICAL_BASELINE_FILENAME
@@ -362,90 +280,12 @@ async function discoverMigrationCatalog(
     );
   }
 
-  const migrations = [
-    ...legacyMigrations.map(
-      (migration) => ({
-        ...migration,
-        source: "legacy",
-      })
-    ),
-
-    ...versionMigrations.map(
-      (migration) => ({
-        ...migration,
-        source: "versions",
-      })
-    ),
-  ];
-
-  const migrationById =
-    new Map();
-
-  for (const migration of migrations) {
-    const existing =
-      migrationById.get(
-        migration.id
-      );
-
-    if (existing) {
-      throw new MigrationOrchestratorError(
-        "DUPLICATE_MIGRATION_ID_ACROSS_DIRECTORIES",
-        "O mesmo ID de migration existe em mais de um diretório.",
-        {
-          id:
-            migration.id,
-          files: [
-            existing.filename,
-            migration.filename,
-          ],
-        }
-      );
-    }
-
-    migrationById.set(
-      migration.id,
-      migration
-    );
-  }
-
-  const filenameSet =
-    new Set(
-      migrations.map(
-        (migration) =>
-          migration.filename
-      )
-    );
-
-  const missingHistoricalFiles =
-    HISTORICAL_BASELINE_FILES.filter(
-      (filename) =>
-        !filenameSet.has(
-          filename
-        )
-    );
-
-  if (
-    missingHistoricalFiles.length > 0
-  ) {
-    throw new MigrationOrchestratorError(
-      "MISSING_HISTORICAL_BASELINE_FILE",
-      "O catálogo não contém todos os arquivos históricos obrigatórios.",
-      {
-        files:
-          missingHistoricalFiles,
-      }
-    );
-  }
-
-  migrations.sort(
-    (left, right) =>
-      left.filename.localeCompare(
-        right.filename,
-        "en"
-      )
+  return migrations.map(
+    (migration) => ({
+      ...migration,
+      source: "versions",
+    })
   );
-
-  return migrations;
 }
 
 function resolveDependencies(
@@ -514,10 +354,6 @@ function createMigrationOrchestrator(
 
   assertPool(pool);
 
-  const legacyDirectory =
-    options.legacyDirectory ||
-    DEFAULT_LEGACY_MIGRATIONS_DIRECTORY;
-
   const versionsDirectory =
     options.versionsDirectory ||
     DEFAULT_VERSION_MIGRATIONS_DIRECTORY;
@@ -531,7 +367,6 @@ function createMigrationOrchestrator(
     const migrations =
       await dependencies
         .discoverMigrationCatalog({
-          legacyDirectory,
           versionsDirectory,
         });
 
@@ -614,7 +449,6 @@ function createMigrationOrchestrator(
     const migrations =
       await dependencies
         .discoverMigrationCatalog({
-          legacyDirectory,
           versionsDirectory,
         });
 
@@ -828,9 +662,7 @@ function createMigrationOrchestrator(
 
 module.exports = {
   CANONICAL_BASELINE_FILENAME,
-  DEFAULT_LEGACY_MIGRATIONS_DIRECTORY,
   DEFAULT_VERSION_MIGRATIONS_DIRECTORY,
-  LEGACY_HISTORICAL_FILENAMES,
   MigrationOrchestratorError,
   createMigrationOrchestrator,
   discoverMigrationCatalog,

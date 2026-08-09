@@ -82,32 +82,6 @@ async function writeRequiredCatalog(
   directories
 ) {
   await writeMigration(
-    directories.legacyDirectory,
-    "20260510_create_os_events.sql",
-    "CREATE TABLE os_events(id integer);"
-  );
-
-  await writeMigration(
-    directories.legacyDirectory,
-    "20260717_password_security_up.sql",
-    [
-      "BEGIN;",
-      "SELECT 1;",
-      "COMMIT;",
-    ].join("\n")
-  );
-
-  await writeMigration(
-    directories.legacyDirectory,
-    "20260717_password_security_down.sql",
-    [
-      "BEGIN;",
-      "SELECT 1;",
-      "COMMIT;",
-    ].join("\n")
-  );
-
-  await writeMigration(
     directories.versionsDirectory,
     "20260802000000_baseline_current_schema.sql",
     "CREATE TABLE baseline_example(id integer);"
@@ -202,7 +176,7 @@ function createFakePool(
 }
 
 test(
-  "discoverMigrationCatalog combina legacy e versions com ordem deterministica",
+  "discoverMigrationCatalog usa somente versions com ordem deterministica",
   async (context) => {
     const directories =
       await createCatalogDirectories(
@@ -220,9 +194,10 @@ test(
     );
 
     const migrations =
-      await discoverMigrationCatalog(
-        directories
-      );
+      await discoverMigrationCatalog({
+        versionsDirectory:
+          directories.versionsDirectory,
+      });
 
     assert.deepEqual(
       migrations.map(
@@ -230,8 +205,6 @@ test(
           migration.filename
       ),
       [
-        "20260510_create_os_events.sql",
-        "20260717_password_security_up.sql",
         "20260802000000_baseline_current_schema.sql",
         "20260809120000_future_change.sql",
       ]
@@ -243,8 +216,6 @@ test(
           migration.source
       ),
       [
-        "legacy",
-        "legacy",
         "versions",
         "versions",
       ]
@@ -259,25 +230,12 @@ test(
     assert.equal(
       migrations[1]
         .historicalBaseline,
-      true
-    );
-
-    assert.equal(
-      migrations[2]
-        .historicalBaseline,
-      true
-    );
-
-    assert.equal(
-      migrations[3]
-        .historicalBaseline,
       false
     );
   }
 );
-
 test(
-  "discoverMigrationCatalog rejeita migration executavel em legacy",
+  "discoverMigrationCatalog ignora completamente o diretorio legacy",
   async (context) => {
     const directories =
       await createCatalogDirectories(
@@ -290,32 +248,39 @@ test(
 
     await writeMigration(
       directories.legacyDirectory,
-      "20260809120000_unsafe_legacy.sql",
-      "CREATE TABLE unsafe_legacy(id integer);"
+      "arquivo_sem_versao.sql",
+      "BEGIN; SELECT 1; COMMIT;"
     );
 
-    await assert.rejects(
-      () =>
-        discoverMigrationCatalog(
-          directories
-        ),
-      (error) => {
-        assert.ok(
-          error instanceof
-            MigrationOrchestratorError
-        );
+    const migrations =
+      await discoverMigrationCatalog({
+        legacyDirectory:
+          directories.legacyDirectory,
+        versionsDirectory:
+          directories.versionsDirectory,
+      });
 
-        assert.equal(
-          error.code,
-          "UNSAFE_LEGACY_MIGRATION"
-        );
+    assert.deepEqual(
+      migrations.map(
+        (migration) =>
+          migration.filename
+      ),
+      [
+        "20260802000000_baseline_current_schema.sql",
+      ]
+    );
 
-        return true;
-      }
+    assert.deepEqual(
+      migrations.map(
+        (migration) =>
+          migration.source
+      ),
+      [
+        "versions",
+      ]
     );
   }
 );
-
 test(
   "status e somente leitura e nao adquire advisory lock",
   async () => {
@@ -929,42 +894,6 @@ test(
   }
 );
 test(
-  "discoverMigrationCatalog rejeita historico obrigatorio ausente em legacy",
-  async (context) => {
-    const directories =
-      await createCatalogDirectories(
-        context
-      );
-
-    await writeRequiredCatalog(
-      directories
-    );
-
-    await fs.rm(
-      path.join(
-        directories.legacyDirectory,
-        "20260510_create_os_events.sql"
-      )
-    );
-
-    await assert.rejects(
-      () =>
-        discoverMigrationCatalog(
-          directories
-        ),
-      (error) => {
-        assert.equal(
-          error.code,
-          "MISSING_LEGACY_HISTORY_FILE"
-        );
-
-        return true;
-      }
-    );
-  }
-);
-
-test(
   "discoverMigrationCatalog rejeita baseline canonica ausente",
   async (context) => {
     const directories =
@@ -992,41 +921,6 @@ test(
         assert.equal(
           error.code,
           "MISSING_CANONICAL_BASELINE"
-        );
-
-        return true;
-      }
-    );
-  }
-);
-
-test(
-  "discoverMigrationCatalog rejeita id duplicado entre diretorios",
-  async (context) => {
-    const directories =
-      await createCatalogDirectories(
-        context
-      );
-
-    await writeRequiredCatalog(
-      directories
-    );
-
-    await writeMigration(
-      directories.versionsDirectory,
-      "20260510_create_os_events.sql",
-      "CREATE TABLE duplicate_example(id integer);"
-    );
-
-    await assert.rejects(
-      () =>
-        discoverMigrationCatalog(
-          directories
-        ),
-      (error) => {
-        assert.equal(
-          error.code,
-          "DUPLICATE_MIGRATION_ID_ACROSS_DIRECTORIES"
         );
 
         return true;
