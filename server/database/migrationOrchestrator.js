@@ -1,6 +1,10 @@
 const path = require("node:path");
 
 const {
+  createBaselineSchemaVerifier,
+} = require("./baselineSchemaVerifier");
+
+const {
   buildMigrationPlan,
   discoverMigrations,
 } = require("./migrationCatalog");
@@ -8,16 +12,24 @@ const {
 const {
   assertMigrationPlanSafe,
   executeMigrationTransaction,
+  registerBaselineTransaction,
 } = require("./migrationRunner");
 
 const {
   acquireMigrationLock,
+  ensureMetadataTable,
   readMigrationState,
   releaseMigrationLock,
 } = require("./migrationStore");
 
 const CANONICAL_BASELINE_FILENAME =
   "20260802000000_baseline_current_schema.sql";
+
+const BASELINE_MODE_REGISTER_EXISTING =
+  "register-existing";
+
+const BASELINE_MODE_APPLY_EMPTY =
+  "apply-empty";
 
 const DEFAULT_VERSION_MIGRATIONS_DIRECTORY =
   path.join(
@@ -82,6 +94,49 @@ function assertPoolClient(client) {
       "O pool não retornou um client PostgreSQL válido."
     );
   }
+}
+
+function assertBaselineVerifier(
+  verifier
+) {
+  if (
+    !verifier ||
+    typeof verifier
+      .verifyExistingSchema !==
+      "function" ||
+    typeof verifier.verifyEmpty !==
+      "function"
+  ) {
+    throw new TypeError(
+      "Um baseline verifier válido é obrigatório."
+    );
+  }
+}
+
+function normalizeBaselineMode(
+  value
+) {
+  const mode =
+    String(value || "")
+      .trim();
+
+  if (
+    mode !==
+      BASELINE_MODE_REGISTER_EXISTING &&
+    mode !==
+      BASELINE_MODE_APPLY_EMPTY
+  ) {
+    throw new MigrationOrchestratorError(
+      "INVALID_BASELINE_MODE",
+      "O modo de baseline deve ser register-existing ou apply-empty.",
+      {
+        mode:
+          mode || null,
+      }
+    );
+  }
+
+  return mode;
 }
 
 function getDefaultPool() {
@@ -326,6 +381,16 @@ function resolveDependencies(
       overrides
         .executeMigrationTransaction ||
       executeMigrationTransaction,
+
+    registerBaselineTransaction:
+      overrides
+        .registerBaselineTransaction ||
+      registerBaselineTransaction,
+
+    ensureMetadataTable:
+      overrides
+        .ensureMetadataTable ||
+      ensureMetadataTable,
   };
 
   for (
@@ -362,6 +427,17 @@ function createMigrationOrchestrator(
     resolveDependencies(
       options.dependencies
     );
+
+  const baselineVerifier =
+    options.baselineVerifier ||
+    createBaselineSchemaVerifier(
+      options.baselineVerifierOptions ||
+        {}
+    );
+
+  assertBaselineVerifier(
+    baselineVerifier
+  );
 
   async function status() {
     const migrations =
@@ -654,13 +730,384 @@ function createMigrationOrchestrator(
     return operationResult;
   }
 
+  async function baseline(
+    runOptions = {}
+  ) {
+    const mode =
+      normalizeBaselineMode(
+        runOptions.mode
+      );
+
+    const migrations =
+      await dependencies
+        .discoverMigrationCatalog({
+          versionsDirectory,
+        });
+
+    const client =
+      await pool.connect();
+
+    assertPoolClient(client);
+
+    let lockAcquired = false;
+    let lockAcquisitionUncertain = false;
+    let baselineExecutionAttempted =
+      false;
+    let operationResult = null;
+    let operationError = null;
+
+    try {
+      const lockConfirmed =
+        await dependencies
+          .acquireMigrationLock(
+            client,
+            {
+              wait:
+                runOptions
+                  .waitForLock ===
+                true,
+            }
+          );
+
+      if (lockConfirmed !== true) {
+        throw new MigrationOrchestratorError(
+          "MIGRATION_LOCK_NOT_CONFIRMED",
+          "A aquisição do advisory lock de migrations não foi confirmada."
+        );
+      }
+
+      lockAcquired = true;
+
+      const state =
+        await dependencies
+          .readMigrationState(
+            client
+          );
+
+      if (
+        state
+          .metadataTableExists ===
+          true ||
+        (
+          Array.isArray(
+            state.appliedRows
+          ) &&
+          state.appliedRows.length >
+            0
+        )
+      ) {
+        throw new MigrationOrchestratorError(
+          "MIGRATION_BASELINE_ALREADY_INITIALIZED",
+          "A baseline explícita só pode inicializar um banco ainda sem metadata de migrations."
+        );
+      }
+
+      const plan =
+        dependencies
+          .buildMigrationPlan({
+            migrations,
+            appliedRows:
+              state.appliedRows,
+          });
+
+      dependencies
+        .assertMigrationPlanSafe(
+          plan,
+          {
+            allowBaselinePending:
+              true,
+          }
+        );
+
+      const baselinePending =
+        Array.isArray(
+          plan.baselinePending
+        )
+          ? plan.baselinePending
+          : [];
+
+      const canonicalBaseline =
+        baselinePending.find(
+          (migration) =>
+            migration &&
+            migration.filename ===
+              CANONICAL_BASELINE_FILENAME &&
+            migration
+              .historicalBaseline ===
+              true
+        );
+
+      if (
+        baselinePending.length !==
+          1 ||
+        !canonicalBaseline
+      ) {
+        throw new MigrationOrchestratorError(
+          "MIGRATION_CANONICAL_BASELINE_NOT_PENDING",
+          "A baseline canônica precisa ser a única baseline histórica pendente.",
+          {
+            baselinePending:
+              baselinePending.map(
+                (migration) =>
+                  migration &&
+                  migration.filename
+                    ? migration.filename
+                    : null
+              ),
+          }
+        );
+      }
+
+      let verification = null;
+      let result = null;
+
+      if (
+        mode ===
+        BASELINE_MODE_REGISTER_EXISTING
+      ) {
+        verification =
+          await baselineVerifier
+            .verifyExistingSchema();
+
+        if (
+          !verification ||
+          !verification.baseline ||
+          verification
+            .baseline
+            .checksum !==
+            canonicalBaseline.checksum
+        ) {
+          throw new MigrationOrchestratorError(
+            "MIGRATION_BASELINE_VERIFICATION_MISMATCH",
+            "O verifier e o catálogo não concordam sobre o checksum da baseline canônica."
+          );
+        }
+
+        result =
+          await dependencies
+            .registerBaselineTransaction(
+              client,
+              canonicalBaseline
+            );
+      } else {
+        baselineExecutionAttempted =
+          true;
+
+        result =
+          await dependencies
+            .executeMigrationTransaction(
+              client,
+              canonicalBaseline,
+              {
+                baseline: true,
+
+                prepareTransaction:
+                  async (
+                    receivedClient
+                  ) => {
+                    verification =
+                      await baselineVerifier
+                        .verifyEmpty(
+                          receivedClient
+                        );
+
+                    if (
+                      !verification ||
+                      !verification
+                        .baseline ||
+                      verification
+                        .baseline
+                        .checksum !==
+                        canonicalBaseline
+                          .checksum
+                    ) {
+                      throw new MigrationOrchestratorError(
+                        "MIGRATION_BASELINE_VERIFICATION_MISMATCH",
+                        "O verifier e o catálogo não concordam sobre o checksum da baseline canônica."
+                      );
+                    }
+
+                    await dependencies
+                      .ensureMetadataTable(
+                        receivedClient
+                      );
+                  },
+              }
+            );
+      }
+
+      operationResult = {
+        mode,
+
+        baseline: {
+          id:
+            result.id,
+          filename:
+            result.filename,
+          checksum:
+            result.checksum,
+          executionMs:
+            result.executionMs,
+          executedSql:
+            mode ===
+            BASELINE_MODE_APPLY_EMPTY,
+        },
+
+        verification: {
+          semanticChecksum:
+            verification &&
+            verification.schema &&
+            verification
+              .schema
+              .semanticChecksum
+              ? verification
+                  .schema
+                  .semanticChecksum
+              : null,
+
+          empty:
+            verification &&
+            verification.schema &&
+            typeof verification
+              .schema
+              .empty ===
+              "boolean"
+              ? verification
+                  .schema
+                  .empty
+              : null,
+        },
+
+        before:
+          summarizePlan(
+            plan
+          ),
+      };
+    } catch (error) {
+      operationError = error;
+
+      if (
+        !lockAcquired &&
+        error &&
+        error.code !==
+          "MIGRATION_LOCK_UNAVAILABLE" &&
+        error.code !==
+          "MIGRATION_LOCK_NOT_CONFIRMED"
+      ) {
+        lockAcquisitionUncertain =
+          true;
+      }
+    }
+
+    let lockReleaseError =
+      null;
+
+    if (lockAcquired) {
+      try {
+        const released =
+          await dependencies
+            .releaseMigrationLock(
+              client
+            );
+
+        if (released !== true) {
+          lockReleaseError =
+            new Error(
+              "PostgreSQL não confirmou a liberação do advisory lock."
+            );
+        }
+      } catch (error) {
+        lockReleaseError =
+          error;
+      }
+    }
+
+    const operationRequiresClientDestroy =
+      Boolean(
+        operationError &&
+        operationError.code ===
+          "MIGRATION_ROLLBACK_FAILED"
+      );
+
+    const destroyClient =
+      Boolean(
+        lockReleaseError ||
+        operationRequiresClientDestroy ||
+        lockAcquisitionUncertain ||
+        baselineExecutionAttempted
+      );
+
+    let clientReleaseError =
+      null;
+
+    try {
+      client.release(
+        destroyClient
+      );
+    } catch (error) {
+      clientReleaseError =
+        error;
+    }
+
+    if (clientReleaseError) {
+      throw new MigrationOrchestratorError(
+        "MIGRATION_CLIENT_RELEASE_FAILED",
+        "Não foi possível liberar o client PostgreSQL da operação de baseline.",
+        {
+          operationError:
+            serializeError(
+              operationError
+            ),
+          lockReleaseError:
+            serializeError(
+              lockReleaseError
+            ),
+          clientReleaseError:
+            serializeError(
+              clientReleaseError
+            ),
+        },
+        operationError ||
+          clientReleaseError
+      );
+    }
+
+    if (lockReleaseError) {
+      throw new MigrationOrchestratorError(
+        "MIGRATION_LOCK_RELEASE_FAILED",
+        "Não foi possível confirmar a liberação do advisory lock de migrations.",
+        {
+          operationError:
+            serializeError(
+              operationError
+            ),
+          lockReleaseError:
+            serializeError(
+              lockReleaseError
+            ),
+        },
+        operationError ||
+          lockReleaseError
+      );
+    }
+
+    if (operationError) {
+      throw operationError;
+    }
+
+    return operationResult;
+  }
+
   return Object.freeze({
     status,
     migrate,
+    baseline,
   });
 }
 
 module.exports = {
+  BASELINE_MODE_APPLY_EMPTY,
+  BASELINE_MODE_REGISTER_EXISTING,
   CANONICAL_BASELINE_FILENAME,
   DEFAULT_VERSION_MIGRATIONS_DIRECTORY,
   MigrationOrchestratorError,

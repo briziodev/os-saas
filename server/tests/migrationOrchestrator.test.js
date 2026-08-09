@@ -1381,3 +1381,945 @@ test(
     );
   }
 );
+
+test(
+  "baseline rejeita modo invalido antes de conectar no banco",
+  async () => {
+    const {
+      pool,
+    } = createFakePool();
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            throw new Error(
+              "nao deveria validar"
+            );
+          },
+
+          async verifyEmpty() {
+            throw new Error(
+              "nao deveria validar"
+            );
+          },
+        },
+      });
+
+    await assert.rejects(
+      () =>
+        orchestrator.baseline({
+          mode: "automatic",
+        }),
+      (error) => {
+        assert.equal(
+          error.code,
+          "INVALID_BASELINE_MODE"
+        );
+
+        return true;
+      }
+    );
+
+    assert.equal(
+      pool.connectCalls,
+      0
+    );
+  }
+);
+
+test(
+  "baseline register-existing valida schema e registra sem executar SQL",
+  async () => {
+    const {
+      pool,
+      client,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    const events = [];
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            events.push(
+              "verify-existing"
+            );
+
+            return {
+              baseline: {
+                checksum:
+                  baselineMigration
+                    .checksum,
+              },
+              schema: {
+                semanticChecksum:
+                  "c".repeat(64),
+              },
+            };
+          },
+
+          async verifyEmpty() {
+            throw new Error(
+              "nao deveria verificar vazio"
+            );
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            events.push(
+              "discover"
+            );
+
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock(
+            receivedClient
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            events.push(
+              "lock"
+            );
+
+            return true;
+          },
+
+          async readMigrationState() {
+            events.push(
+              "read"
+            );
+
+            return {
+              metadataTableExists:
+                false,
+              appliedRows: [],
+            };
+          },
+
+          buildMigrationPlan() {
+            events.push(
+              "plan"
+            );
+
+            return {
+              hasDrift: false,
+              applied: [],
+              pending: [
+                baselineMigration,
+              ],
+              baselinePending: [
+                baselineMigration,
+              ],
+              executablePending: [],
+              checksumMismatches: [],
+              historyMismatches: [],
+              missingFiles: [],
+            };
+          },
+
+          assertMigrationPlanSafe(
+            plan,
+            options
+          ) {
+            assert.equal(
+              plan.hasDrift,
+              false
+            );
+
+            assert.equal(
+              options
+                .allowBaselinePending,
+              true
+            );
+
+            events.push(
+              "safe"
+            );
+          },
+
+          async registerBaselineTransaction(
+            receivedClient,
+            migration
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            assert.equal(
+              migration,
+              baselineMigration
+            );
+
+            events.push(
+              "register"
+            );
+
+            return {
+              id:
+                migration.id,
+              filename:
+                migration.filename,
+              checksum:
+                migration.checksum,
+              baseline: true,
+              executionMs: 0,
+            };
+          },
+
+          async executeMigrationTransaction() {
+            throw new Error(
+              "register-existing nao deveria executar SQL"
+            );
+          },
+
+          async releaseMigrationLock() {
+            events.push(
+              "unlock"
+            );
+
+            return true;
+          },
+        },
+      });
+
+    const result =
+      await orchestrator.baseline({
+        mode:
+          "register-existing",
+      });
+
+    assert.deepEqual(
+      events,
+      [
+        "discover",
+        "lock",
+        "read",
+        "plan",
+        "safe",
+        "verify-existing",
+        "register",
+        "unlock",
+      ]
+    );
+
+    assert.equal(
+      result.mode,
+      "register-existing"
+    );
+
+    assert.equal(
+      result.baseline
+        .executedSql,
+      false
+    );
+
+    assert.equal(
+      result.verification
+        .semanticChecksum,
+      "c".repeat(64)
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        false,
+      ]
+    );
+  }
+);
+
+test(
+  "baseline apply-empty verifica vazio dentro da transacao e destroi sessao",
+  async () => {
+    const {
+      pool,
+      client,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    const events = [];
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            throw new Error(
+              "nao deveria validar existente"
+            );
+          },
+
+          async verifyEmpty(
+            receivedClient
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            events.push(
+              "verify-empty"
+            );
+
+            return {
+              baseline: {
+                checksum:
+                  baselineMigration
+                    .checksum,
+              },
+              schema: {
+                empty: true,
+              },
+            };
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock() {
+            events.push(
+              "lock"
+            );
+
+            return true;
+          },
+
+          async readMigrationState() {
+            events.push(
+              "read"
+            );
+
+            return {
+              metadataTableExists:
+                false,
+              appliedRows: [],
+            };
+          },
+
+          buildMigrationPlan() {
+            return {
+              hasDrift: false,
+              applied: [],
+              pending: [
+                baselineMigration,
+              ],
+              baselinePending: [
+                baselineMigration,
+              ],
+              executablePending: [],
+              checksumMismatches: [],
+              historyMismatches: [],
+              missingFiles: [],
+            };
+          },
+
+          assertMigrationPlanSafe() {
+            events.push(
+              "safe"
+            );
+          },
+
+          async executeMigrationTransaction(
+            receivedClient,
+            migration,
+            options
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            assert.equal(
+              migration,
+              baselineMigration
+            );
+
+            assert.equal(
+              options.baseline,
+              true
+            );
+
+            events.push(
+              "begin-execute"
+            );
+
+            await options
+              .prepareTransaction(
+                client
+              );
+
+            events.push(
+              "sql-baseline"
+            );
+
+            return {
+              id:
+                migration.id,
+              filename:
+                migration.filename,
+              checksum:
+                migration.checksum,
+              baseline: true,
+              executionMs: 18,
+            };
+          },
+
+          async ensureMetadataTable(
+            receivedClient
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            events.push(
+              "ensure-metadata"
+            );
+          },
+
+          async releaseMigrationLock() {
+            events.push(
+              "unlock"
+            );
+
+            return true;
+          },
+        },
+      });
+
+    const result =
+      await orchestrator.baseline({
+        mode: "apply-empty",
+      });
+
+    assert.deepEqual(
+      events,
+      [
+        "lock",
+        "read",
+        "safe",
+        "begin-execute",
+        "verify-empty",
+        "ensure-metadata",
+        "sql-baseline",
+        "unlock",
+      ]
+    );
+
+    assert.equal(
+      result.baseline
+        .executedSql,
+      true
+    );
+
+    assert.equal(
+      result.verification.empty,
+      true
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        true,
+      ]
+    );
+  }
+);
+
+test(
+  "baseline rejeita metadata ja inicializada antes do verifier",
+  async () => {
+    const {
+      pool,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    let verifierCalled = false;
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            verifierCalled = true;
+          },
+
+          async verifyEmpty() {
+            verifierCalled = true;
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock() {
+            return true;
+          },
+
+          async readMigrationState() {
+            return {
+              metadataTableExists:
+                true,
+              appliedRows: [],
+            };
+          },
+
+          async releaseMigrationLock() {
+            return true;
+          },
+        },
+      });
+
+    await assert.rejects(
+      () =>
+        orchestrator.baseline({
+          mode:
+            "register-existing",
+        }),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_BASELINE_ALREADY_INITIALIZED"
+        );
+
+        return true;
+      }
+    );
+
+    assert.equal(
+      verifierCalled,
+      false
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        false,
+      ]
+    );
+  }
+);
+
+test(
+  "baseline rejeita divergencia entre verifier e catalogo",
+  async () => {
+    const {
+      pool,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    let registered = false;
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            return {
+              baseline: {
+                checksum:
+                  "c".repeat(64),
+              },
+              schema: {
+                semanticChecksum:
+                  "d".repeat(64),
+              },
+            };
+          },
+
+          async verifyEmpty() {
+            throw new Error(
+              "nao deveria validar vazio"
+            );
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock() {
+            return true;
+          },
+
+          async readMigrationState() {
+            return {
+              metadataTableExists:
+                false,
+              appliedRows: [],
+            };
+          },
+
+          buildMigrationPlan() {
+            return {
+              hasDrift: false,
+              applied: [],
+              pending: [
+                baselineMigration,
+              ],
+              baselinePending: [
+                baselineMigration,
+              ],
+              executablePending: [],
+              checksumMismatches: [],
+              historyMismatches: [],
+              missingFiles: [],
+            };
+          },
+
+          assertMigrationPlanSafe() {},
+
+          async registerBaselineTransaction() {
+            registered = true;
+          },
+
+          async releaseMigrationLock() {
+            return true;
+          },
+        },
+      });
+
+    await assert.rejects(
+      () =>
+        orchestrator.baseline({
+          mode:
+            "register-existing",
+        }),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_BASELINE_VERIFICATION_MISMATCH"
+        );
+
+        return true;
+      }
+    );
+
+    assert.equal(
+      registered,
+      false
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        false,
+      ]
+    );
+  }
+);
+
+test(
+  "baseline preserva erro do verifier quando cleanup e seguro",
+  async () => {
+    const {
+      pool,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    const verifierError =
+      new Error(
+        "schema divergente"
+      );
+
+    verifierError.code =
+      "BASELINE_SCHEMA_MISMATCH";
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            throw verifierError;
+          },
+
+          async verifyEmpty() {
+            throw new Error(
+              "nao deveria validar vazio"
+            );
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock() {
+            return true;
+          },
+
+          async readMigrationState() {
+            return {
+              metadataTableExists:
+                false,
+              appliedRows: [],
+            };
+          },
+
+          buildMigrationPlan() {
+            return {
+              hasDrift: false,
+              applied: [],
+              pending: [
+                baselineMigration,
+              ],
+              baselinePending: [
+                baselineMigration,
+              ],
+              executablePending: [],
+              checksumMismatches: [],
+              historyMismatches: [],
+              missingFiles: [],
+            };
+          },
+
+          assertMigrationPlanSafe() {},
+
+          async releaseMigrationLock() {
+            return true;
+          },
+        },
+      });
+
+    await assert.rejects(
+      () =>
+        orchestrator.baseline({
+          mode:
+            "register-existing",
+        }),
+      (error) => {
+        assert.equal(
+          error,
+          verifierError
+        );
+
+        return true;
+      }
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        false,
+      ]
+    );
+  }
+);
+
+test(
+  "baseline apply-empty destroi client quando rollback falha",
+  async () => {
+    const {
+      pool,
+      releaseCalls,
+    } = createFakePool();
+
+    const baselineMigration =
+      createMigration({
+        id:
+          "20260802000000_baseline_current_schema",
+        filename:
+          "20260802000000_baseline_current_schema.sql",
+        checksum:
+          "b".repeat(64),
+        historicalBaseline:
+          true,
+      });
+
+    const rollbackError =
+      new Error(
+        "rollback baseline falhou"
+      );
+
+    rollbackError.code =
+      "MIGRATION_ROLLBACK_FAILED";
+
+    const orchestrator =
+      createMigrationOrchestrator({
+        pool,
+
+        baselineVerifier: {
+          async verifyExistingSchema() {
+            throw new Error(
+              "nao deveria validar existente"
+            );
+          },
+
+          async verifyEmpty() {
+            return {
+              baseline: {
+                checksum:
+                  baselineMigration
+                    .checksum,
+              },
+              schema: {
+                empty: true,
+              },
+            };
+          },
+        },
+
+        dependencies: {
+          async discoverMigrationCatalog() {
+            return [
+              baselineMigration,
+            ];
+          },
+
+          async acquireMigrationLock() {
+            return true;
+          },
+
+          async readMigrationState() {
+            return {
+              metadataTableExists:
+                false,
+              appliedRows: [],
+            };
+          },
+
+          buildMigrationPlan() {
+            return {
+              hasDrift: false,
+              applied: [],
+              pending: [
+                baselineMigration,
+              ],
+              baselinePending: [
+                baselineMigration,
+              ],
+              executablePending: [],
+              checksumMismatches: [],
+              historyMismatches: [],
+              missingFiles: [],
+            };
+          },
+
+          assertMigrationPlanSafe() {},
+
+          async executeMigrationTransaction() {
+            throw rollbackError;
+          },
+
+          async releaseMigrationLock() {
+            return true;
+          },
+        },
+      });
+
+    await assert.rejects(
+      () =>
+        orchestrator.baseline({
+          mode: "apply-empty",
+        }),
+      (error) => {
+        assert.equal(
+          error,
+          rollbackError
+        );
+
+        return true;
+      }
+    );
+
+    assert.deepEqual(
+      releaseCalls,
+      [
+        true,
+      ]
+    );
+  }
+);
