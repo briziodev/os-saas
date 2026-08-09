@@ -1,4 +1,5 @@
 const {
+  ensureMetadataTable,
   recordAppliedMigration,
 } = require("./migrationStore");
 
@@ -45,7 +46,7 @@ function assertFunction(value, name) {
   }
 }
 
-function normalizeMigrationForExecution(
+function normalizeMigrationIdentity(
   input = {}
 ) {
   const id = String(
@@ -61,19 +62,6 @@ function normalizeMigrationForExecution(
   )
     .trim()
     .toLowerCase();
-
-  const sql =
-    typeof input.sql === "string"
-      ? input.sql.trim()
-      : "";
-
-  const containsTransactionControl =
-    input.containsTransactionControl ===
-      true ||
-    (
-      Boolean(sql) &&
-      detectTransactionControl(sql)
-    );
 
   if (!id) {
     throw new MigrationRunnerError(
@@ -103,13 +91,42 @@ function normalizeMigrationForExecution(
     );
   }
 
+  return {
+    id,
+    filename,
+    checksum,
+  };
+}
+
+function normalizeMigrationForExecution(
+  input = {}
+) {
+  const identity =
+    normalizeMigrationIdentity(
+      input
+    );
+
+  const sql =
+    typeof input.sql === "string"
+      ? input.sql.trim()
+      : "";
+
+  const containsTransactionControl =
+    input.containsTransactionControl ===
+      true ||
+    (
+      Boolean(sql) &&
+      detectTransactionControl(sql)
+    );
+
   if (!sql) {
     throw new MigrationRunnerError(
       "EMPTY_MIGRATION_SQL",
       "A migration não possui SQL executável.",
       {
-        id,
-        filename,
+        id: identity.id,
+        filename:
+          identity.filename,
       }
     );
   }
@@ -119,18 +136,46 @@ function normalizeMigrationForExecution(
       "MIGRATION_TRANSACTION_CONTROL_FORBIDDEN",
       "A migration possui controle transacional interno.",
       {
-        id,
-        filename,
+        id: identity.id,
+        filename:
+          identity.filename,
       }
     );
   }
 
   return {
-    id,
-    filename,
-    checksum,
+    ...identity,
     sql,
     containsTransactionControl: false,
+  };
+}
+
+function normalizeBaselineForRegistration(
+  input = {}
+) {
+  const identity =
+    normalizeMigrationIdentity(
+      input
+    );
+
+  if (
+    input.historicalBaseline !==
+      true
+  ) {
+    throw new MigrationRunnerError(
+      "MIGRATION_BASELINE_CLASSIFICATION_REQUIRED",
+      "A operação de baseline exige uma migration classificada explicitamente como historicalBaseline.",
+      {
+        id: identity.id,
+        filename:
+          identity.filename,
+      }
+    );
+  }
+
+  return {
+    ...identity,
+    historicalBaseline: true,
   };
 }
 
@@ -306,6 +351,43 @@ function calculateExecutionMs(
   );
 }
 
+async function rollbackAfterFailure(
+  client,
+  originalError,
+  migration
+) {
+  try {
+    await client.query(
+      "ROLLBACK"
+    );
+  } catch (rollbackError) {
+    throw new MigrationRunnerError(
+      "MIGRATION_ROLLBACK_FAILED",
+      "A migration falhou e o rollback também falhou.",
+      {
+        id: migration.id,
+        filename:
+          migration.filename,
+        originalError:
+          originalError &&
+          originalError.message
+            ? originalError.message
+            : String(
+                originalError
+              ),
+        rollbackError:
+          rollbackError &&
+          rollbackError.message
+            ? rollbackError.message
+            : String(
+                rollbackError
+              ),
+      },
+      originalError
+    );
+  }
+}
+
 async function executeMigrationTransaction(
   client,
   input,
@@ -322,6 +404,10 @@ async function executeMigrationTransaction(
     options.recordMigration ||
     recordAppliedMigration;
 
+  const prepareTransaction =
+    options.prepareTransaction ||
+    null;
+
   const now =
     options.now ||
     Date.now;
@@ -329,10 +415,35 @@ async function executeMigrationTransaction(
   const baseline =
     options.baseline === true;
 
+  if (
+    baseline &&
+    input.historicalBaseline !==
+      true
+  ) {
+    throw new MigrationRunnerError(
+      "MIGRATION_BASELINE_CLASSIFICATION_REQUIRED",
+      "A execução como baseline exige historicalBaseline=true.",
+      {
+        id: migration.id,
+        filename:
+          migration.filename,
+      }
+    );
+  }
+
   assertFunction(
     recordMigration,
     "recordMigration"
   );
+
+  if (
+    prepareTransaction !== null
+  ) {
+    assertFunction(
+      prepareTransaction,
+      "prepareTransaction"
+    );
+  }
 
   assertFunction(
     now,
@@ -345,6 +456,13 @@ async function executeMigrationTransaction(
     await client.query("BEGIN");
 
     transactionStarted = true;
+
+    if (prepareTransaction) {
+      await prepareTransaction(
+        client,
+        migration
+      );
+    }
 
     const startedAt = now();
 
@@ -388,34 +506,11 @@ async function executeMigrationTransaction(
     };
   } catch (error) {
     if (transactionStarted) {
-      try {
-        await client.query(
-          "ROLLBACK"
-        );
-      } catch (rollbackError) {
-        throw new MigrationRunnerError(
-          "MIGRATION_ROLLBACK_FAILED",
-          "A migration falhou e o rollback também falhou.",
-          {
-            id: migration.id,
-            filename:
-              migration.filename,
-            originalError:
-              error &&
-              error.message
-                ? error.message
-                : String(error),
-            rollbackError:
-              rollbackError &&
-              rollbackError.message
-                ? rollbackError.message
-                : String(
-                    rollbackError
-                  ),
-          },
-          error
-        );
-      }
+      await rollbackAfterFailure(
+        client,
+        error,
+        migration
+      );
     }
 
     throw new MigrationRunnerError(
@@ -436,10 +531,106 @@ async function executeMigrationTransaction(
   }
 }
 
+async function registerBaselineTransaction(
+  client,
+  input,
+  options = {}
+) {
+  assertQueryClient(client);
+
+  const baseline =
+    normalizeBaselineForRegistration(
+      input
+    );
+
+  const ensureMetadata =
+    options.ensureMetadataTable ||
+    ensureMetadataTable;
+
+  const recordMigration =
+    options.recordMigration ||
+    recordAppliedMigration;
+
+  assertFunction(
+    ensureMetadata,
+    "ensureMetadataTable"
+  );
+
+  assertFunction(
+    recordMigration,
+    "recordMigration"
+  );
+
+  let transactionStarted = false;
+
+  try {
+    await client.query("BEGIN");
+
+    transactionStarted = true;
+
+    await ensureMetadata(
+      client
+    );
+
+    const appliedRow =
+      await recordMigration(
+        client,
+        {
+          id: baseline.id,
+          filename:
+            baseline.filename,
+          checksum:
+            baseline.checksum,
+          baseline: true,
+          executionMs: 0,
+        }
+      );
+
+    await client.query("COMMIT");
+
+    return {
+      id: baseline.id,
+      filename:
+        baseline.filename,
+      checksum:
+        baseline.checksum,
+      baseline: true,
+      executionMs: 0,
+      appliedRow,
+    };
+  } catch (error) {
+    if (transactionStarted) {
+      await rollbackAfterFailure(
+        client,
+        error,
+        baseline
+      );
+    }
+
+    throw new MigrationRunnerError(
+      "MIGRATION_BASELINE_REGISTRATION_FAILED",
+      "O registro transacional da baseline falhou.",
+      {
+        id: baseline.id,
+        filename:
+          baseline.filename,
+        originalError:
+          error &&
+          error.message
+            ? error.message
+            : String(error),
+      },
+      error
+    );
+  }
+}
+
 module.exports = {
   MigrationRunnerError,
   assertMigrationPlanSafe,
   calculateExecutionMs,
   executeMigrationTransaction,
+  normalizeBaselineForRegistration,
   normalizeMigrationForExecution,
+  registerBaselineTransaction,
 };

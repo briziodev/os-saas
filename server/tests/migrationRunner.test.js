@@ -5,7 +5,9 @@ const {
   MigrationRunnerError,
   assertMigrationPlanSafe,
   executeMigrationTransaction,
+  normalizeBaselineForRegistration,
   normalizeMigrationForExecution,
+  registerBaselineTransaction,
 } = require(
   "../database/migrationRunner"
 );
@@ -608,6 +610,435 @@ test(
               ],
             },
           ]
+        );
+
+        return true;
+      }
+    );
+  }
+);
+
+test(
+  "normalizeBaselineForRegistration exige classificacao historica explicita",
+  () => {
+    assert.throws(
+      () =>
+        normalizeBaselineForRegistration(
+          createMigration()
+        ),
+      (error) => {
+        assert.ok(
+          error instanceof
+            MigrationRunnerError
+        );
+
+        assert.equal(
+          error.code,
+          "MIGRATION_BASELINE_CLASSIFICATION_REQUIRED"
+        );
+
+        return true;
+      }
+    );
+
+    const baseline =
+      normalizeBaselineForRegistration(
+        createMigration({
+          historicalBaseline:
+            true,
+        })
+      );
+
+    assert.equal(
+      baseline.historicalBaseline,
+      true
+    );
+  }
+);
+
+test(
+  "executeMigrationTransaction prepara metadata e aplica baseline na mesma transacao",
+  async () => {
+    const events = [];
+
+    const client =
+      createFakeClient(
+        async (call) => {
+          events.push(call.text);
+
+          return {
+            rows: [],
+          };
+        }
+      );
+
+    const times = [
+      50,
+      75,
+    ];
+
+    await executeMigrationTransaction(
+      client,
+      createMigration({
+        historicalBaseline:
+          true,
+      }),
+      {
+        baseline: true,
+
+        async prepareTransaction(
+          receivedClient,
+          migration
+        ) {
+          assert.equal(
+            receivedClient,
+            client
+          );
+
+          assert.equal(
+            migration.id,
+            "20260804190000_example"
+          );
+
+          events.push(
+            "PREPARE_TRANSACTION"
+          );
+        },
+
+        now() {
+          return times.shift();
+        },
+
+        async recordMigration(
+          receivedClient,
+          record
+        ) {
+          assert.equal(
+            receivedClient,
+            client
+          );
+
+          assert.equal(
+            record.baseline,
+            true
+          );
+
+          events.push(
+            "RECORD_MIGRATION"
+          );
+
+          return {};
+        },
+      }
+    );
+
+    assert.deepEqual(
+      events,
+      [
+        "BEGIN",
+        "PREPARE_TRANSACTION",
+        "CREATE TABLE example (id integer);",
+        "RECORD_MIGRATION",
+        "COMMIT",
+      ]
+    );
+  }
+);
+
+test(
+  "executeMigrationTransaction faz rollback quando preparacao da baseline falha",
+  async () => {
+    const client =
+      createFakeClient();
+
+    await assert.rejects(
+      () =>
+        executeMigrationTransaction(
+          client,
+          createMigration({
+            historicalBaseline:
+              true,
+          }),
+          {
+            baseline: true,
+
+            async prepareTransaction() {
+              throw new Error(
+                "preparacao recusada"
+              );
+            },
+
+            async recordMigration() {
+              throw new Error(
+                "nao deveria registrar"
+              );
+            },
+          }
+        ),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_EXECUTION_FAILED"
+        );
+
+        return true;
+      }
+    );
+
+    assert.deepEqual(
+      client.calls.map(
+        (call) => call.text
+      ),
+      [
+        "BEGIN",
+        "ROLLBACK",
+      ]
+    );
+  }
+);
+
+test(
+  "executeMigrationTransaction exige historicalBaseline para baseline=true",
+  async () => {
+    const client =
+      createFakeClient();
+
+    await assert.rejects(
+      () =>
+        executeMigrationTransaction(
+          client,
+          createMigration(),
+          {
+            baseline: true,
+          }
+        ),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_BASELINE_CLASSIFICATION_REQUIRED"
+        );
+
+        return true;
+      }
+    );
+
+    assert.deepEqual(
+      client.calls,
+      []
+    );
+  }
+);
+
+test(
+  "registerBaselineTransaction registra baseline sem executar SQL historico",
+  async () => {
+    const events = [];
+
+    const client =
+      createFakeClient(
+        async (call) => {
+          events.push(call.text);
+
+          return {
+            rows: [],
+          };
+        }
+      );
+
+    const result =
+      await registerBaselineTransaction(
+        client,
+        createMigration({
+          historicalBaseline:
+            true,
+        }),
+        {
+          async ensureMetadataTable(
+            receivedClient
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            events.push(
+              "ENSURE_METADATA"
+            );
+          },
+
+          async recordMigration(
+            receivedClient,
+            record
+          ) {
+            assert.equal(
+              receivedClient,
+              client
+            );
+
+            assert.deepEqual(
+              record,
+              {
+                id:
+                  "20260804190000_example",
+                filename:
+                  "20260804190000_example.sql",
+                checksum:
+                  "a".repeat(64),
+                baseline: true,
+                executionMs: 0,
+              }
+            );
+
+            events.push(
+              "RECORD_BASELINE"
+            );
+
+            return {
+              ...record,
+              applied_at:
+                new Date(
+                  "2026-08-09T16:00:00Z"
+                ),
+            };
+          },
+        }
+      );
+
+    assert.deepEqual(
+      events,
+      [
+        "BEGIN",
+        "ENSURE_METADATA",
+        "RECORD_BASELINE",
+        "COMMIT",
+      ]
+    );
+
+    assert.equal(
+      result.baseline,
+      true
+    );
+
+    assert.equal(
+      result.executionMs,
+      0
+    );
+
+    assert.equal(
+      client.calls.some(
+        (call) =>
+          call.text.startsWith(
+            "CREATE TABLE example"
+          )
+      ),
+      false
+    );
+  }
+);
+
+test(
+  "registerBaselineTransaction faz rollback quando preparacao da metadata falha",
+  async () => {
+    const client =
+      createFakeClient();
+
+    await assert.rejects(
+      () =>
+        registerBaselineTransaction(
+          client,
+          createMigration({
+            historicalBaseline:
+              true,
+          }),
+          {
+            async ensureMetadataTable() {
+              throw new Error(
+                "metadata recusada"
+              );
+            },
+
+            async recordMigration() {
+              throw new Error(
+                "nao deveria registrar"
+              );
+            },
+          }
+        ),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_BASELINE_REGISTRATION_FAILED"
+        );
+
+        return true;
+      }
+    );
+
+    assert.deepEqual(
+      client.calls.map(
+        (call) => call.text
+      ),
+      [
+        "BEGIN",
+        "ROLLBACK",
+      ]
+    );
+  }
+);
+
+test(
+  "registerBaselineTransaction reporta falha do rollback",
+  async () => {
+    const client =
+      createFakeClient(
+        async (call) => {
+          if (
+            call.text ===
+            "ROLLBACK"
+          ) {
+            throw new Error(
+              "rollback baseline falhou"
+            );
+          }
+
+          return {
+            rows: [],
+          };
+        }
+      );
+
+    await assert.rejects(
+      () =>
+        registerBaselineTransaction(
+          client,
+          createMigration({
+            historicalBaseline:
+              true,
+          }),
+          {
+            async ensureMetadataTable() {
+              throw new Error(
+                "falha original baseline"
+              );
+            },
+          }
+        ),
+      (error) => {
+        assert.equal(
+          error.code,
+          "MIGRATION_ROLLBACK_FAILED"
+        );
+
+        assert.equal(
+          error.details
+            .originalError,
+          "falha original baseline"
+        );
+
+        assert.equal(
+          error.details
+            .rollbackError,
+          "rollback baseline falhou"
         );
 
         return true;
