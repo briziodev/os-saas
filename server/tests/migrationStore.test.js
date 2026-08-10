@@ -474,6 +474,11 @@ test(
       sql,
       /convalidated/
     );
+
+    assert.match(
+      sql,
+      /attribute\.attname::text/
+    );
   }
 );
 

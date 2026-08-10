@@ -85,7 +85,7 @@ const METADATA_CONSTRAINTS_SQL = `
       AS validated,
     ARRAY(
       SELECT
-        attribute.attname
+        attribute.attname::text
       FROM
         unnest(
           constraint_row.conkey
