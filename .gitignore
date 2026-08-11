@@ -21,3 +21,4 @@ backups/
 *.sql
 !server/migrations/
 !server/migrations/*.sql
+!server/migrations/**/*.sql

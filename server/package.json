@@ -6,7 +6,12 @@
     "start": "node index.js",
     "test": "node --test tests/*.test.js",
     "test:schema": "node --test tests/schemaReadiness.test.js",
-    "test:integration:os-cancelada": "node tests/integration/osCancelled.integration.js"
+    "test:integration:os-cancelada": "node tests/integration/osCancelled.integration.js",
+    "test:migrations": "node --test tests/migration*.test.js",
+    "migrations": "node scripts/migrations.js",
+    "migrations:help": "node scripts/migrations.js --help",
+    "migrations:status": "node scripts/migrations.js status",
+    "migrations:migrate": "node scripts/migrations.js migrate"
   },
   "keywords": [],
   "author": "",
