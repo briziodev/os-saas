@@ -253,8 +253,21 @@ function normalizeSemanticSchemaDump(
   const normalized =
     normalizeSchemaDump(input);
 
+  const canonicalized =
+    normalized
+      .split("\n")
+      .map(
+        (line) =>
+          /^\s*CREATE SCHEMA public;\s*$/.test(
+            line
+          )
+            ? "CREATE SCHEMA IF NOT EXISTS public;"
+            : line
+      )
+      .join("\n");
+
   return normalizeLines(
-    normalized,
+    canonicalized,
     (line) =>
       /^\s*COMMENT ON SCHEMA public IS 'standard public schema';\s*$/.test(
         line

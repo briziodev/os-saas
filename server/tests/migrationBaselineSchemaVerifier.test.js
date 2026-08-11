@@ -52,7 +52,7 @@ test(
 );
 
 test(
-  "normalizeSemanticSchemaDump remove somente o comentario padrao do schema public",
+  "normalizeSemanticSchemaDump remove comentario padrao sem remover comentarios funcionais",
   () => {
     const raw = [
       "CREATE SCHEMA public;",
@@ -80,6 +80,59 @@ test(
         "COMMENT ON TABLE public.example IS 'comentario funcional';"
       ),
       true
+    );
+  }
+);
+
+test(
+  "normalizeSemanticSchemaDump trata CREATE SCHEMA public como equivalente ao IF NOT EXISTS",
+  () => {
+    const withIfNotExists = [
+      "CREATE SCHEMA IF NOT EXISTS public;",
+      "",
+      "CREATE TABLE public.example (",
+      "    id integer NOT NULL",
+      ");",
+      "",
+    ].join("\n");
+
+    const fromPgDump = [
+      "CREATE SCHEMA public;",
+      "",
+      "CREATE TABLE public.example (",
+      "    id integer NOT NULL",
+      ");",
+      "",
+    ].join("\n");
+
+    assert.equal(
+      normalizeSemanticSchemaDump(
+        fromPgDump
+      ),
+      normalizeSemanticSchemaDump(
+        withIfNotExists
+      )
+    );
+  }
+);
+
+test(
+  "normalizador semantico preserva o fingerprint canonico da baseline real",
+  async () => {
+    const baselineSql =
+      await fs.readFile(
+        DEFAULT_BASELINE_FILE_PATH,
+        "utf8"
+      );
+
+    assert.equal(
+      calculateSha256(
+        normalizeSemanticSchemaDump(
+          baselineSql
+        )
+      ),
+      CANONICAL_SCHEMA_SEMANTIC_CHECKSUM
+        .toLowerCase()
     );
   }
 );
