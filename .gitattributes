@@ -1,0 +1,2 @@
+# Preserve deterministic migration checksums across operating systems.
+server/migrations/versions/*.sql text eol=lf
