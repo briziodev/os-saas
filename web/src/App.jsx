@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { getToken, getUser } from "./api";
+import { useAuth } from "./auth/useAuth";
 import AppShell from "./layouts/AppShell";
 
 import Login from "./pages/Login";
@@ -15,9 +15,9 @@ import MinhaConta from "./pages/MinhaConta";
 import "./layouts/AppShellOverrides.css";
 
 function PrivateRoute({ children }) {
-  const token = getToken();
+  const { authenticated } = useAuth();
 
-  if (!token) {
+  if (!authenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -33,7 +33,7 @@ function PrivateShell({ children }) {
 }
 
 export default function App() {
-  const user = getUser();
+  const { user } = useAuth();
   const role = user?.role;
   const canAccessDashboard = role === "admin" || role === "atendimento";
   const canAccessClientes = role === "admin" || role === "atendimento";
