@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { appIcons } from "../config/icons";
-import { clearToken, getUser } from "../api";
+import { useAuth } from "../auth/useAuth";
 import "./AppShell.css";
 
 const PAGE_META = [
@@ -90,7 +90,8 @@ function canSeeItem(item, role) {
 
 export default function AppShell({ children }) {
   const location = useLocation();
-  const user = getUser();
+  const navigate = useNavigate();
+  const { user, logout: clearSession } = useAuth();
   const role = user?.role || "";
   const path = location.pathname;
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -132,8 +133,8 @@ export default function AppShell({ children }) {
   }, [path]);
 
   function logout() {
-    clearToken();
-    window.location.href = "/login";
+    clearSession();
+    navigate("/login", { replace: true });
   }
 
   return (

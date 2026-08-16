@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppIcon } from "../components/AppIcon";
 import { appIcons } from "../config/icons";
-import { apiFetch, setToken } from "../api";
+import { useAuth } from "../auth/useAuth";
+import { apiFetch } from "../api";
 import "./Login.css";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +24,7 @@ function validateLoginForm(emailRaw, passwordRaw) {
 
 export default function Login() {
   const nav = useNavigate();
+  const { setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -58,13 +60,19 @@ export default function Login() {
         { auth: false }
       );
 
-      setToken(data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      if (!data?.token || !data?.user) {
+        throw new Error("Resposta de login inválida.");
+      }
+
+      setSession({
+        token: data.token,
+        user: data.user,
+      });
 
       if (data.user.role === "tecnico") {
-        nav("/os");
+        nav("/os", { replace: true });
       } else {
-        nav("/dashboard");
+        nav("/dashboard", { replace: true });
       }
     } catch (err) {
       const msg = err?.message || "Erro de conexão. Tente novamente.";

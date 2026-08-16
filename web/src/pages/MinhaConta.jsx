@@ -4,12 +4,9 @@ import PageHeader from "../components/PageHeader";
 import { appIcons } from "../config/icons";
 import {
   apiFetch,
-  clearToken,
   getToken,
-  getUser,
-  setToken,
-  setUser,
 } from "../api";
+import { useAuth } from "../auth/useAuth";
 import {
   getNewPasswordError,
 } from "../utils/passwordPolicy";
@@ -26,8 +23,15 @@ function roleLabel(role) {
 }
 
 export default function MinhaConta() {
+  const {
+    user,
+    setSession,
+    updateUser,
+    logout,
+  } = useAuth();
+
   const [profile, setProfile] = useState(
-    () => getUser()
+    () => user
   );
 
   const [loadingProfile, setLoadingProfile] =
@@ -67,11 +71,12 @@ export default function MinhaConta() {
         if (!active) return;
 
         setProfile(data);
-        setUser(data);
+        updateUser(data);
       } catch (err) {
         if (!active) return;
 
         if (!getToken()) {
+          logout();
           window.location.href = "/login";
           return;
         }
@@ -92,7 +97,7 @@ export default function MinhaConta() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [logout, updateUser]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -143,13 +148,15 @@ export default function MinhaConta() {
       );
 
       if (!data?.token || !data?.user) {
-        clearToken();
+        logout();
         window.location.href = "/login";
         return;
       }
 
-      setToken(data.token);
-      setUser(data.user);
+      setSession({
+        token: data.token,
+        user: data.user,
+      });
       setProfile(data.user);
 
       setCurrentPassword("");
