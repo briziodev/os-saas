@@ -621,10 +621,33 @@ router.post("/activate", validate(activateAccountSchema), async (req, res, next)
          invite_token = NULL,
          invite_expires_at = NULL
        WHERE id = $2
+         AND invite_token = $3
+         AND is_active = false
+         AND invite_expires_at > now()
        RETURNING id, name, email, company_id, role, is_active, activated_at`,
-      [passwordHash, user.id]
+      [passwordHash, user.id, token]
     );
 
+    if (updated.rowCount === 0) {
+      logger.warn(
+        "ACCOUNT_ACTIVATE_CONFLICT",
+        "Ativação bloqueada: convite já consumido, substituído ou expirado durante a ativação",
+        {
+          requestId: req.requestId,
+          userId: user.id,
+          companyId: user.company_id,
+          role: user.role,
+          email: maskEmail(user.email),
+          token: maskToken(token),
+          ip: req.ip,
+        }
+      );
+
+      return res.status(409).json({
+        error: "Este convite já foi utilizado ou não está mais válido",
+        code: "INVITE_ALREADY_CONSUMED",
+      });
+    }
     logger.info("ACCOUNT_ACTIVATED", "Conta ativada com sucesso", {
       requestId: req.requestId,
       userId: updated.rows[0].id,
