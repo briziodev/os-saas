@@ -13,7 +13,7 @@ const {
 router.use(authRequired, loadUser);
 
 // GET /clientes
-router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
+router.get("/", requireRole("admin", "atendimento"), async (req, res, next) => {
   try {
     const result = await pool.query(
       "SELECT * FROM clientes WHERE company_id = $1 ORDER BY id ASC",
@@ -22,7 +22,7 @@ router.get("/", requireRole("admin", "atendimento"), async (req, res) => {
 
     return res.json(result.rows);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 });
 
@@ -31,7 +31,7 @@ router.post(
   "/",
   requireRole("admin", "atendimento"),
   validate(clienteSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { nome, email, telefone } = req.body;
 
@@ -52,7 +52,7 @@ router.post(
 
       return res.status(201).json(result.rows[0]);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -63,7 +63,7 @@ router.put(
   requireRole("admin", "atendimento"),
   validate(clienteIdParamSchema, "params"),
   validate(clienteSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const { nome, email, telefone } = req.body;
@@ -86,7 +86,7 @@ router.put(
 
       return res.json(result.rows[0]);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
@@ -96,7 +96,7 @@ router.delete(
   "/:id",
   requireRole("admin"),
   validate(clienteIdParamSchema, "params"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
 
@@ -120,7 +120,7 @@ router.delete(
         });
       }
 
-      return res.status(500).json({ error: err.message });
+      return next(err);
     }
   }
 );
