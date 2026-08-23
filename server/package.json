@@ -14,7 +14,8 @@
     "migrations:migrate": "node scripts/migrations.js migrate",
     "test:integration:os-multitenant": "node tests/integration/osMultiTenantIsolation.integration.js",
     "test:integration:clientes-multitenant": "node tests/integration/clientesMultiTenantIsolation.integration.js",
-    "test:integration:users-multitenant": "node tests/integration/usersMultiTenantIsolation.integration.js"
+    "test:integration:users-multitenant": "node tests/integration/usersMultiTenantIsolation.integration.js",
+    "test:integration:dashboard-multitenant": "node tests/integration/dashboardMultiTenantIsolation.integration.js"
   },
   "keywords": [],
   "author": "",
