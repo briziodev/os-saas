@@ -11,16 +11,13 @@ require("dotenv").config({
 });
 
 const bcrypt = require("bcryptjs");
-const pool = require("../../db");
 const {
   BCRYPT_ROUNDS,
 } = require("../../utils/passwordPolicy");
+const {
+  assertSafeIntegrationDatabase,
+} = require("../helpers/integrationDbGuard");
 
-const LOCAL_HOSTS = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-]);
 
 const TEST_PASSWORD = "TesteSeguro#2026";
 const suffix =
@@ -71,15 +68,15 @@ function resolveDatabaseTarget() {
 
 const databaseTarget = resolveDatabaseTarget();
 
-function assertLocalDatabase() {
-  assert.ok(
-    LOCAL_HOSTS.has(databaseTarget.host),
-    [
-      "Teste bloqueado: somente PostgreSQL local é permitido.",
-      `Host encontrado: ${databaseTarget.host || "não informado"}.`,
-      `Origem: ${databaseTarget.source}.`,
-    ].join(" ")
-  );
+let pool = null;
+
+function initializeDatabasePool() {
+  if (pool) {
+    return pool;
+  }
+
+  pool = require("../../db");
+  return pool;
 }
 
 function pass(name) {
@@ -1066,9 +1063,17 @@ async function runRegression() {
 async function main() {
   let mainError = null;
   let cleanupError = null;
+  let databaseApproved = false;
 
   try {
-    assertLocalDatabase();
+    assertSafeIntegrationDatabase({
+      target: databaseTarget,
+      confirmation:
+        process.env.OS_SAAS_INTEGRATION_TEST,
+    });
+
+    databaseApproved = true;
+    initializeDatabasePool();
 
     console.log(
       JSON.stringify(
@@ -1107,31 +1112,35 @@ async function main() {
         );
       });
 
-    try {
-      await cleanupFixtures();
-      console.log(
-        "Fixtures temporárias removidas."
-      );
-    } catch (error) {
-      cleanupError = error;
+    if (databaseApproved && pool) {
+      try {
+        await cleanupFixtures();
+        console.log(
+          "Fixtures temporárias removidas."
+        );
+      } catch (error) {
+        cleanupError = error;
 
-      console.error(
-        JSON.stringify(
-          {
-            status: "cleanup_failed",
-            errorName: error.name,
-            errorMessage: error.message,
-            companyIds: fixture.companyIds,
-            userIds: fixture.userIds,
-          },
-          null,
-          2
-        )
-      );
+        console.error(
+          JSON.stringify(
+            {
+              status: "cleanup_failed",
+              errorName: error.name,
+              errorMessage: error.message,
+              companyIds: fixture.companyIds,
+              userIds: fixture.userIds,
+            },
+            null,
+            2
+          )
+        );
+      }
     }
 
-    await pool.end()
-      .catch(() => {});
+    if (pool) {
+      await pool.end()
+        .catch(() => {});
+    }
   }
 
   console.log(
