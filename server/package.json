@@ -12,7 +12,8 @@
     "migrations:help": "node scripts/migrations.js --help",
     "migrations:status": "node scripts/migrations.js status",
     "migrations:migrate": "node scripts/migrations.js migrate",
-    "test:integration:os-multitenant": "node tests/integration/osMultiTenantIsolation.integration.js"
+    "test:integration:os-multitenant": "node tests/integration/osMultiTenantIsolation.integration.js",
+    "test:integration:clientes-multitenant": "node tests/integration/clientesMultiTenantIsolation.integration.js"
   },
   "keywords": [],
   "author": "",
