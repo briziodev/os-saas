@@ -26,11 +26,33 @@ const loginLimiter = rateLimit({
   },
 });
 
+function sensitiveActionKeyGenerator(req) {
+  const userId = Number(req.user?.id);
+  const companyId = Number(req.user?.company_id);
+
+  if (
+    Number.isInteger(userId) &&
+    userId > 0 &&
+    Number.isInteger(companyId) &&
+    companyId > 0
+  ) {
+    return `company:${companyId}:user:${userId}`;
+  }
+
+  const ip =
+    typeof req.ip === "string" && req.ip
+      ? req.ip
+      : "0.0.0.0";
+
+  return `ip:${ipKeyGenerator(ip)}`;
+}
+
 const sensitiveActionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
   standardHeaders: "draft-8",
   legacyHeaders: false,
+  keyGenerator: sensitiveActionKeyGenerator,
   message: {
     error:
       "Muitas ações sensíveis em pouco tempo. Tente novamente em alguns minutos.",
@@ -69,4 +91,5 @@ module.exports = {
   loginLimiter,
   sensitiveActionLimiter,
   passwordChangeLimiter,
+  sensitiveActionKeyGenerator,
 };
