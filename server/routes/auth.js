@@ -18,6 +18,11 @@ const { logger, maskEmail, maskToken } = require("../utils/logger");
 const {
   BCRYPT_ROUNDS,
 } = require("../utils/passwordPolicy");
+const {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITY_TYPES,
+  insertAuditLog,
+} = require("../services/auditLog");
 
 const ALLOWED_ROLES = ["admin", "atendimento", "tecnico"];
 
@@ -410,6 +415,27 @@ router.post(
 
       const token = signAuthToken(updatedUser);
 
+      await insertAuditLog(client, {
+        companyId: updatedUser.company_id,
+        actorUserId: updatedUser.id,
+        actorRole: updatedUser.role,
+        action:
+          AUDIT_ACTIONS.PASSWORD_CHANGED,
+        entityType:
+          AUDIT_ENTITY_TYPES.USER,
+        entityId: updatedUser.id,
+        requestId: req.requestId,
+        ip: req.ip,
+        metadata: {
+          previous_session_version:
+            user.session_version,
+          current_session_version:
+            updatedUser.session_version,
+          revoked_reset_tokens:
+            revokedTokensResult.rowCount,
+        },
+      });
+
       await client.query("COMMIT");
       transactionOpen = false;
 
@@ -557,113 +583,206 @@ router.get("/invite/:token", async (req, res, next) => {
 });
 
 // POST /auth/activate
-router.post("/activate", validate(activateAccountSchema), async (req, res, next) => {
-  try {
-    const { token, password } = req.body;
+router.post(
+  "/activate",
+  validate(activateAccountSchema),
+  async (req, res, next) => {
+    let client = null;
+    let transactionOpen = false;
 
-    const result = await pool.query(
-      `SELECT id, email, is_active, invite_expires_at, company_id, role
-       FROM users
-       WHERE invite_token = $1`,
-      [token]
-    );
+    try {
+      const { token, password } = req.body;
 
-    if (result.rowCount === 0) {
-      logger.warn("ACCOUNT_ACTIVATE_FAILED", "Ativação falhou: convite inválido", {
-        requestId: req.requestId,
-        token: maskToken(token),
-        ip: req.ip,
+      const result = await pool.query(
+        `SELECT id, email, is_active, invite_expires_at, company_id, role
+         FROM users
+         WHERE invite_token = $1`,
+        [token]
+      );
+
+      if (result.rowCount === 0) {
+        logger.warn(
+          "ACCOUNT_ACTIVATE_FAILED",
+          "Ativação falhou: convite inválido",
+          {
+            requestId: req.requestId,
+            token: maskToken(token),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(404).json({
+          error: "Convite inválido",
+        });
+      }
+
+      const user = result.rows[0];
+
+      if (user.is_active) {
+        logger.warn(
+          "ACCOUNT_ACTIVATE_ALREADY_ACTIVE",
+          "Ativação falhou: conta já ativa",
+          {
+            requestId: req.requestId,
+            userId: user.id,
+            companyId: user.company_id,
+            role: user.role,
+            email: maskEmail(user.email),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(400).json({
+          error: "Esta conta já foi ativada",
+        });
+      }
+
+      if (
+        !user.invite_expires_at ||
+        new Date(user.invite_expires_at) <
+          new Date()
+      ) {
+        logger.warn(
+          "ACCOUNT_ACTIVATE_EXPIRED",
+          "Ativação falhou: convite expirado",
+          {
+            requestId: req.requestId,
+            userId: user.id,
+            companyId: user.company_id,
+            role: user.role,
+            email: maskEmail(user.email),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(400).json({
+          error: "Este convite expirou",
+        });
+      }
+
+      const passwordHash =
+        await bcrypt.hash(
+          password,
+          BCRYPT_ROUNDS
+        );
+
+      client = await pool.connect();
+      await client.query("BEGIN");
+      transactionOpen = true;
+
+      const updated = await client.query(
+        `UPDATE users
+         SET
+           password_hash = $1,
+           is_active = true,
+           activated_at = now(),
+           password_changed_at = now(),
+           invite_token = NULL,
+           invite_expires_at = NULL
+         WHERE id = $2
+           AND invite_token = $3
+           AND is_active = false
+           AND invite_expires_at > now()
+         RETURNING
+           id,
+           name,
+           email,
+           company_id,
+           role,
+           is_active,
+           activated_at`,
+        [passwordHash, user.id, token]
+      );
+
+      if (updated.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logger.warn(
+          "ACCOUNT_ACTIVATE_CONFLICT",
+          "Ativação bloqueada: convite já consumido, substituído ou expirado durante a ativação",
+          {
+            requestId: req.requestId,
+            userId: user.id,
+            companyId: user.company_id,
+            role: user.role,
+            email: maskEmail(user.email),
+            token: maskToken(token),
+            ip: req.ip,
+          }
+        );
+
+        return res.status(409).json({
+          error:
+            "Este convite já foi utilizado ou não está mais válido",
+          code:
+            "INVITE_ALREADY_CONSUMED",
+        });
+      }
+
+      const activatedUser =
+        updated.rows[0];
+
+      await insertAuditLog(client, {
+        companyId:
+          activatedUser.company_id,
+        actorUserId:
+          activatedUser.id,
+        actorRole:
+          activatedUser.role,
+        action:
+          AUDIT_ACTIONS.ACCOUNT_ACTIVATED,
+        entityType:
+          AUDIT_ENTITY_TYPES.USER,
+        entityId:
+          activatedUser.id,
+        requestId:
+          req.requestId,
+        ip:
+          req.ip,
+        metadata: {
+          activation_method:
+            "invite",
+        },
       });
 
-      return res.status(404).json({ error: "Convite inválido" });
-    }
+      await client.query("COMMIT");
+      transactionOpen = false;
 
-    const user = result.rows[0];
-
-    if (user.is_active) {
-      logger.warn("ACCOUNT_ACTIVATE_ALREADY_ACTIVE", "Ativação falhou: conta já ativa", {
-        requestId: req.requestId,
-        userId: user.id,
-        companyId: user.company_id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
-
-      return res.status(400).json({ error: "Esta conta já foi ativada" });
-    }
-
-    if (!user.invite_expires_at || new Date(user.invite_expires_at) < new Date()) {
-      logger.warn("ACCOUNT_ACTIVATE_EXPIRED", "Ativação falhou: convite expirado", {
-        requestId: req.requestId,
-        userId: user.id,
-        companyId: user.company_id,
-        role: user.role,
-        email: maskEmail(user.email),
-        ip: req.ip,
-      });
-
-      return res.status(400).json({ error: "Este convite expirou" });
-    }
-
-    const passwordHash = await bcrypt.hash(
-      password,
-      BCRYPT_ROUNDS
-    );
-
-    const updated = await pool.query(
-      `UPDATE users
-       SET
-         password_hash = $1,
-         is_active = true,
-         activated_at = now(),
-         password_changed_at = now(),
-         invite_token = NULL,
-         invite_expires_at = NULL
-       WHERE id = $2
-         AND invite_token = $3
-         AND is_active = false
-         AND invite_expires_at > now()
-       RETURNING id, name, email, company_id, role, is_active, activated_at`,
-      [passwordHash, user.id, token]
-    );
-
-    if (updated.rowCount === 0) {
-      logger.warn(
-        "ACCOUNT_ACTIVATE_CONFLICT",
-        "Ativação bloqueada: convite já consumido, substituído ou expirado durante a ativação",
+      logger.info(
+        "ACCOUNT_ACTIVATED",
+        "Conta ativada com sucesso",
         {
           requestId: req.requestId,
-          userId: user.id,
-          companyId: user.company_id,
-          role: user.role,
-          email: maskEmail(user.email),
-          token: maskToken(token),
+          userId: activatedUser.id,
+          companyId:
+            activatedUser.company_id,
+          role: activatedUser.role,
+          email:
+            maskEmail(
+              activatedUser.email
+            ),
           ip: req.ip,
         }
       );
 
-      return res.status(409).json({
-        error: "Este convite já foi utilizado ou não está mais válido",
-        code: "INVITE_ALREADY_CONSUMED",
+      return res.json({
+        message:
+          "Conta ativada com sucesso",
+        user: activatedUser,
       });
-    }
-    logger.info("ACCOUNT_ACTIVATED", "Conta ativada com sucesso", {
-      requestId: req.requestId,
-      userId: updated.rows[0].id,
-      companyId: updated.rows[0].company_id,
-      role: updated.rows[0].role,
-      email: maskEmail(updated.rows[0].email),
-      ip: req.ip,
-    });
+    } catch (err) {
+      if (transactionOpen && client) {
+        await client
+          .query("ROLLBACK")
+          .catch(() => {});
+      }
 
-    return res.json({
-      message: "Conta ativada com sucesso",
-      user: updated.rows[0],
-    });
-  } catch (err) {
-    return next(err);
+      return next(err);
+    } finally {
+      client?.release();
+    }
   }
-});
+);
 
 module.exports = router;
