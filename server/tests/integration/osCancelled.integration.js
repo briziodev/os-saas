@@ -564,6 +564,14 @@ async function cleanupFixtures() {
     if (fixture.companyIds.length > 0) {
       await client.query(
         `
+          DELETE FROM audit_logs
+          WHERE company_id = ANY($1::int[])
+        `,
+        [fixture.companyIds]
+      );
+
+      await client.query(
+        `
           DELETE FROM os_events
           WHERE company_id = ANY($1::int[])
         `,
@@ -704,6 +712,39 @@ async function getSnapshot() {
     events: eventsResult.rows,
   };
 }
+
+
+async function getAuditLogs() {
+  const result =
+    await pool.query(
+      `
+        SELECT
+          id,
+          company_id,
+          actor_user_id,
+          actor_role,
+          action,
+          entity_type,
+          entity_id,
+          request_id,
+          ip,
+          metadata,
+          created_at
+        FROM audit_logs
+        WHERE company_id = $1
+          AND entity_type = 'ordem_servico'
+          AND entity_id = $2
+        ORDER BY id
+      `,
+      [
+        fixture.primaryCompanyId,
+        fixture.osId,
+      ]
+    );
+
+  return result.rows;
+}
+
 
 async function runRegression() {
   const emails = {
@@ -1058,6 +1099,158 @@ async function runRegression() {
   pass(
     "Reabertura persistiu triagem e evento auditável"
   );
+
+  const auditAfterReopen =
+    await getAuditLogs();
+
+  const reopenAuditRows =
+    auditAfterReopen.filter(
+      (row) =>
+        row.action ===
+        "OS_REOPENED"
+    );
+
+  assert.equal(
+    reopenAuditRows.length,
+    1
+  );
+
+  const reopenAudit =
+    reopenAuditRows[0];
+
+  assert.equal(
+    Number(
+      reopenAudit.actor_user_id
+    ),
+    Number(fixture.adminId)
+  );
+
+  assert.equal(
+    reopenAudit.actor_role,
+    "admin"
+  );
+
+  assert.deepEqual(
+    {
+      old_status:
+        reopenAudit.metadata
+          ?.old_status,
+
+      new_status:
+        reopenAudit.metadata
+          ?.new_status,
+
+      reason:
+        reopenAudit.metadata
+          ?.reason,
+
+      source:
+        reopenAudit.metadata
+          ?.source,
+    },
+    {
+      old_status:
+        "cancelado",
+      new_status:
+        "triagem",
+      reason:
+        validReason,
+      source:
+        "controlled_reopen",
+    }
+  );
+
+  pass(
+    "Reabertura gerou audit_log persistente do tenant"
+  );
+
+  await expectHttp(
+    "Admin exclui OS reaberta",
+    apiRequest(
+      `/os/${fixture.osId}`,
+      {
+        method: "DELETE",
+        token: tokens.admin,
+      }
+    ),
+    200
+  );
+
+  const deletedOsResult =
+    await pool.query(
+      `
+        SELECT id
+        FROM ordens_servico
+        WHERE id = $1
+          AND company_id = $2
+      `,
+      [
+        fixture.osId,
+        fixture.primaryCompanyId,
+      ]
+    );
+
+  assert.equal(
+    deletedOsResult.rowCount,
+    0
+  );
+
+  const auditAfterDelete =
+    await getAuditLogs();
+
+  const deleteAuditRows =
+    auditAfterDelete.filter(
+      (row) =>
+        row.action ===
+        "OS_DELETED"
+    );
+
+  assert.equal(
+    deleteAuditRows.length,
+    1
+  );
+
+  const deleteAudit =
+    deleteAuditRows[0];
+
+  assert.equal(
+    Number(
+      deleteAudit.actor_user_id
+    ),
+    Number(fixture.adminId)
+  );
+
+  assert.equal(
+    deleteAudit.actor_role,
+    "admin"
+  );
+
+  assert.equal(
+    Number(
+      deleteAudit.entity_id
+    ),
+    Number(fixture.osId)
+  );
+
+  assert.equal(
+    deleteAudit.metadata
+      ?.status_before,
+    "triagem"
+  );
+
+  assert.equal(
+    auditAfterDelete.some(
+      (row) =>
+        row.action ===
+        "OS_REOPENED"
+    ),
+    true,
+    "O audit_log de reabertura deve sobreviver à exclusão da OS."
+  );
+
+  pass(
+    "Exclusão gerou audit_log que sobrevive à remoção da OS"
+  );
 }
 
 async function main() {
@@ -1153,9 +1346,9 @@ async function main() {
             : "failed",
 
         tests: {
-          total: 15,
+          total: 18,
           passed: passedChecks,
-          failed: 15 - passedChecks,
+          failed: 18 - passedChecks,
         },
       },
       null,

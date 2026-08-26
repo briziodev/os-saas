@@ -194,6 +194,64 @@ test(
   }
 );
 test(
+  "reprova tabela audit_logs ausente",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.columns =
+      snapshot.columns.filter(
+        (item) =>
+          item.table_name !==
+          "audit_logs"
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(
+      result.compatible,
+      false
+    );
+
+    assert.ok(
+      result.missingTables.includes(
+        "audit_logs"
+      )
+    );
+  }
+);
+
+test(
+  "reprova índice de retenção de auditoria ausente",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.indexes =
+      snapshot.indexes.filter(
+        (name) =>
+          name !==
+          "idx_audit_logs_created_at"
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(
+      result.compatible,
+      false
+    );
+
+    assert.ok(
+      result.missingIndexes.includes(
+        "idx_audit_logs_created_at"
+      )
+    );
+  }
+);
+
+test(
   "reutiliza o resultado dentro do TTL",
   async () => {
     const snapshot =

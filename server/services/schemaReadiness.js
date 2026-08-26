@@ -1,5 +1,5 @@
 const SCHEMA_CONTRACT_ID =
-  "20260717_password_security";
+  "20260825_persistent_audit_logs";
 
 const REQUIRED_TABLE_COLUMNS = Object.freeze({
   companies: [
@@ -57,6 +57,20 @@ const REQUIRED_TABLE_COLUMNS = Object.freeze({
     "revoked_at",
     "created_at",
   ],
+
+  audit_logs: [
+    "id",
+    "company_id",
+    "actor_user_id",
+    "actor_role",
+    "action",
+    "entity_type",
+    "entity_id",
+    "request_id",
+    "ip",
+    "metadata",
+    "created_at",
+  ],
 });
 
 const REQUIRED_CONSTRAINTS = Object.freeze([
@@ -67,6 +81,13 @@ const REQUIRED_CONSTRAINTS = Object.freeze([
   "password_reset_tokens_hash_length",
   "password_reset_tokens_expiry_after_creation",
   "password_reset_tokens_terminal_state",
+  "audit_logs_pkey",
+  "audit_logs_company_id_positive",
+  "audit_logs_actor_user_id_positive",
+  "audit_logs_entity_id_positive",
+  "audit_logs_action_nonempty",
+  "audit_logs_entity_type_nonempty",
+  "audit_logs_metadata_object",
 ]);
 
 const REQUIRED_INDEXES = Object.freeze([
@@ -74,6 +95,10 @@ const REQUIRED_INDEXES = Object.freeze([
   "password_reset_tokens_one_pending_per_user_idx",
   "password_reset_tokens_token_hash_unique",
   "password_reset_tokens_user_created_idx",
+  "idx_audit_logs_company_created",
+  "idx_audit_logs_company_action_created",
+  "idx_audit_logs_entity_lookup",
+  "idx_audit_logs_created_at",
 ]);
 
 const SCHEMA_SNAPSHOT_SQL = `

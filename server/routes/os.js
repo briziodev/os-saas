@@ -8,6 +8,11 @@ const validate = require("../middlewares/validate");
 const { logger } = require("../utils/logger");
 const { sensitiveActionLimiter } = require("../middlewares/rateLimiters");
 const {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITY_TYPES,
+  insertAuditLog,
+} = require("../services/auditLog");
+const {
   osIdParamSchema,
   osPecaParamSchema,
   osCreateSchema,
@@ -1010,18 +1015,35 @@ router.delete(
   requireRole("admin"),
   validate(osIdParamSchema, "params"),
   async (req, res, next) => {
-    try {
-      const { id } = req.params;
+    const { id } = req.params;
+    const osId = Number(id);
+    let client = null;
+    let transactionOpen = false;
 
-      const current = await pool.query(
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+      transactionOpen = true;
+
+      const current = await client.query(
         `SELECT id, status
          FROM ordens_servico
-         WHERE id = $1 AND company_id = $2`,
+         WHERE id = $1
+           AND company_id = $2
+         FOR UPDATE`,
         [id, req.user.company_id]
       );
 
       if (current.rowCount === 0) {
-        logOSNotFound(req, "OS_DELETE_NOT_FOUND", "Tentativa de excluir OS inexistente", id);
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
+        logOSNotFound(
+          req,
+          "OS_DELETE_NOT_FOUND",
+          "Tentativa de excluir OS inexistente",
+          id
+        );
 
         return res.status(404).json({
           error: "OS não encontrada",
@@ -1029,71 +1051,157 @@ router.delete(
         });
       }
 
-      if (current.rows[0].status === CANCELLED_STATUS) {
+      if (
+        current.rows[0].status ===
+        CANCELLED_STATUS
+      ) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
         logger.warn(
           "OS_DELETE_BLOCKED_CANCELLED",
           "Tentativa de excluir OS cancelada",
           {
             requestId: req.requestId,
             userId: req.user.id,
-            companyId: req.user.company_id,
+            companyId:
+              req.user.company_id,
             role: req.user.role,
-            osId: Number(id),
+            osId,
             ip: req.ip,
           }
         );
 
         return res.status(409).json({
-          error: "Esta OS está cancelada e não pode ser excluída. Reabra-a antes de qualquer ação administrativa.",
+          error:
+            "Esta OS está cancelada e não pode ser excluída. Reabra-a antes de qualquer ação administrativa.",
           requestId: req.requestId,
         });
       }
 
-      const result = await pool.query(
+      const result = await client.query(
         `DELETE FROM ordens_servico
          WHERE id = $1
            AND company_id = $2
            AND status <> 'cancelado'
-         RETURNING id, cliente_id, status, company_id`,
+         RETURNING
+           id,
+           cliente_id,
+           status,
+           company_id`,
         [id, req.user.company_id]
       );
 
       if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
         logger.warn(
           "OS_DELETE_BLOCKED_CANCELLED_RACE",
           "Exclusão bloqueada porque a OS foi cancelada durante a operação",
           {
             requestId: req.requestId,
             userId: req.user.id,
-            companyId: req.user.company_id,
+            companyId:
+              req.user.company_id,
             role: req.user.role,
-            osId: Number(id),
+            osId,
             ip: req.ip,
           }
         );
 
         return res.status(409).json({
-          error: "Esta OS foi cancelada e não pode ser excluída. Atualize a página.",
+          error:
+            "Esta OS foi cancelada e não pode ser excluída. Atualize a página.",
           requestId: req.requestId,
         });
       }
 
-      const deletedOS = result.rows[0];
+      const deletedOS =
+        result.rows[0];
 
-      logger.warn("OS_DELETED", "Ordem de serviço excluída", {
-        requestId: req.requestId,
-        userId: req.user.id,
-        companyId: req.user.company_id,
-        role: req.user.role,
-        osId: deletedOS.id,
-        clienteId: deletedOS.cliente_id,
-        status: deletedOS.status,
-        ip: req.ip,
+      await insertAuditLog(client, {
+        companyId:
+          req.user.company_id,
+        actorUserId:
+          req.user.id,
+        actorRole:
+          req.user.role,
+        action:
+          AUDIT_ACTIONS.OS_DELETED,
+        entityType:
+          AUDIT_ENTITY_TYPES.ORDEM_SERVICO,
+        entityId:
+          deletedOS.id,
+        requestId:
+          req.requestId,
+        ip:
+          req.ip,
+        metadata: {
+          cliente_id:
+            deletedOS.cliente_id,
+          status_before:
+            deletedOS.status,
+        },
       });
 
-      return res.json({ deleted: deletedOS, requestId: req.requestId });
+      await client.query("COMMIT");
+      transactionOpen = false;
+
+      logger.warn(
+        "OS_DELETED",
+        "Ordem de serviço excluída",
+        {
+          requestId: req.requestId,
+          userId: req.user.id,
+          companyId:
+            req.user.company_id,
+          role: req.user.role,
+          osId: deletedOS.id,
+          clienteId:
+            deletedOS.cliente_id,
+          status: deletedOS.status,
+          ip: req.ip,
+        }
+      );
+
+      return res.json({
+        deleted: deletedOS,
+        requestId: req.requestId,
+      });
     } catch (err) {
+      if (
+        transactionOpen &&
+        client
+      ) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_DELETE_ROLLBACK_FAILED",
+            "Falha ao reverter transação de exclusão da OS",
+            {
+              requestId:
+                req.requestId,
+              userId:
+                req.user?.id,
+              companyId:
+                req.user?.company_id,
+              role:
+                req.user?.role,
+              osId,
+              error:
+                rollbackError.message,
+              ip:
+                req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      client?.release();
     }
   }
 );
@@ -1183,6 +1291,35 @@ router.post(
           new_status: REOPEN_TARGET_STATUS,
           reason: motivo,
           source: "controlled_reopen",
+        },
+      });
+
+      await insertAuditLog(client, {
+        companyId:
+          req.user.company_id,
+        actorUserId:
+          req.user.id,
+        actorRole:
+          req.user.role,
+        action:
+          AUDIT_ACTIONS.OS_REOPENED,
+        entityType:
+          AUDIT_ENTITY_TYPES.ORDEM_SERVICO,
+        entityId:
+          osId,
+        requestId:
+          req.requestId,
+        ip:
+          req.ip,
+        metadata: {
+          old_status:
+            CANCELLED_STATUS,
+          new_status:
+            REOPEN_TARGET_STATUS,
+          reason:
+            motivo,
+          source:
+            "controlled_reopen",
         },
       });
 
