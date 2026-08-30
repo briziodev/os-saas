@@ -254,3 +254,23 @@ test(
     );
   }
 );
+
+test(
+  "constantes de auditoria incluem ciclo de vida do cliente",
+  () => {
+    assert.equal(
+      AUDIT_ACTIONS.CLIENT_ARCHIVED,
+      "CLIENT_ARCHIVED"
+    );
+
+    assert.equal(
+      AUDIT_ACTIONS.CLIENT_REACTIVATED,
+      "CLIENT_REACTIVATED"
+    );
+
+    assert.equal(
+      AUDIT_ENTITY_TYPES.CLIENTE,
+      "cliente"
+    );
+  }
+);

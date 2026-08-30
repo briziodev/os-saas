@@ -700,35 +700,45 @@ router.post(
         modelo,
       } = req.body;
 
-      const cliente = await pool.query(
-        "SELECT id FROM clientes WHERE id = $1 AND company_id = $2",
-        [cliente_id, req.user.company_id]
-      );
 
-      if (cliente.rowCount === 0) {
-        logger.warn("OS_CREATE_BLOCKED_INVALID_CLIENT", "Criação de OS bloqueada: cliente não pertence à empresa", {
-          requestId: req.requestId,
-          userId: req.user.id,
-          companyId: req.user.company_id,
-          role: req.user.role,
-          clienteId: Number(cliente_id),
-          ip: req.ip,
-        });
-
-        return res.status(400).json({
-          error: "Cliente não pertence à sua empresa",
-          requestId: req.requestId,
-        });
-      }
-
-      const total = Number(mao_obra) + Number(valor_pecas);
+      const total =
+        Number(mao_obra) +
+        Number(valor_pecas);
 
       const result = await pool.query(
-        `INSERT INTO ordens_servico
-         (cliente_id, placa, modelo, problema_relatado,
-          mao_obra, valor_pecas, valor_total,
-          status, user_id, company_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'triagem',$8,$9)
+        `WITH locked_client AS (
+           SELECT id
+           FROM clientes
+           WHERE id = $1
+             AND company_id = $9
+             AND archived_at IS NULL
+           FOR SHARE
+         )
+         INSERT INTO ordens_servico
+         (
+           cliente_id,
+           placa,
+           modelo,
+           problema_relatado,
+           mao_obra,
+           valor_pecas,
+           valor_total,
+           status,
+           user_id,
+           company_id
+         )
+         SELECT
+           $1,
+           $2,
+           $3,
+           $4,
+           $5,
+           $6,
+           $7,
+           'triagem',
+           $8,
+           $9
+         FROM locked_client
          RETURNING *`,
         [
           cliente_id,
@@ -742,6 +752,36 @@ router.post(
           req.user.company_id,
         ]
       );
+
+      if (result.rowCount === 0) {
+        logger.warn(
+          "OS_CREATE_BLOCKED_CLIENT_UNAVAILABLE",
+          "Cria??o de OS bloqueada: cliente indispon?vel",
+          {
+            requestId:
+              req.requestId,
+            userId:
+              req.user.id,
+            companyId:
+              req.user.company_id,
+            role:
+              req.user.role,
+            clienteId:
+              Number(cliente_id),
+            ip:
+              req.ip,
+          }
+        );
+
+        return res.status(400).json({
+          error:
+            "Cliente indispon?vel para nova OS.",
+          code:
+            "CLIENT_UNAVAILABLE_FOR_OS",
+          requestId:
+            req.requestId,
+        });
+      }
 
       const createdOS = result.rows[0];
 

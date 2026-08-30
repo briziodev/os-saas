@@ -1,4 +1,4 @@
-const { z } = require("zod");
+﻿const { z } = require("zod");
 
 const emailOptionalSchema = z.preprocess((value) => {
   if (value === undefined || value === null) return null;
@@ -45,7 +45,24 @@ const clienteSchema = z
   })
   .strict();
 
+const clienteArchiveSchema = z
+  .object({
+    motivo: z
+      .string()
+      .trim()
+      .min(
+        3,
+        "Informe um motivo com pelo menos 3 caracteres."
+      )
+      .max(
+        300,
+        "Motivo de arquivamento muito longo."
+      ),
+  })
+  .strict();
+
 module.exports = {
   clienteIdParamSchema,
   clienteSchema,
+  clienteArchiveSchema,
 };
