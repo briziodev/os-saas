@@ -29,6 +29,7 @@ const fixture = {
   externalCompanyId: null,
   primaryAdminId: null,
   externalAdminId: null,
+  externalAtendimentoId: null,
   primaryClientId: null,
   externalClientId: null,
 };
@@ -386,8 +387,9 @@ async function createFixtures() {
           )
         VALUES
           ($1, $2, $3, $4, 'admin', true, now(), 1, now()),
-          ($5, $6, $3, $7, 'admin', true, now(), 1, now())
-        RETURNING id, company_id
+          ($5, $6, $3, $7, 'admin', true, now(), 1, now()),
+          ($8, $9, $3, $7, 'atendimento', true, now(), 1, now())
+        RETURNING id, company_id, role
       `,
       [
         "Admin Cliente Tenant A",
@@ -398,6 +400,9 @@ async function createFixtures() {
         "Admin Cliente Tenant B",
         `admin.cliente.b.${suffix}@teste.local`,
         fixture.externalCompanyId,
+
+        "Atendimento Cliente Tenant B",
+        `atendimento.cliente.b.${suffix}@teste.local`,
       ]
     );
 
@@ -406,16 +411,26 @@ async function createFixtures() {
 
       if (
         Number(user.company_id) ===
-        Number(fixture.primaryCompanyId)
+          Number(fixture.primaryCompanyId) &&
+        user.role === "admin"
       ) {
         fixture.primaryAdminId = user.id;
       }
 
       if (
         Number(user.company_id) ===
-        Number(fixture.externalCompanyId)
+          Number(fixture.externalCompanyId) &&
+        user.role === "admin"
       ) {
         fixture.externalAdminId = user.id;
+      }
+
+      if (
+        Number(user.company_id) ===
+          Number(fixture.externalCompanyId) &&
+        user.role === "atendimento"
+      ) {
+        fixture.externalAtendimentoId = user.id;
       }
     }
 
@@ -617,6 +632,12 @@ async function runRegression() {
   const externalToken =
     await login(externalEmail);
 
+  const atendimentoEmail =
+    `atendimento.cliente.b.${suffix}@teste.local`;
+
+  const atendimentoToken =
+    await login(atendimentoEmail);
+
   const initialSnapshot =
     await getIsolationSnapshot();
 
@@ -775,6 +796,22 @@ async function runRegression() {
     404
   );
 
+  await expectHttp(
+    "Atendimento não pode arquivar cliente por chamada direta",
+    apiRequest(
+      `/clientes/${createdClientId}/archive`,
+      {
+        method: "POST",
+        token: atendimentoToken,
+        body: {
+          motivo:
+            "Tentativa de arquivamento por atendimento",
+        },
+      }
+    ),
+    403
+  );
+
   const firstArchiveReason =
     "Cliente não utiliza mais a oficina";
 
@@ -906,6 +943,29 @@ async function runRegression() {
 
   pass(
     "Admin encontra cliente na lista de arquivados"
+  );
+
+  await expectHttp(
+    "Atendimento não pode consultar clientes arquivados por chamada direta",
+    apiRequest(
+      "/clientes?status=archived",
+      {
+        token: atendimentoToken,
+      }
+    ),
+    403
+  );
+
+  await expectHttp(
+    "Atendimento não pode reativar cliente por chamada direta",
+    apiRequest(
+      `/clientes/${createdClientId}/reactivate`,
+      {
+        method: "POST",
+        token: atendimentoToken,
+      }
+    ),
+    403
   );
 
   const blockedOsResult =
@@ -1516,9 +1576,9 @@ async function main() {
             ? "passed"
             : "failed",
         tests: {
-          total: 25,
+          total: 28,
           passed: passedChecks,
-          failed: 25 - passedChecks,
+          failed: 28 - passedChecks,
         },
       },
       null,
