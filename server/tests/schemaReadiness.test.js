@@ -388,3 +388,101 @@ test(
     assert.equal(queryCount, 1);
   }
 );
+
+test(
+  "contrato exige campos de arquivamento de clientes",
+  () => {
+    assert.deepEqual(
+      REQUIRED_TABLE_COLUMNS.clientes.filter(
+        (columnName) =>
+          [
+            "archived_at",
+            "archived_by",
+            "archive_reason",
+          ].includes(columnName)
+      ),
+      [
+        "archived_at",
+        "archived_by",
+        "archive_reason",
+      ]
+    );
+  }
+);
+
+test(
+  "reprova schema sem archived_at de clientes",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.columns =
+      snapshot.columns.filter(
+        (item) =>
+          !(
+            item.table_name === "clientes" &&
+            item.column_name === "archived_at"
+          )
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(result.compatible, false);
+    assert.ok(
+      result.missingColumns.includes(
+        "clientes.archived_at"
+      )
+    );
+  }
+);
+
+test(
+  "reprova schema sem constraint de estado do arquivamento",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.constraints =
+      snapshot.constraints.filter(
+        (item) =>
+          item.name !==
+          "clientes_archival_state_consistent"
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(result.compatible, false);
+    assert.ok(
+      result.missingConstraints.includes(
+        "clientes_archival_state_consistent"
+      )
+    );
+  }
+);
+
+test(
+  "reprova schema sem indice de clientes ativos",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.indexes =
+      snapshot.indexes.filter(
+        (name) =>
+          name !==
+          "idx_clientes_company_active"
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(result.compatible, false);
+    assert.ok(
+      result.missingIndexes.includes(
+        "idx_clientes_company_active"
+      )
+    );
+  }
+);

@@ -1,5 +1,5 @@
 const SCHEMA_CONTRACT_ID =
-  "20260825_persistent_audit_logs";
+  "20260827_client_archival";
 
 const REQUIRED_TABLE_COLUMNS = Object.freeze({
   companies: [
@@ -22,6 +22,9 @@ const REQUIRED_TABLE_COLUMNS = Object.freeze({
     "id",
     "company_id",
     "user_id",
+    "archived_at",
+    "archived_by",
+    "archive_reason",
   ],
 
   ordens_servico: [
@@ -88,6 +91,9 @@ const REQUIRED_CONSTRAINTS = Object.freeze([
   "audit_logs_action_nonempty",
   "audit_logs_entity_type_nonempty",
   "audit_logs_metadata_object",
+  "clientes_archived_by_positive",
+  "clientes_archival_state_consistent",
+  "clientes_archived_by_fk",
 ]);
 
 const REQUIRED_INDEXES = Object.freeze([
@@ -99,6 +105,8 @@ const REQUIRED_INDEXES = Object.freeze([
   "idx_audit_logs_company_action_created",
   "idx_audit_logs_entity_lookup",
   "idx_audit_logs_created_at",
+  "idx_clientes_company_active",
+  "idx_clientes_company_archived",
 ]);
 
 const SCHEMA_SNAPSHOT_SQL = `
