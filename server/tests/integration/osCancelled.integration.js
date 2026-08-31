@@ -910,7 +910,7 @@ async function runRegression() {
   );
 
   await expectHttp(
-    "Excluir OS cancelada",
+    "DELETE legado de OS cancelada retorna 410",
     apiRequest(
       `/os/${fixture.osId}`,
       {
@@ -918,7 +918,7 @@ async function runRegression() {
         token: tokens.admin,
       }
     ),
-    409
+    410
   );
 
   const validReason =
@@ -1164,22 +1164,53 @@ async function runRegression() {
     "Reabertura gerou audit_log persistente do tenant"
   );
 
-  await expectHttp(
-    "Admin exclui OS reaberta",
-    apiRequest(
-      `/os/${fixture.osId}`,
-      {
-        method: "DELETE",
-        token: tokens.admin,
-      }
-    ),
-    200
+  const legacyDeleteAfterReopen =
+    await expectHttp(
+      "DELETE legado apos reabertura retorna 410",
+      apiRequest(
+        `/os/${fixture.osId}`,
+        {
+          method: "DELETE",
+          token: tokens.admin,
+        }
+      ),
+      410
+    );
+
+  assert.equal(
+    legacyDeleteAfterReopen.body?.code,
+    "OS_DELETE_LEGACY_ENDPOINT_GONE"
   );
 
-  const deletedOsResult =
+  const safeDiscardAfterReopen =
+    await expectHttp(
+      "OS reaberta nao pode ser descartada definitivamente",
+      apiRequest(
+        `/os/${fixture.osId}/descartar`,
+        {
+          method: "POST",
+          token: tokens.admin,
+          body: {
+            motivo:
+              "Tentativa de descarte apos reabertura operacional.",
+          },
+        }
+      ),
+      409
+    );
+
+  assert.equal(
+    safeDiscardAfterReopen.body?.code,
+    "OS_DISCARD_NOT_ALLOWED"
+  );
+
+  const preservedOsResult =
     await pool.query(
       `
-        SELECT id
+        SELECT
+          id,
+          status::text AS status,
+          discard_locked_at
         FROM ordens_servico
         WHERE id = $1
           AND company_id = $2
@@ -1191,65 +1222,39 @@ async function runRegression() {
     );
 
   assert.equal(
-    deletedOsResult.rowCount,
-    0
-  );
-
-  const auditAfterDelete =
-    await getAuditLogs();
-
-  const deleteAuditRows =
-    auditAfterDelete.filter(
-      (row) =>
-        row.action ===
-        "OS_DELETED"
-    );
-
-  assert.equal(
-    deleteAuditRows.length,
+    preservedOsResult.rowCount,
     1
   );
 
-  const deleteAudit =
-    deleteAuditRows[0];
-
   assert.equal(
-    Number(
-      deleteAudit.actor_user_id
-    ),
-    Number(fixture.adminId)
-  );
-
-  assert.equal(
-    deleteAudit.actor_role,
-    "admin"
-  );
-
-  assert.equal(
-    Number(
-      deleteAudit.entity_id
-    ),
-    Number(fixture.osId)
-  );
-
-  assert.equal(
-    deleteAudit.metadata
-      ?.status_before,
+    preservedOsResult.rows[0].status,
     "triagem"
   );
 
-  assert.equal(
-    auditAfterDelete.some(
-      (row) =>
-        row.action ===
-        "OS_REOPENED"
-    ),
-    true,
-    "O audit_log de reabertura deve sobreviver à exclusão da OS."
+  assert.ok(
+    preservedOsResult.rows[0].discard_locked_at,
+    "Reabertura deveria manter discard_locked_at preenchido."
   );
 
-  pass(
-    "Exclusão gerou audit_log que sobrevive à remoção da OS"
+  const deletedAuditResult =
+    await pool.query(
+      `
+        SELECT id
+        FROM audit_logs
+        WHERE company_id = $1
+          AND action = 'OS_DELETED'
+          AND entity_id = $2
+      `,
+      [
+        fixture.primaryCompanyId,
+        fixture.osId,
+      ]
+    );
+
+  assert.equal(
+    deletedAuditResult.rowCount,
+    0,
+    "Tentativas bloqueadas nao devem gerar OS_DELETED."
   );
 }
 

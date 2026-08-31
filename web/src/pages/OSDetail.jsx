@@ -30,6 +30,7 @@ const OSDETAIL_ICON_MAP = {
   phone: appIcons.whatsapp,
   logOut: appIcons.sair,
   check: appIcons.sucesso,
+  trash: appIcons.excluir,
 };
 
 function Icon({ name, className = "" }) {
@@ -96,6 +97,10 @@ export default function OSDetail() {
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
   const [reopenFeedback, setReopenFeedback] = useState("");
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [discardReason, setDiscardReason] = useState("");
+  const [discarding, setDiscarding] = useState(false);
+  const [discardFeedback, setDiscardFeedback] = useState("");
   const [msg, setMsg] = useState("");
   const [pieceFeedback, setPieceFeedback] = useState(null);
   const [initialForm, setInitialForm] = useState(emptyForm());
@@ -124,6 +129,40 @@ export default function OSDetail() {
     () => JSON.stringify(form) !== JSON.stringify(initialForm),
     [form, initialForm]
   );
+
+  const canDiscardOS =
+    os?.capabilities?.can_discard === true &&
+    !isTecnico;
+
+  const discardActionDisabled =
+    saving ||
+    addingPiece ||
+    sendingWhatsapp ||
+    reopening ||
+    removingPieceId !== null ||
+    discarding;
+
+  const discardActionDisabledReason = useMemo(() => {
+    if (
+      saving ||
+      addingPiece ||
+      sendingWhatsapp ||
+      reopening ||
+      removingPieceId !== null ||
+      discarding
+    ) {
+      return "Aguarde a operação atual terminar antes de excluir a OS.";
+    }
+
+    return "";
+  }, [
+    addingPiece,
+    discarding,
+    removingPieceId,
+    reopening,
+    saving,
+    sendingWhatsapp,
+  ]);
 
   const whatsappDisabled =
     saving ||
@@ -154,6 +193,33 @@ export default function OSDetail() {
   }, [hasUnsavedChanges, saving, addingPiece]);
 
   useEffect(() => {
+    if (!discardOpen) return undefined;
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const handleDiscardEscape = (event) => {
+      if (event.key !== "Escape" || discarding) return;
+
+      setDiscardOpen(false);
+      setDiscardReason("");
+      setDiscardFeedback("");
+    };
+
+    document.addEventListener("keydown", handleDiscardEscape);
+
+    return () => {
+      document.removeEventListener(
+        "keydown",
+        handleDiscardEscape
+      );
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [discardOpen, discarding]);
+
+  useEffect(() => {
     loadOS();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -180,7 +246,7 @@ export default function OSDetail() {
       try {
         setEventsLoading(true);
         eventosData = await apiFetch(`/os/${id}/events`);
-      } catch (eventError) {
+      } catch {
         eventosData = [];
       } finally {
         setEventsLoading(false);
@@ -196,6 +262,9 @@ export default function OSDetail() {
       setReopenOpen(false);
       setReopenReason("");
       setReopenFeedback("");
+      setDiscardOpen(false);
+      setDiscardReason("");
+      setDiscardFeedback("");
     } catch (error) {
       setMsg(error.message);
     } finally {
@@ -452,6 +521,94 @@ export default function OSDetail() {
     }
   }
 
+  function abrirDescarteSeguro() {
+    if (!canDiscardOS) {
+      setMsg("Esta OS não está disponível para exclusão controlada.");
+      return;
+    }
+
+    if (discardActionDisabled) {
+      if (discardActionDisabledReason) {
+        setMsg(discardActionDisabledReason);
+      }
+      return;
+    }
+
+    setMsg("");
+    setDiscardFeedback("");
+    setDiscardReason("");
+    setDiscardOpen(true);
+  }
+
+  function fecharDescarteSeguro() {
+    if (discarding) return;
+    setDiscardOpen(false);
+    setDiscardReason("");
+    setDiscardFeedback("");
+  }
+
+  async function descartarOS() {
+    const motivo = String(discardReason || "").trim();
+
+    if (!canDiscardOS) {
+      setDiscardFeedback(
+        "Esta OS não está mais disponível para exclusão controlada."
+      );
+      return;
+    }
+
+    if (motivo.length < 10) {
+      setDiscardFeedback(
+        "Informe um motivo com pelo menos 10 caracteres."
+      );
+      return;
+    }
+
+    if (motivo.length > 500) {
+      setDiscardFeedback(
+        "O motivo deve ter no máximo 500 caracteres."
+      );
+      return;
+    }
+
+    try {
+      setDiscarding(true);
+      setDiscardFeedback("");
+      setMsg("");
+
+      await apiFetch(`/os/${id}/descartar`, {
+        method: "POST",
+        body: JSON.stringify({ motivo }),
+      });
+
+      navigate("/os", {
+        replace: true,
+      });
+    } catch (error) {
+      if (
+        error?.status === 409 ||
+        error?.code === "OS_DISCARD_NOT_ALLOWED"
+      ) {
+        await loadOS({
+          preserveMessage: true,
+          silent: true,
+        });
+
+        setDiscardOpen(false);
+        setDiscardReason("");
+        setDiscardFeedback("");
+        setMsg(
+          "Esta OS deixou de atender aos critérios para exclusão controlada. O estado foi atualizado."
+        );
+        return;
+      }
+
+      setDiscardFeedback(error.message);
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
   async function abrirWhatsapp() {
     if (whatsappDisabled) {
       if (whatsappDisabledReason) setMsg(whatsappDisabledReason);
@@ -564,6 +721,15 @@ export default function OSDetail() {
             />
           ) : null}
 
+          {canDiscardOS ? (
+            <SafeDiscardAction
+              disabled={discardActionDisabled}
+              disabledReason={discardActionDisabledReason}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onOpen={abrirDescarteSeguro}
+            />
+          ) : null}
+
           <DesktopMetaStrip os={os} form={form} total={total} isTecnico={isTecnico} />
 
           <section className="osdetail-premium-grid-main">
@@ -635,6 +801,183 @@ export default function OSDetail() {
           </div>
         </div>
       </main>
+
+      {discardOpen ? (
+        <SafeDiscardModal
+          osId={os.id}
+          reason={discardReason}
+          feedback={discardFeedback}
+          discarding={discarding}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onReasonChange={(value) => {
+            setDiscardReason(value);
+            setDiscardFeedback("");
+          }}
+          onClose={fecharDescarteSeguro}
+          onConfirm={descartarOS}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SafeDiscardAction({
+  disabled,
+  disabledReason,
+  hasUnsavedChanges,
+  onOpen,
+}) {
+  return (
+    <section className="osdetail-safe-discard-action">
+      <div className="osdetail-safe-discard-action-copy">
+        <span className="osdetail-safe-discard-icon" aria-hidden="true">
+          <Icon name="trash" />
+        </span>
+        <div>
+          <strong>OS criada por engano?</strong>
+          <p>
+            Esta opção está disponível apenas enquanto a OS ainda não possui
+            movimentações que precisem ser preservadas.
+          </p>
+          {hasUnsavedChanges ? (
+            <small role="status">
+              Há alterações locais não salvas. Elas serão perdidas se a
+              exclusão for confirmada.
+            </small>
+          ) : null}
+          {disabledReason ? (
+            <small role="status">{disabledReason}</small>
+          ) : null}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="osdetail-safe-discard-open"
+        onClick={onOpen}
+        disabled={disabled}
+      >
+        <Icon name="trash" />
+        Excluir OS criada por engano
+      </button>
+    </section>
+  );
+}
+
+function SafeDiscardModal({
+  osId,
+  reason,
+  feedback,
+  discarding,
+  hasUnsavedChanges,
+  onReasonChange,
+  onClose,
+  onConfirm,
+}) {
+  const trimmedLength =
+    String(reason || "").trim().length;
+
+  const canConfirm =
+    trimmedLength >= 10 &&
+    trimmedLength <= 500 &&
+    !discarding;
+
+  return (
+    <div className="osdetail-safe-discard-backdrop">
+      <section
+        className="osdetail-safe-discard-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="os-safe-discard-title"
+        aria-describedby="os-safe-discard-description"
+      >
+        <div className="osdetail-safe-discard-modal-head">
+          <span className="osdetail-safe-discard-modal-icon" aria-hidden="true">
+            <Icon name="trash" />
+          </span>
+
+          <div>
+            <span>Exclusão controlada</span>
+            <h2 id="os-safe-discard-title">
+              Excluir a OS #{osId} criada por engano?
+            </h2>
+          </div>
+        </div>
+
+        <div
+          id="os-safe-discard-description"
+          className="osdetail-safe-discard-warning"
+        >
+          <strong>Esta ação é permanente.</strong>
+          <p>
+            Use somente quando a OS foi criada por engano e ainda não virou
+            histórico operacional. O sistema verificará novamente todas as
+            regras antes de excluir.
+          </p>
+          {hasUnsavedChanges ? (
+            <p>
+              Há alterações locais não salvas nesta tela. Elas também serão
+              perdidas ao confirmar a exclusão.
+            </p>
+          ) : null}
+        </div>
+
+        <label
+          className="osdetail-safe-discard-field"
+          htmlFor="os-safe-discard-reason"
+        >
+          <span>Motivo da exclusão</span>
+          <textarea
+            id="os-safe-discard-reason"
+            rows={5}
+            value={reason}
+            onChange={(event) =>
+              onReasonChange(event.target.value)
+            }
+            minLength={10}
+            maxLength={500}
+            disabled={discarding}
+            autoFocus
+            placeholder="Ex.: Cliente selecionado incorretamente na criação da OS."
+          />
+        </label>
+
+        <div className="osdetail-safe-discard-counter">
+          {trimmedLength}/500 caracteres
+        </div>
+
+        {feedback ? (
+          <div
+            className="osdetail-safe-discard-feedback"
+            role="alert"
+          >
+            {feedback}
+          </div>
+        ) : null}
+
+        <div className="osdetail-safe-discard-modal-actions">
+          <button
+            type="button"
+            className="osdetail-premium-btn osdetail-premium-btn--ghost"
+            onClick={onClose}
+            disabled={discarding}
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            className="osdetail-safe-discard-confirm"
+            onClick={onConfirm}
+            disabled={!canConfirm}
+          >
+            <Icon name="trash" />
+            {discarding
+              ? "Excluindo..."
+              : "Excluir permanentemente"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1426,7 +1769,7 @@ function parseMoneyInput(value) {
 
   if (!text) return 0;
 
-  text = text.replace(/\s+/g, "").replace(/[R$ ]/g, "");
+  text = text.replace(/\s+/g, "").replace(/[R$\u00a0]/g, "");
 
   const hasComma = text.includes(",");
   const hasDot = text.includes(".");
