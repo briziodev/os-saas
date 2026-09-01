@@ -18,9 +18,14 @@ const {
   osCreateSchema,
   osUpdateSchema,
   osReopenSchema,
+  osDiscardSchema,
   osPecaCreateSchema,
   osPecaUpdateSchema,
 } = require("../validators/osSchemas");
+const {
+  canDiscardOS,
+  shouldLockDiscardOnUpdate,
+} = require("../services/osDiscardPolicy");
 
 router.use(authRequired, loadUser);
 
@@ -335,8 +340,17 @@ async function recalcularTotaisOS(osId, companyId, db = pool) {
 }
 
 function ocultarDadosFinanceirosParaTecnico(os, role) {
-  if (role !== "tecnico" || !os) {
+  if (!os) {
     return os;
+  }
+
+  const {
+    discard_locked_at,
+    ...osSemCamposInternos
+  } = os;
+
+  if (role !== "tecnico") {
+    return osSemCamposInternos;
   }
 
   const {
@@ -344,9 +358,79 @@ function ocultarDadosFinanceirosParaTecnico(os, role) {
     valor_pecas,
     valor_total,
     ...osSemDadosFinanceiros
-  } = os;
+  } = osSemCamposInternos;
 
   return osSemDadosFinanceiros;
+}
+
+async function getOSDiscardEvidence(
+  db,
+  osId,
+  companyId
+) {
+  const result = await db.query(
+    `SELECT
+       EXISTS (
+         SELECT 1
+         FROM os_pecas p
+         WHERE p.os_id = $1
+           AND p.company_id = $2
+       ) AS has_parts,
+       EXISTS (
+         SELECT 1
+         FROM os_events e
+         WHERE e.os_id = $1
+           AND e.company_id = $2
+           AND NOT (
+             e.event_type IN (
+               'os_created',
+               'description_updated',
+               'vehicle_updated'
+             )
+             OR (
+               e.event_type = 'status_changed'
+               AND e.metadata->>'old_status' = 'triagem'
+               AND e.metadata->>'new_status' = 'cancelado'
+             )
+           )
+       ) AS has_blocking_events`,
+    [osId, companyId]
+  );
+
+  const row = result.rows[0] || {};
+
+  return {
+    hasParts: row.has_parts === true,
+    hasBlockingEvents:
+      row.has_blocking_events === true,
+  };
+}
+
+function buildOSDetailResponse(
+  os,
+  role,
+  evidence
+) {
+  const publicOS =
+    ocultarDadosFinanceirosParaTecnico(
+      os,
+      role
+    );
+
+  return {
+    ...publicOS,
+    capabilities: {
+      can_discard: canDiscardOS({
+        role,
+        status: os.status,
+        discardLockedAt:
+          os.discard_locked_at,
+        hasParts: evidence.hasParts,
+        hasBlockingEvents:
+          evidence.hasBlockingEvents,
+      }),
+    },
+  };
 }
 
 function ocultarListaDadosFinanceirosParaTecnico(lista, role) {
@@ -550,7 +634,8 @@ router.get(
                 COALESCE(u.name, u.email) AS usuario_nome,
                 os.created_at,
                 os.updated_at,
-                os.closed_at
+                os.closed_at,
+                os.discard_locked_at
          FROM ordens_servico os
          JOIN clientes c
            ON c.id = os.cliente_id
@@ -569,7 +654,27 @@ router.get(
         });
       }
 
-      return res.json(ocultarDadosFinanceirosParaTecnico(result.rows[0], req.user.role));
+      const currentOS = result.rows[0];
+      const discardEvidence =
+        req.user.role === "admin" ||
+        req.user.role === "atendimento"
+          ? await getOSDiscardEvidence(
+              pool,
+              currentOS.id,
+              req.user.company_id
+            )
+          : {
+              hasParts: true,
+              hasBlockingEvents: true,
+            };
+
+      return res.json(
+        buildOSDetailResponse(
+          currentOS,
+          req.user.role,
+          discardEvidence
+        )
+      );
     } catch (err) {
       return next(err);
     }
@@ -725,7 +830,8 @@ router.post(
            valor_total,
            status,
            user_id,
-           company_id
+           company_id,
+           discard_locked_at
          )
          SELECT
            $1,
@@ -737,7 +843,8 @@ router.post(
            $7,
            'triagem',
            $8,
-           $9
+           $9,
+           NULL
          FROM locked_client
          RETURNING *`,
         [
@@ -807,7 +914,14 @@ router.post(
         },
       });
 
-      return res.status(201).json(createdOS);
+      return res
+        .status(201)
+        .json(
+          ocultarDadosFinanceirosParaTecnico(
+            createdOS,
+            req.user.role
+          )
+        );
     } catch (err) {
       return next(err);
     }
@@ -820,6 +934,9 @@ router.put(
   validate(osIdParamSchema, "params"),
   validate(osUpdateSchema),
   async (req, res, next) => {
+    let client = null;
+    let transactionOpen = false;
+
     try {
       const { id } = req.params;
       const { status, mao_obra, problema_relatado, modelo, placa } = req.body;
@@ -867,14 +984,28 @@ router.put(
         }
       }
 
-      const current = await pool.query(
-        `SELECT mao_obra, valor_pecas, status, problema_relatado, modelo, placa
+      client = await pool.connect();
+      await client.query("BEGIN");
+      transactionOpen = true;
+
+      const current = await client.query(
+        `SELECT mao_obra,
+                valor_pecas,
+                status,
+                problema_relatado,
+                modelo,
+                placa,
+                discard_locked_at
          FROM ordens_servico
-         WHERE id = $1 AND company_id = $2`,
+         WHERE id = $1 AND company_id = $2
+         FOR UPDATE`,
         [id, req.user.company_id]
       );
 
       if (current.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
         logOSNotFound(req, "OS_UPDATE_NOT_FOUND", "Tentativa de atualizar OS inexistente", id);
 
         return res.status(404).json({
@@ -886,6 +1017,9 @@ router.put(
       const cur = current.rows[0];
 
       if (cur.status === CANCELLED_STATUS) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
         logger.warn(
           "OS_UPDATE_BLOCKED_CANCELLED",
           "Tentativa de alterar OS cancelada pelo fluxo comum",
@@ -916,7 +1050,18 @@ router.put(
       const newPecas = Number(cur.valor_pecas || 0);
       const newTotal = newMao + newPecas;
 
-      const result = await pool.query(
+      const shouldLockDiscard =
+        shouldLockDiscardOnUpdate({
+          role: req.user.role,
+          current: cur,
+          next: {
+            status,
+            mao_obra,
+            problema_relatado,
+          },
+        });
+
+      const result = await client.query(
         `UPDATE ordens_servico
          SET
            problema_relatado = COALESCE($1, problema_relatado),
@@ -929,6 +1074,13 @@ router.put(
            closed_at = CASE
              WHEN COALESCE($4, status) IN ('encerrado','finalizado','cancelado')
              THEN COALESCE(closed_at, now())
+             ELSE NULL
+           END,
+           discard_locked_at = CASE
+             WHEN discard_locked_at IS NOT NULL
+             THEN discard_locked_at
+             WHEN $9::boolean
+             THEN now()
              ELSE NULL
            END
          WHERE id = $7
@@ -944,10 +1096,14 @@ router.put(
           placa ?? null,
           id,
           req.user.company_id,
+          shouldLockDiscard,
         ]
       );
 
       if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
+        transactionOpen = false;
+
         logger.warn(
           "OS_UPDATE_BLOCKED_CANCELLED_RACE",
           "Atualização bloqueada porque a OS foi cancelada durante a operação",
@@ -969,6 +1125,8 @@ router.put(
 
       const updatedOS = result.rows[0];
 
+      await client.query("COMMIT");
+      transactionOpen = false;
       logger.info("OS_UPDATED", "Ordem de serviço atualizada", {
         requestId: req.requestId,
         userId: req.user.id,
@@ -1045,18 +1203,85 @@ router.put(
 
       return res.json(ocultarDadosFinanceirosParaTecnico(updatedOS, req.user.role));
     } catch (err) {
+      if (client && transactionOpen) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          logger.warn(
+            "OS_UPDATE_ROLLBACK_FAILED",
+            "Falha ao reverter transação de atualização da OS",
+            {
+              requestId: req.requestId,
+              userId: req.user?.id,
+              companyId: req.user?.company_id,
+              role: req.user?.role,
+              osId: Number(req.params?.id),
+              error: rollbackError.message,
+              ip: req.ip,
+            }
+          );
+        }
+      }
+
       return next(err);
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   }
 );
 
 router.delete(
   "/:id",
-  requireRole("admin"),
+  requireRole("admin", "atendimento"),
   validate(osIdParamSchema, "params"),
+  (req, res) => {
+    const osId = Number(req.params.id);
+
+    logger.warn(
+      "OS_DELETE_LEGACY_GONE",
+      "Tentativa de uso do hard delete legado de OS descontinuado",
+      {
+        requestId: req.requestId,
+        userId: req.user.id,
+        companyId: req.user.company_id,
+        role: req.user.role,
+        osId,
+        ip: req.ip,
+      }
+    );
+
+    res.set("Deprecation", "true");
+    res.set("Cache-Control", "no-store");
+    res.set(
+      "Warning",
+      '299 - "Endpoint descontinuado. Use POST /os/:id/descartar."'
+    );
+
+    return res.status(410).json({
+      error:
+        "Endpoint descontinuado. Use POST /os/:id/descartar.",
+      code:
+        "OS_DELETE_LEGACY_ENDPOINT_GONE",
+      requestId: req.requestId,
+    });
+  }
+);
+
+router.post(
+  "/:id/descartar",
+  sensitiveActionLimiter,
+  requireRole("admin", "atendimento"),
+  validate(osIdParamSchema, "params"),
+  validate(osDiscardSchema),
   async (req, res, next) => {
     const { id } = req.params;
     const osId = Number(id);
+    const motivo = String(
+      req.body.motivo || ""
+    ).trim();
+
     let client = null;
     let transactionOpen = false;
 
@@ -1066,7 +1291,11 @@ router.delete(
       transactionOpen = true;
 
       const current = await client.query(
-        `SELECT id, status
+        `SELECT id,
+                cliente_id,
+                status,
+                user_id,
+                discard_locked_at
          FROM ordens_servico
          WHERE id = $1
            AND company_id = $2
@@ -1080,8 +1309,8 @@ router.delete(
 
         logOSNotFound(
           req,
-          "OS_DELETE_NOT_FOUND",
-          "Tentativa de excluir OS inexistente",
+          "OS_DISCARD_NOT_FOUND",
+          "Tentativa de descartar OS inexistente",
           id
         );
 
@@ -1091,16 +1320,34 @@ router.delete(
         });
       }
 
-      if (
-        current.rows[0].status ===
-        CANCELLED_STATUS
-      ) {
+      const currentOS = current.rows[0];
+
+      const discardEvidence =
+        await getOSDiscardEvidence(
+          client,
+          osId,
+          req.user.company_id
+        );
+
+      const canDiscard =
+        canDiscardOS({
+          role: req.user.role,
+          status: currentOS.status,
+          discardLockedAt:
+            currentOS.discard_locked_at,
+          hasParts:
+            discardEvidence.hasParts,
+          hasBlockingEvents:
+            discardEvidence.hasBlockingEvents,
+        });
+
+      if (!canDiscard) {
         await client.query("ROLLBACK");
         transactionOpen = false;
 
         logger.warn(
-          "OS_DELETE_BLOCKED_CANCELLED",
-          "Tentativa de excluir OS cancelada",
+          "OS_DISCARD_BLOCKED",
+          "Descarte definitivo de OS bloqueado pela política operacional",
           {
             requestId: req.requestId,
             userId: req.user.id,
@@ -1108,13 +1355,23 @@ router.delete(
               req.user.company_id,
             role: req.user.role,
             osId,
+            osStatus:
+              currentOS.status,
+            discardLocked:
+              currentOS.discard_locked_at !== null,
+            hasParts:
+              discardEvidence.hasParts,
+            hasBlockingEvents:
+              discardEvidence.hasBlockingEvents,
             ip: req.ip,
           }
         );
 
         return res.status(409).json({
           error:
-            "Esta OS está cancelada e não pode ser excluída. Reabra-a antes de qualquer ação administrativa.",
+            "Esta OS já possui movimentação operacional e não pode ser excluída definitivamente.",
+          code:
+            "OS_DISCARD_NOT_ALLOWED",
           requestId: req.requestId,
         });
       }
@@ -1123,11 +1380,16 @@ router.delete(
         `DELETE FROM ordens_servico
          WHERE id = $1
            AND company_id = $2
-           AND status <> 'cancelado'
+           AND discard_locked_at IS NULL
+           AND status::text IN (
+             'triagem',
+             'cancelado'
+           )
          RETURNING
            id,
            cliente_id,
            status,
+           user_id,
            company_id`,
         [id, req.user.company_id]
       );
@@ -1137,8 +1399,8 @@ router.delete(
         transactionOpen = false;
 
         logger.warn(
-          "OS_DELETE_BLOCKED_CANCELLED_RACE",
-          "Exclusão bloqueada porque a OS foi cancelada durante a operação",
+          "OS_DISCARD_BLOCKED_RACE",
+          "Descarte de OS bloqueado por mudança concorrente de estado",
           {
             requestId: req.requestId,
             userId: req.user.id,
@@ -1152,7 +1414,9 @@ router.delete(
 
         return res.status(409).json({
           error:
-            "Esta OS foi cancelada e não pode ser excluída. Atualize a página.",
+            "A OS mudou durante a operação e não pode mais ser excluída. Atualize a página.",
+          code:
+            "OS_DISCARD_STATE_CHANGED",
           requestId: req.requestId,
         });
       }
@@ -1182,6 +1446,12 @@ router.delete(
             deletedOS.cliente_id,
           status_before:
             deletedOS.status,
+          created_by_user_id:
+            deletedOS.user_id,
+          reason:
+            motivo,
+          source:
+            "safe_discard",
         },
       });
 
@@ -1189,24 +1459,34 @@ router.delete(
       transactionOpen = false;
 
       logger.warn(
-        "OS_DELETED",
-        "Ordem de serviço excluída",
+        "OS_DISCARDED",
+        "OS criada por engano excluída definitivamente",
         {
           requestId: req.requestId,
           userId: req.user.id,
           companyId:
             req.user.company_id,
           role: req.user.role,
-          osId: deletedOS.id,
+          osId:
+            deletedOS.id,
           clienteId:
             deletedOS.cliente_id,
-          status: deletedOS.status,
-          ip: req.ip,
+          status:
+            deletedOS.status,
+          reasonLength:
+            motivo.length,
+          ip:
+            req.ip,
         }
       );
 
       return res.json({
-        deleted: deletedOS,
+        message:
+          "OS criada por engano excluída com sucesso.",
+        deleted: {
+          id: deletedOS.id,
+          status: deletedOS.status,
+        },
         requestId: req.requestId,
       });
     } catch (err) {
@@ -1218,8 +1498,8 @@ router.delete(
           await client.query("ROLLBACK");
         } catch (rollbackError) {
           logger.warn(
-            "OS_DELETE_ROLLBACK_FAILED",
-            "Falha ao reverter transação de exclusão da OS",
+            "OS_DISCARD_ROLLBACK_FAILED",
+            "Falha ao reverter transação de descarte da OS",
             {
               requestId:
                 req.requestId,
@@ -1315,7 +1595,12 @@ router.post(
         `UPDATE ordens_servico
          SET status = $3,
              updated_at = now(),
-             closed_at = NULL
+             closed_at = NULL,
+             discard_locked_at =
+               COALESCE(
+                 discard_locked_at,
+                 now()
+               )
          WHERE id = $1 AND company_id = $2
          RETURNING *`,
         [id, req.user.company_id, REOPEN_TARGET_STATUS]
@@ -1384,7 +1669,11 @@ router.post(
       return res.json({
         message: "OS reaberta com sucesso.",
         status: REOPEN_TARGET_STATUS,
-        os: updated.rows[0],
+        os:
+          ocultarDadosFinanceirosParaTecnico(
+            updated.rows[0],
+            req.user.role
+          ),
         requestId: req.requestId,
       });
     } catch (err) {
@@ -1530,6 +1819,18 @@ router.post(
       const mensagem = buildWhatsappMessage(osData, pecas);
       const url = `https://wa.me/${telefoneLimpo}?text=${encodeURIComponent(mensagem)}`;
       const changedStatus = oldStatus !== BUDGET_TARGET_STATUS;
+
+      await client.query(
+        `UPDATE ordens_servico
+         SET discard_locked_at =
+               COALESCE(
+                 discard_locked_at,
+                 now()
+               )
+         WHERE id = $1
+           AND company_id = $2`,
+        [id, req.user.company_id]
+      );
 
       if (changedStatus) {
         await client.query(
@@ -1719,6 +2020,18 @@ router.post(
         [id, req.user.company_id, nome, quantidade, valor_unitario]
       );
 
+      await client.query(
+        `UPDATE ordens_servico
+         SET discard_locked_at =
+               COALESCE(
+                 discard_locked_at,
+                 now()
+               )
+         WHERE id = $1
+           AND company_id = $2`,
+        [id, req.user.company_id]
+      );
+
       await recalcularTotaisOS(id, req.user.company_id, client);
 
       const createdPart = result.rows[0];
@@ -1864,6 +2177,18 @@ router.put(
         });
       }
 
+      await client.query(
+        `UPDATE ordens_servico
+         SET discard_locked_at =
+               COALESCE(
+                 discard_locked_at,
+                 now()
+               )
+         WHERE id = $1
+           AND company_id = $2`,
+        [id, req.user.company_id]
+      );
+
       await recalcularTotaisOS(id, req.user.company_id, client);
 
       const updatedPart = result.rows[0];
@@ -2004,6 +2329,18 @@ router.delete(
           requestId: req.requestId,
         });
       }
+
+      await client.query(
+        `UPDATE ordens_servico
+         SET discard_locked_at =
+               COALESCE(
+                 discard_locked_at,
+                 now()
+               )
+         WHERE id = $1
+           AND company_id = $2`,
+        [id, req.user.company_id]
+      );
 
       await recalcularTotaisOS(id, req.user.company_id, client);
 

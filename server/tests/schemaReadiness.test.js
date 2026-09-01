@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  SCHEMA_CONTRACT_ID,
   REQUIRED_TABLE_COLUMNS,
   REQUIRED_CONSTRAINTS,
   REQUIRED_INDEXES,
@@ -482,6 +483,82 @@ test(
     assert.ok(
       result.missingIndexes.includes(
         "idx_clientes_company_active"
+      )
+    );
+  }
+);
+
+test(
+  "contrato atual identifica proteção de descarte de OS",
+  () => {
+    assert.equal(
+      SCHEMA_CONTRACT_ID,
+      "20260830_os_safe_discard"
+    );
+
+    assert.ok(
+      REQUIRED_TABLE_COLUMNS.ordens_servico.includes(
+        "discard_locked_at"
+      )
+    );
+
+    assert.ok(
+      REQUIRED_CONSTRAINTS.includes(
+        "ordens_servico_discard_lock_status_consistent"
+      )
+    );
+  }
+);
+
+test(
+  "reprova schema sem discard_locked_at de OS",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.columns =
+      snapshot.columns.filter(
+        (item) =>
+          !(
+            item.table_name === "ordens_servico" &&
+            item.column_name === "discard_locked_at"
+          )
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(result.compatible, false);
+
+    assert.ok(
+      result.missingColumns.includes(
+        "ordens_servico.discard_locked_at"
+      )
+    );
+  }
+);
+
+test(
+  "reprova schema sem constraint do descarte seguro de OS",
+  () => {
+    const snapshot =
+      buildCompatibleSnapshot();
+
+    snapshot.constraints =
+      snapshot.constraints.filter(
+        (item) =>
+          item.name !==
+          "ordens_servico_discard_lock_status_consistent"
+      );
+
+    const result =
+      evaluateSchemaSnapshot(snapshot);
+
+    assert.equal(result.compatible, false);
+
+    assert.ok(
+      result.missingConstraints.includes(
+        "ordens_servico_discard_lock_status_consistent"
       )
     );
   }

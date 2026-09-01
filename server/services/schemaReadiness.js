@@ -1,5 +1,5 @@
 const SCHEMA_CONTRACT_ID =
-  "20260827_client_archival";
+  "20260830_os_safe_discard";
 
 const REQUIRED_TABLE_COLUMNS = Object.freeze({
   companies: [
@@ -35,6 +35,7 @@ const REQUIRED_TABLE_COLUMNS = Object.freeze({
     "status",
     "valor_total",
     "closed_at",
+    "discard_locked_at",
   ],
 
   os_pecas: [
@@ -94,6 +95,7 @@ const REQUIRED_CONSTRAINTS = Object.freeze([
   "clientes_archived_by_positive",
   "clientes_archival_state_consistent",
   "clientes_archived_by_fk",
+  "ordens_servico_discard_lock_status_consistent",
 ]);
 
 const REQUIRED_INDEXES = Object.freeze([

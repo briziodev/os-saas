@@ -892,17 +892,20 @@ async function runRegression() {
   );
 
   await expectHttp(
-    "Tenant B não exclui OS do Tenant A",
+    "Tenant B não descarta OS do Tenant A",
     apiRequest(
-      `/os/${fixture.primaryOsId}`,
+      `/os/${fixture.primaryOsId}/descartar`,
       {
-        method: "DELETE",
+        method: "POST",
         token: tokens.external,
+        body: {
+          motivo:
+            "Tentativa cross-tenant de descarte bloqueada.",
+        },
       }
     ),
     404
   );
-
   await expectHttp(
     "Tenant B não lista eventos da OS do Tenant A",
     apiRequest(

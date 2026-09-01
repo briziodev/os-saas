@@ -149,6 +149,16 @@ const osReopenSchema = z
   })
   .strict();
 
+const osDiscardSchema = z
+  .object({
+    motivo: z
+      .string()
+      .trim()
+      .min(10, "Motivo da exclusão deve ter pelo menos 10 caracteres.")
+      .max(500, "Motivo da exclusão muito longo."),
+  })
+  .strict();
+
 const osPecaCreateSchema = z
   .object({
     nome: z
@@ -206,6 +216,7 @@ module.exports = {
   osCreateSchema,
   osUpdateSchema,
   osReopenSchema,
+  osDiscardSchema,
   osPecaCreateSchema,
   osPecaUpdateSchema,
 };

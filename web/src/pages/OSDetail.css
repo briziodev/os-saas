@@ -3161,3 +3161,294 @@
     width: 100%;
   }
 }
+
+/* ==========================================================
+   OS SAFE DISCARD — EXCLUSÃO CONTROLADA DE OS CRIADA POR ENGANO
+   Escopo:
+   - ação exibida somente quando capabilities.can_discard=true;
+   - modal destrutivo com motivo obrigatório;
+   - responsivo e independente dos estilos de Clientes.
+   ========================================================== */
+
+.osdetail-safe-discard-action {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fffaf5 0%, #fff7ed 100%);
+  box-shadow: 0 12px 26px rgba(154, 52, 18, 0.06);
+}
+
+.osdetail-safe-discard-action-copy {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.osdetail-safe-discard-icon,
+.osdetail-safe-discard-modal-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.osdetail-safe-discard-action-copy strong {
+  display: block;
+  color: #7c2d12;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.osdetail-safe-discard-action-copy p {
+  margin: 4px 0 0;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.osdetail-safe-discard-action-copy small {
+  display: block;
+  margin-top: 7px;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.osdetail-safe-discard-open,
+.osdetail-safe-discard-confirm {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #b91c1c;
+  border-radius: 14px;
+  background: #b91c1c;
+  color: #ffffff;
+  padding: 0 17px;
+  font-weight: 950;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 12px 22px rgba(185, 28, 28, 0.16);
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.osdetail-safe-discard-open:hover:not(:disabled),
+.osdetail-safe-discard-confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.osdetail-safe-discard-open:disabled,
+.osdetail-safe-discard-confirm:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #64748b;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.osdetail-safe-discard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(5px);
+}
+
+.osdetail-safe-discard-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #fecaca;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+}
+
+.osdetail-safe-discard-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.osdetail-safe-discard-modal-head > div {
+  min-width: 0;
+}
+
+.osdetail-safe-discard-modal-head > div > span {
+  display: block;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.osdetail-safe-discard-modal-head h2 {
+  margin: 4px 0 0;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.osdetail-safe-discard-warning {
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 15px;
+  background: #fff7f7;
+  color: #7f1d1d;
+}
+
+.osdetail-safe-discard-warning strong {
+  display: block;
+  font-weight: 950;
+}
+
+.osdetail-safe-discard-warning p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.osdetail-safe-discard-field {
+  display: grid;
+  gap: 8px;
+}
+
+.osdetail-safe-discard-field > span {
+  color: #7f1d1d;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.osdetail-safe-discard-field textarea {
+  width: 100%;
+  min-height: 124px;
+  resize: vertical;
+  border: 1px solid #fca5a5;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111827;
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.osdetail-safe-discard-field textarea:focus {
+  outline: 3px solid rgba(239, 68, 68, 0.14);
+  border-color: #ef4444;
+}
+
+.osdetail-safe-discard-field textarea:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.osdetail-safe-discard-counter {
+  margin-top: -8px;
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
+}
+
+.osdetail-safe-discard-feedback {
+  padding: 11px 13px;
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  background: #fff7f7;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.osdetail-safe-discard-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+@media (max-width: 767px) {
+  .osdetail-safe-discard-action {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 12px 0 0;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .osdetail-safe-discard-open {
+    width: 100%;
+    min-height: 50px;
+  }
+
+  .osdetail-safe-discard-backdrop {
+    z-index: 10000;
+    place-items: center;
+    align-items: center;
+    padding:
+      max(16px, env(safe-area-inset-top))
+      12px
+      max(16px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .osdetail-safe-discard-modal {
+    width: 100%;
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 18px;
+    border-radius: 20px;
+    overscroll-behavior: contain;
+  }
+
+  .osdetail-safe-discard-modal-head h2 {
+    font-size: 21px;
+  }
+
+  .osdetail-safe-discard-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: 100%;
+    padding-bottom: max(2px, env(safe-area-inset-bottom));
+  }
+
+  .osdetail-safe-discard-modal-actions button,
+  .osdetail-safe-discard-confirm {
+    width: 100%;
+    min-height: 50px;
+  }
+}
