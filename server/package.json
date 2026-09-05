@@ -16,7 +16,9 @@
     "test:integration:clientes-multitenant": "node tests/integration/clientesMultiTenantIsolation.integration.js",
     "test:integration:users-multitenant": "node tests/integration/usersMultiTenantIsolation.integration.js",
     "test:integration:dashboard-multitenant": "node tests/integration/dashboardMultiTenantIsolation.integration.js",
-    "test:integration:os-safe-discard": "node tests/integration/osSafeDiscard.integration.js"
+    "test:integration:os-safe-discard": "node tests/integration/osSafeDiscard.integration.js",
+    "test:integration:audit-retention": "node tests/integration/auditLogRetention.integration.js",
+    "audit:retention": "node scripts/auditLogRetention.js"
   },
   "keywords": [],
   "author": "",
