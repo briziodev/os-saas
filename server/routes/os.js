@@ -26,6 +26,7 @@ const {
   canDiscardOS,
   shouldLockDiscardOnUpdate,
 } = require("../services/osDiscardPolicy");
+const { calculateOsTotal } = require("../services/osMoneyPolicy");
 
 router.use(authRequired, loadUser);
 
@@ -57,6 +58,7 @@ const OS_IN_PROGRESS_STATUSES = [
   "aguardando_peca",
   "pronto_retirada",
 ];
+
 
 const OS_STATUS_FILTERS = new Set([
   "triagem",
@@ -327,7 +329,8 @@ async function recalcularTotaisOS(osId, companyId, db = pool) {
   }
 
   const maoObra = Number(osResult.rows[0].mao_obra || 0);
-  const valorTotal = maoObra + totalPecas;
+
+  const valorTotal = calculateOsTotal(maoObra, totalPecas);
 
   await db.query(
     `UPDATE ordens_servico
@@ -806,9 +809,7 @@ router.post(
       } = req.body;
 
 
-      const total =
-        Number(mao_obra) +
-        Number(valor_pecas);
+      const total = calculateOsTotal(mao_obra, valor_pecas);
 
       const result = await pool.query(
         `WITH locked_client AS (
@@ -1048,7 +1049,7 @@ router.put(
             : Number(cur.mao_obra);
 
       const newPecas = Number(cur.valor_pecas || 0);
-      const newTotal = newMao + newPecas;
+      const newTotal = calculateOsTotal(newMao, newPecas);
 
       const shouldLockDiscard =
         shouldLockDiscardOnUpdate({
