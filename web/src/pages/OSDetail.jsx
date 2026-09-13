@@ -73,6 +73,9 @@ const WHATSAPP_ALLOWED_STATUSES = new Set([
   "orcamento_enviado",
 ]);
 
+const MAX_MONEY_VALUE = 999999.99;
+const MAX_OS_TOTAL_VALUE = 99999999.99;
+
 export default function OSDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -114,13 +117,13 @@ export default function OSDetail() {
   const isCancelled = os?.status === "cancelado";
 
   const total = useMemo(
-    () => parseMoneyInput(form.mao_obra) + parseMoneyInput(form.valor_pecas),
+    () => safeMoneyValue(form.mao_obra) + safeMoneyValue(form.valor_pecas),
     [form.mao_obra, form.valor_pecas]
   );
 
   const pieceSubtotal = useMemo(() => {
     const qtd = Number(pieceForm.quantidade || 0);
-    const unit = parseMoneyInput(pieceForm.valor_unitario);
+    const unit = safeMoneyValue(pieceForm.valor_unitario);
     if (!Number.isFinite(qtd) || qtd <= 0) return 0;
     return qtd * unit;
   }, [pieceForm.quantidade, pieceForm.valor_unitario]);
@@ -281,43 +284,84 @@ export default function OSDetail() {
   }
 
   function handleMoneyChange(field, value) {
+    const sanitized = sanitizeMoneyInput(value);
+
+    if (!isMoneyInputCandidate(sanitized)) {
+      return;
+    }
+
     setMsg("");
     setForm((prev) => ({
       ...prev,
-      [field]: sanitizeMoneyInput(value),
+      [field]: sanitized,
     }));
   }
 
   function handleMoneyBlur(field) {
-    setForm((prev) => {
-      const currentValue = prev[field];
+    const currentValue = form[field];
 
-      if (!String(currentValue || "").trim()) {
-        return {
-          ...prev,
-          [field]: "",
-        };
-      }
+    if (!String(currentValue ?? "").trim()) {
+      return;
+    }
 
-      return {
-        ...prev,
-        [field]: formatMoneyInput(currentValue),
-      };
-    });
+    const parsed = parseMoneyInput(currentValue);
+
+    if (!isValidMoneyAmount(parsed)) {
+      setMsg("Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.");
+      return;
+    }
+
+    setMsg("");
+    setForm((prev) => ({
+      ...prev,
+      [field]: formatMoneyInput(currentValue),
+    }));
   }
 
   function handlePieceFieldChange(field, value) {
     setPieceFeedback(null);
+
+    if (field === "valor_unitario") {
+      const sanitized = sanitizeMoneyInput(value);
+
+      if (!isMoneyInputCandidate(sanitized)) {
+        return;
+      }
+
+      setPieceForm((prev) => ({
+        ...prev,
+        [field]: sanitized,
+      }));
+      return;
+    }
+
     setPieceForm((prev) => ({
       ...prev,
-      [field]: field === "valor_unitario" ? sanitizeMoneyInput(value) : value,
+      [field]: value,
     }));
   }
 
   function handlePieceMoneyBlur() {
+    const currentValue = pieceForm.valor_unitario;
+
+    if (!String(currentValue ?? "").trim()) {
+      return;
+    }
+
+    const parsed = parseMoneyInput(currentValue);
+
+    if (!isValidMoneyAmount(parsed)) {
+      setPieceFeedback({
+        type: "error",
+        message: "Informe um valor unitário entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.",
+      });
+      return;
+    }
+
+    setPieceFeedback(null);
     setPieceForm((prev) => ({
       ...prev,
-      valor_unitario: prev.valor_unitario ? formatMoneyInput(prev.valor_unitario) : "",
+      valor_unitario: formatMoneyInput(currentValue),
     }));
   }
 
@@ -352,6 +396,13 @@ export default function OSDetail() {
       return;
     }
 
+    const maoObra = isTecnico ? null : parseMoneyInput(form.mao_obra);
+
+    if (!isTecnico && !isValidMoneyAmount(maoObra)) {
+      setMsg("Informe um valor válido para mão de obra, entre R$ 0,00 e R$ 999.999,99.");
+      return;
+    }
+
     try {
       setSaving(true);
       setMsg("");
@@ -365,7 +416,7 @@ export default function OSDetail() {
             problema_relatado: problemaRelatado,
             modelo: form.modelo.trim(),
             placa: form.placa.trim(),
-            mao_obra: parseMoneyInput(form.mao_obra),
+            mao_obra: maoObra,
             status: form.status,
           };
 
@@ -403,13 +454,26 @@ export default function OSDetail() {
       return;
     }
 
-    if (!Number.isFinite(quantidade) || quantidade <= 0) {
-      setPieceFeedback({ type: "error", message: "Informe uma quantidade válida para a peça." });
+    if (!Number.isInteger(quantidade) || quantidade <= 0 || quantidade > 999) {
+      setPieceFeedback({ type: "error", message: "Informe uma quantidade inteira entre 1 e 999." });
       return;
     }
 
-    if (!Number.isFinite(valorUnitario) || valorUnitario < 0) {
-      setPieceFeedback({ type: "error", message: "Informe um valor unitário válido para a peça." });
+    if (!isValidMoneyAmount(valorUnitario)) {
+      setPieceFeedback({
+        type: "error",
+        message: "Informe um valor unitário entre R$ 0,00 e R$ 999.999,99.",
+      });
+      return;
+    }
+
+    const subtotal = quantidade * valorUnitario;
+
+    if (!Number.isFinite(subtotal) || subtotal > MAX_OS_TOTAL_VALUE) {
+      setPieceFeedback({
+        type: "error",
+        message: "O subtotal da peça excede o limite permitido para a OS.",
+      });
       return;
     }
 
@@ -1759,45 +1823,70 @@ function buildFormState(data) {
 }
 
 function sanitizeMoneyInput(value) {
-  return String(value ?? "").replace(/[^\d,.\s]/g, "").replace(/\s+/g, "");
+  return String(value ?? "").replace(/[^\d,.]/g, "");
+}
+
+function isMoneyInputCandidate(value) {
+  const compact = String(value ?? "").trim();
+
+  if (!compact) return true;
+
+  return (
+    /^\d+(?:[.,]\d{0,2})?$/.test(compact) ||
+    /^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(compact)
+  );
 }
 
 function parseMoneyInput(value) {
-  if (value === null || value === undefined || value === "") return 0;
+  const raw = String(value ?? "").trim();
 
-  let text = String(value).trim();
+  if (!raw) return 0;
 
-  if (!text) return 0;
+  const compact = raw.replace(/\s/g, "");
+  const isSimpleMoney = /^\d+(?:[.,]\d{0,2})?$/.test(compact);
+  const isBrazilianThousandsMoney = /^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(compact);
 
-  text = text.replace(/\s+/g, "").replace(/[R$\u00a0]/g, "");
-
-  const hasComma = text.includes(",");
-  const hasDot = text.includes(".");
-
-  if (hasComma && hasDot) {
-    if (text.lastIndexOf(",") > text.lastIndexOf(".")) {
-      text = text.replace(/\./g, "").replace(",", ".");
-    } else {
-      text = text.replace(/,/g, "");
-    }
-  } else if (hasComma) {
-    text = text.replace(/\./g, "").replace(",", ".");
-  } else if (hasDot) {
-    const parts = text.split(".");
-    if (parts.length > 2) {
-      const decimalPart = parts.pop();
-      text = `${parts.join("")}.${decimalPart}`;
-    }
+  if (!isSimpleMoney && !isBrazilianThousandsMoney) {
+    return NaN;
   }
 
-  const parsed = Number(text);
+  let normalized = compact;
+
+  if (compact.includes(",")) {
+    normalized = compact.replace(/\./g, "").replace(",", ".");
+  } else {
+    const dotParts = compact.split(".");
+    const looksLikeThousands =
+      dotParts.length > 1 && dotParts.slice(1).every((part) => part.length === 3);
+
+    normalized = looksLikeThousands ? compact.replace(/\./g, "") : compact;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function safeMoneyValue(value) {
+  const parsed = parseMoneyInput(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isValidMoneyAmount(value) {
+  return Number.isFinite(value) && value >= 0 && value <= MAX_MONEY_VALUE;
+}
+
 function formatMoneyInput(value) {
-  return parseMoneyInput(value).toLocaleString("pt-BR", {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) return "";
+
+  const parsed = parseMoneyInput(raw);
+  if (!Number.isFinite(parsed)) return raw;
+
+  return parsed.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    useGrouping: false,
   });
 }
 

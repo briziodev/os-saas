@@ -6,6 +6,7 @@ import { appIcons } from "../config/icons";
 import "./OSNew.css";
 
 const MAX_RESULTADOS = 5;
+const MAX_MONEY_VALUE = 999999.99;
 
 const OSNEW_ICON_MAP = {
   "arrow-left": appIcons.voltar,
@@ -230,13 +231,13 @@ export default function OSNew() {
     const maoObra = parseMoneyBR(form.mao_obra);
     const valorPecas = parseMoneyBR(form.valor_pecas);
 
-    if (!Number.isFinite(maoObra) || maoObra < 0) {
-      setMsg("Informe um valor válido para mão de obra.");
+    if (!isValidMoneyAmount(maoObra)) {
+      setMsg("Informe um valor válido para mão de obra, entre R$ 0,00 e R$ 999.999,99.");
       return;
     }
 
-    if (!Number.isFinite(valorPecas) || valorPecas < 0) {
-      setMsg("Informe um valor válido para peças.");
+    if (!isValidMoneyAmount(valorPecas)) {
+      setMsg("Informe um valor válido para peças, entre R$ 0,00 e R$ 999.999,99.");
       return;
     }
 
@@ -271,11 +272,22 @@ export default function OSNew() {
   }
 
   function handleFormChange(field, value) {
-    const nextValue = isMoneyField(field)
-      ? sanitizeMoneyInput(value)
-      : field === "placa"
-        ? value.toUpperCase()
-        : value;
+    if (isMoneyField(field)) {
+      const sanitized = sanitizeMoneyInput(value);
+
+      if (!isMoneyInputCandidate(sanitized)) {
+        return;
+      }
+
+      setMsg("");
+      setForm((prev) => ({
+        ...prev,
+        [field]: sanitized,
+      }));
+      return;
+    }
+
+    const nextValue = field === "placa" ? value.toUpperCase() : value;
 
     setForm((prev) => ({
       ...prev,
@@ -290,9 +302,23 @@ export default function OSNew() {
   }
 
   function handleMoneyBlur(field) {
+    const currentValue = form[field];
+
+    if (!String(currentValue ?? "").trim()) {
+      return;
+    }
+
+    const parsed = parseMoneyBR(currentValue);
+
+    if (!isValidMoneyAmount(parsed)) {
+      setMsg("Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.");
+      return;
+    }
+
+    setMsg("");
     setForm((prev) => ({
       ...prev,
-      [field]: formatMoneyInput(prev[field]),
+      [field]: formatMoneyInput(currentValue),
     }));
   }
 
@@ -801,6 +827,17 @@ function sanitizeMoneyInput(value) {
   return String(value ?? "").replace(/[^\d,.]/g, "");
 }
 
+function isMoneyInputCandidate(value) {
+  const compact = String(value ?? "").trim();
+
+  if (!compact) return true;
+
+  return (
+    /^\d+(?:[.,]\d{0,2})?$/.test(compact) ||
+    /^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(compact)
+  );
+}
+
 function parseMoneyBR(value) {
   const raw = String(value ?? "").trim();
 
@@ -836,17 +873,22 @@ function safeMoneyValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isValidMoneyAmount(value) {
+  return Number.isFinite(value) && value >= 0 && value <= MAX_MONEY_VALUE;
+}
+
 function formatMoneyInput(value) {
   const raw = String(value ?? "").trim();
 
   if (!raw) return "";
 
   const parsed = parseMoneyBR(raw);
-  if (!Number.isFinite(parsed)) return "";
+  if (!Number.isFinite(parsed)) return raw;
 
   return parsed.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    useGrouping: false,
   });
 }
 

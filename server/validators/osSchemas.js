@@ -14,6 +14,20 @@ const allowedStatuses = [
   "cancelado",
 ];
 
+const MAX_MONEY_VALUE = 999999.99;
+const MAX_OS_TOTAL_VALUE = 99999999.99;
+
+function hasAtMostTwoDecimalPlaces(value) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return false;
+  }
+
+  const scaled = numberValue * 100;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-8;
+}
+
 const positiveIntSchema = (message) =>
   z.preprocess((value) => {
     const numberValue = Number(value);
@@ -30,7 +44,10 @@ const moneySchema = z.preprocess((value) => {
 }, z.coerce
   .number()
   .min(0, "Valor não pode ser negativo.")
-  .max(999999.99, "Valor muito alto.")
+  .max(MAX_MONEY_VALUE, "Valor muito alto.")
+  .refine(hasAtMostTwoDecimalPlaces, {
+    message: "Valor deve ter no máximo 2 casas decimais.",
+  })
 );
 
 const optionalMoneySchema = z
@@ -49,8 +66,11 @@ const optionalMoneySchema = z
   .refine((value) => value === undefined || value >= 0, {
     message: "Valor não pode ser negativo.",
   })
-  .refine((value) => value === undefined || value <= 999999.99, {
+  .refine((value) => value === undefined || value <= MAX_MONEY_VALUE, {
     message: "Valor muito alto.",
+  })
+  .refine((value) => value === undefined || hasAtMostTwoDecimalPlaces(value), {
+    message: "Valor deve ter no máximo 2 casas decimais.",
   });
 const createTextOrNullSchema = (max, message) =>
   z.preprocess((value) => {
@@ -183,10 +203,20 @@ const osPecaCreateSchema = z
     }, z.coerce
       .number()
       .min(0, "Valor unitário não pode ser negativo.")
-      .max(999999.99, "Valor unitário muito alto.")
+      .max(MAX_MONEY_VALUE, "Valor unitário muito alto.")
+      .refine(hasAtMostTwoDecimalPlaces, {
+        message: "Valor unitário deve ter no máximo 2 casas decimais.",
+      })
     ),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => data.quantidade * data.valor_unitario <= MAX_OS_TOTAL_VALUE,
+    {
+      path: ["valor_unitario"],
+      message: "Subtotal da peça excede o limite permitido para a OS.",
+    }
+  );
 
 const osPecaUpdateSchema = z
   .object({
@@ -205,9 +235,19 @@ const osPecaUpdateSchema = z
     valor_unitario: z.coerce
       .number()
       .min(0, "Valor unitário não pode ser negativo.")
-      .max(999999.99, "Valor unitário muito alto."),
+      .max(MAX_MONEY_VALUE, "Valor unitário muito alto.")
+      .refine(hasAtMostTwoDecimalPlaces, {
+        message: "Valor unitário deve ter no máximo 2 casas decimais.",
+      }),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => data.quantidade * data.valor_unitario <= MAX_OS_TOTAL_VALUE,
+    {
+      path: ["valor_unitario"],
+      message: "Subtotal da peça excede o limite permitido para a OS.",
+    }
+  );
 
 module.exports = {
   allowedStatuses,
