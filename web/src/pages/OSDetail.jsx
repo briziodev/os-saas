@@ -75,6 +75,22 @@ const WHATSAPP_ALLOWED_STATUSES = new Set([
 
 const MAX_MONEY_VALUE = 999999.99;
 const MAX_OS_TOTAL_VALUE = 99999999.99;
+const MONEY_ERROR_MESSAGE =
+  "Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.";
+const PIECE_SUBTOTAL_ERROR_MESSAGE =
+  "O subtotal da peça excede o limite permitido para a OS.";
+const MONEY_INPUT_ERROR_STYLE = {
+  borderColor: "#dc2626",
+  boxShadow: "0 0 0 3px rgba(220, 38, 38, 0.10)",
+};
+const MONEY_ERROR_TEXT_STYLE = {
+  display: "block",
+  marginTop: "0.35rem",
+  color: "#b91c1c",
+  fontSize: "0.78rem",
+  fontStyle: "normal",
+  fontWeight: 600,
+};
 
 export default function OSDetail() {
   const { id } = useParams();
@@ -106,6 +122,7 @@ export default function OSDetail() {
   const [discardFeedback, setDiscardFeedback] = useState("");
   const [msg, setMsg] = useState("");
   const [pieceFeedback, setPieceFeedback] = useState(null);
+  const [moneyErrors, setMoneyErrors] = useState({ mao_obra: "", valor_unitario: "" });
   const [initialForm, setInitialForm] = useState(emptyForm());
   const [form, setForm] = useState(emptyForm());
   const [pieceForm, setPieceForm] = useState({
@@ -291,6 +308,14 @@ export default function OSDetail() {
     }
 
     setMsg("");
+
+    const parsed = parseMoneyInput(sanitized);
+    if (!String(sanitized).trim() || isValidMoneyAmount(parsed)) {
+      setMoneyErrors((prev) =>
+        prev[field] ? { ...prev, [field]: "" } : prev
+      );
+    }
+
     setForm((prev) => ({
       ...prev,
       [field]: sanitized,
@@ -307,11 +332,18 @@ export default function OSDetail() {
     const parsed = parseMoneyInput(currentValue);
 
     if (!isValidMoneyAmount(parsed)) {
-      setMsg("Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.");
+      setMsg("");
+      setMoneyErrors((prev) => ({
+        ...prev,
+        [field]: MONEY_ERROR_MESSAGE,
+      }));
       return;
     }
 
     setMsg("");
+    setMoneyErrors((prev) =>
+      prev[field] ? { ...prev, [field]: "" } : prev
+    );
     setForm((prev) => ({
       ...prev,
       [field]: formatMoneyInput(currentValue),
@@ -328,11 +360,31 @@ export default function OSDetail() {
         return;
       }
 
+      setMoneyErrors((prev) => {
+        if (!prev.valor_unitario) return prev;
+
+        const nextError = getPieceMoneyError(pieceForm.quantidade, sanitized);
+        return nextError === prev.valor_unitario
+          ? prev
+          : { ...prev, valor_unitario: nextError };
+      });
+
       setPieceForm((prev) => ({
         ...prev,
         [field]: sanitized,
       }));
       return;
+    }
+
+    if (field === "quantidade") {
+      setMoneyErrors((prev) => {
+        if (!prev.valor_unitario) return prev;
+
+        const nextError = getPieceMoneyError(value, pieceForm.valor_unitario);
+        return nextError === prev.valor_unitario
+          ? prev
+          : { ...prev, valor_unitario: nextError };
+      });
     }
 
     setPieceForm((prev) => ({
@@ -348,17 +400,21 @@ export default function OSDetail() {
       return;
     }
 
-    const parsed = parseMoneyInput(currentValue);
+    const nextError = getPieceMoneyError(pieceForm.quantidade, currentValue);
 
-    if (!isValidMoneyAmount(parsed)) {
-      setPieceFeedback({
-        type: "error",
-        message: "Informe um valor unitário entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.",
-      });
+    if (nextError) {
+      setPieceFeedback(null);
+      setMoneyErrors((prev) => ({
+        ...prev,
+        valor_unitario: nextError,
+      }));
       return;
     }
 
     setPieceFeedback(null);
+    setMoneyErrors((prev) =>
+      prev.valor_unitario ? { ...prev, valor_unitario: "" } : prev
+    );
     setPieceForm((prev) => ({
       ...prev,
       valor_unitario: formatMoneyInput(currentValue),
@@ -371,6 +427,9 @@ export default function OSDetail() {
       quantidade: "1",
       valor_unitario: "",
     });
+    setMoneyErrors((prev) =>
+      prev.valor_unitario ? { ...prev, valor_unitario: "" } : prev
+    );
   }
 
   function confirmDiscardChanges() {
@@ -399,8 +458,18 @@ export default function OSDetail() {
     const maoObra = isTecnico ? null : parseMoneyInput(form.mao_obra);
 
     if (!isTecnico && !isValidMoneyAmount(maoObra)) {
-      setMsg("Informe um valor válido para mão de obra, entre R$ 0,00 e R$ 999.999,99.");
+      setMoneyErrors((prev) => ({
+        ...prev,
+        mao_obra: MONEY_ERROR_MESSAGE,
+      }));
+      setMsg("Há valor monetário inválido. Corrija o campo destacado antes de salvar a OS.");
       return;
+    }
+
+    if (!isTecnico) {
+      setMoneyErrors((prev) =>
+        prev.mao_obra ? { ...prev, mao_obra: "" } : prev
+      );
     }
 
     try {
@@ -459,23 +528,20 @@ export default function OSDetail() {
       return;
     }
 
-    if (!isValidMoneyAmount(valorUnitario)) {
-      setPieceFeedback({
-        type: "error",
-        message: "Informe um valor unitário entre R$ 0,00 e R$ 999.999,99.",
-      });
+    const pieceMoneyError = getPieceMoneyError(quantidade, pieceForm.valor_unitario);
+
+    if (pieceMoneyError) {
+      setPieceFeedback(null);
+      setMoneyErrors((prev) => ({
+        ...prev,
+        valor_unitario: pieceMoneyError,
+      }));
       return;
     }
 
-    const subtotal = quantidade * valorUnitario;
-
-    if (!Number.isFinite(subtotal) || subtotal > MAX_OS_TOTAL_VALUE) {
-      setPieceFeedback({
-        type: "error",
-        message: "O subtotal da peça excede o limite permitido para a OS.",
-      });
-      return;
-    }
+    setMoneyErrors((prev) =>
+      prev.valor_unitario ? { ...prev, valor_unitario: "" } : prev
+    );
 
     try {
       setAddingPiece(true);
@@ -819,6 +885,7 @@ export default function OSDetail() {
                 pieceForm={pieceForm}
                 pieceSubtotal={pieceSubtotal}
                 pieceFeedback={pieceFeedback}
+                moneyErrors={moneyErrors}
                 addingPiece={addingPiece}
                 removingPieceId={removingPieceId}
                 readOnly={isCancelled}
@@ -831,6 +898,7 @@ export default function OSDetail() {
               <EditarCard
                 form={form}
                 total={total}
+                moneyErrors={moneyErrors}
                 saving={saving}
                 isTecnico={isTecnico}
                 readOnly={isCancelled}
@@ -846,6 +914,7 @@ export default function OSDetail() {
               <EditarCard
                 form={form}
                 total={total}
+                moneyErrors={moneyErrors}
                 saving={saving}
                 isTecnico={isTecnico}
                 readOnly={isCancelled}
@@ -1418,6 +1487,7 @@ function PecasCard({
   pieceForm,
   pieceSubtotal,
   pieceFeedback,
+  moneyErrors,
   addingPiece,
   removingPieceId,
   readOnly,
@@ -1485,7 +1555,15 @@ function PecasCard({
             inputMode="decimal"
             placeholder="0,00"
             disabled={readOnly}
+            aria-invalid={Boolean(moneyErrors.valor_unitario)}
+            aria-describedby={moneyErrors.valor_unitario ? "osdetail-piece-money-error" : undefined}
+            style={moneyErrors.valor_unitario ? MONEY_INPUT_ERROR_STYLE : undefined}
           />
+          {moneyErrors.valor_unitario ? (
+            <small id="osdetail-piece-money-error" role="alert" style={MONEY_ERROR_TEXT_STYLE}>
+              {moneyErrors.valor_unitario}
+            </small>
+          ) : null}
         </div>
 
         <div className="osdetail-premium-form-field osdetail-premium-form-field--subtotal">
@@ -1601,7 +1679,7 @@ function HistoricoCard({ eventos, loading, isTecnico }) {
   );
 }
 
-function EditarCard({ form, total, saving, isTecnico, readOnly, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
+function EditarCard({ form, total, moneyErrors, saving, isTecnico, readOnly, onChange, onMoneyChange, onMoneyBlur, onSave, onBack }) {
   return (
     <section className={`osdetail-premium-card osdetail-premium-card--edit ${readOnly ? "is-readonly" : ""}`}>
       <CardTitle
@@ -1672,7 +1750,15 @@ function EditarCard({ form, total, saving, isTecnico, readOnly, onChange, onMone
               inputMode="decimal"
               placeholder="0,00"
               disabled={readOnly}
+              aria-invalid={Boolean(moneyErrors.mao_obra)}
+              aria-describedby={moneyErrors.mao_obra ? "osdetail-mao-obra-error" : undefined}
+              style={moneyErrors.mao_obra ? MONEY_INPUT_ERROR_STYLE : undefined}
             />
+            {moneyErrors.mao_obra ? (
+              <small id="osdetail-mao-obra-error" role="alert" style={MONEY_ERROR_TEXT_STYLE}>
+                {moneyErrors.mao_obra}
+              </small>
+            ) : null}
           </div>
 
           <div className="osdetail-premium-form-field">
@@ -1873,6 +1959,26 @@ function safeMoneyValue(value) {
 
 function isValidMoneyAmount(value) {
   return Number.isFinite(value) && value >= 0 && value <= MAX_MONEY_VALUE;
+}
+
+function getPieceMoneyError(quantidadeValue, valorUnitarioValue) {
+  const valorUnitario = parseMoneyInput(valorUnitarioValue);
+
+  if (!isValidMoneyAmount(valorUnitario)) {
+    return MONEY_ERROR_MESSAGE;
+  }
+
+  const quantidade = Number(quantidadeValue || 0);
+
+  if (Number.isInteger(quantidade) && quantidade > 0 && quantidade <= 999) {
+    const subtotal = quantidade * valorUnitario;
+
+    if (!Number.isFinite(subtotal) || subtotal > MAX_OS_TOTAL_VALUE) {
+      return PIECE_SUBTOTAL_ERROR_MESSAGE;
+    }
+  }
+
+  return "";
 }
 
 function formatMoneyInput(value) {
