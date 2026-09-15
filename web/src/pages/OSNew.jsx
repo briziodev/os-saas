@@ -7,6 +7,20 @@ import "./OSNew.css";
 
 const MAX_RESULTADOS = 5;
 const MAX_MONEY_VALUE = 999999.99;
+const MONEY_ERROR_MESSAGE =
+  "Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.";
+const MONEY_INPUT_ERROR_STYLE = {
+  borderColor: "#dc2626",
+  boxShadow: "0 0 0 3px rgba(220, 38, 38, 0.10)",
+};
+const MONEY_ERROR_TEXT_STYLE = {
+  display: "block",
+  marginTop: "0.35rem",
+  color: "#b91c1c",
+  fontSize: "0.78rem",
+  fontStyle: "normal",
+  fontWeight: 600,
+};
 
 const OSNEW_ICON_MAP = {
   "arrow-left": appIcons.voltar,
@@ -37,6 +51,7 @@ export default function OSNew() {
 
   const [clientes, setClientes] = useState([]);
   const [msg, setMsg] = useState("");
+  const [moneyErrors, setMoneyErrors] = useState({ mao_obra: "", valor_pecas: "" });
   const [loading, setLoading] = useState(true);
   const [savingCliente, setSavingCliente] = useState(false);
   const [savingOS, setSavingOS] = useState(false);
@@ -230,14 +245,15 @@ export default function OSNew() {
 
     const maoObra = parseMoneyBR(form.mao_obra);
     const valorPecas = parseMoneyBR(form.valor_pecas);
+    const nextMoneyErrors = {
+      mao_obra: isValidMoneyAmount(maoObra) ? "" : MONEY_ERROR_MESSAGE,
+      valor_pecas: isValidMoneyAmount(valorPecas) ? "" : MONEY_ERROR_MESSAGE,
+    };
 
-    if (!isValidMoneyAmount(maoObra)) {
-      setMsg("Informe um valor válido para mão de obra, entre R$ 0,00 e R$ 999.999,99.");
-      return;
-    }
+    setMoneyErrors(nextMoneyErrors);
 
-    if (!isValidMoneyAmount(valorPecas)) {
-      setMsg("Informe um valor válido para peças, entre R$ 0,00 e R$ 999.999,99.");
+    if (nextMoneyErrors.mao_obra || nextMoneyErrors.valor_pecas) {
+      setMsg("Há valor monetário inválido. Corrija os campos destacados antes de criar a OS.");
       return;
     }
 
@@ -280,6 +296,14 @@ export default function OSNew() {
       }
 
       setMsg("");
+
+      const parsed = parseMoneyBR(sanitized);
+      if (!String(sanitized).trim() || isValidMoneyAmount(parsed)) {
+        setMoneyErrors((prev) =>
+          prev[field] ? { ...prev, [field]: "" } : prev
+        );
+      }
+
       setForm((prev) => ({
         ...prev,
         [field]: sanitized,
@@ -311,11 +335,18 @@ export default function OSNew() {
     const parsed = parseMoneyBR(currentValue);
 
     if (!isValidMoneyAmount(parsed)) {
-      setMsg("Informe um valor entre R$ 0,00 e R$ 999.999,99, com no máximo 2 casas decimais.");
+      setMsg("");
+      setMoneyErrors((prev) => ({
+        ...prev,
+        [field]: MONEY_ERROR_MESSAGE,
+      }));
       return;
     }
 
     setMsg("");
+    setMoneyErrors((prev) =>
+      prev[field] ? { ...prev, [field]: "" } : prev
+    );
     setForm((prev) => ({
       ...prev,
       [field]: formatMoneyInput(currentValue),
@@ -603,23 +634,29 @@ export default function OSNew() {
               </FormField>
 
               <div className="osnew-premium-grid-2 osnew-premium-money-grid">
-                <FormField label="Mão de obra (R$)">
+                <FormField label="Mão de obra (R$)" error={moneyErrors.mao_obra} errorId="osnew-mao-obra-error">
                   <input
                     value={form.mao_obra}
                     onChange={(e) => handleFormChange("mao_obra", e.target.value)}
                     onBlur={() => handleMoneyBlur("mao_obra")}
                     inputMode="decimal"
                     placeholder="0,00"
+                    aria-invalid={Boolean(moneyErrors.mao_obra)}
+                    aria-describedby={moneyErrors.mao_obra ? "osnew-mao-obra-error" : undefined}
+                    style={moneyErrors.mao_obra ? MONEY_INPUT_ERROR_STYLE : undefined}
                   />
                 </FormField>
 
-                <FormField label="Peças (R$)">
+                <FormField label="Peças (R$)" error={moneyErrors.valor_pecas} errorId="osnew-valor-pecas-error">
                   <input
                     value={form.valor_pecas}
                     onChange={(e) => handleFormChange("valor_pecas", e.target.value)}
                     onBlur={() => handleMoneyBlur("valor_pecas")}
                     inputMode="decimal"
                     placeholder="0,00"
+                    aria-invalid={Boolean(moneyErrors.valor_pecas)}
+                    aria-describedby={moneyErrors.valor_pecas ? "osnew-valor-pecas-error" : undefined}
+                    style={moneyErrors.valor_pecas ? MONEY_INPUT_ERROR_STYLE : undefined}
                   />
                 </FormField>
               </div>
@@ -738,7 +775,7 @@ function CardTitle({ icon, title, subtitle, status, statusType }) {
   );
 }
 
-function FormField({ label, required, hint, children }) {
+function FormField({ label, required, hint, error, errorId, children }) {
   return (
     <label className="osnew-premium-field">
       <span>
@@ -747,6 +784,11 @@ function FormField({ label, required, hint, children }) {
         {hint ? <em>{hint}</em> : null}
       </span>
       {children}
+      {error ? (
+        <small id={errorId} role="alert" style={MONEY_ERROR_TEXT_STYLE}>
+          {error}
+        </small>
+      ) : null}
     </label>
   );
 }
